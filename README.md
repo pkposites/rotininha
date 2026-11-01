@@ -1,4 +1,4 @@
-# Rotininha
+# Ninhora
 
 Uma ajudinha na sua rotina de mãe. PWA + Cloudflare Worker + Pix. Veja `docs/PRD.md`.
 

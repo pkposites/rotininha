@@ -82,9 +82,9 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
             <h3 class="group-title">Lembretes no aparelho</h3>
             <section class="group">
             {push === 'active' && <p role="status" class="muted">Notificações ativadas neste aparelho.</p>}
-            {push === 'ios-install' && <p class="muted">No iPhone, os lembretes só funcionam com o Rotininha instalado: toque em Compartilhar → Adicionar à Tela de Início, depois abra o app por lá e volte aqui.</p>}
+            {push === 'ios-install' && <p class="muted">No iPhone, os lembretes só funcionam com o Ninhora instalado: toque em Compartilhar → Adicionar à Tela de Início, depois abra o app por lá e volte aqui.</p>}
             {push === 'unsupported' && <p class="muted">Este navegador não oferece notificações. Você ainda pode registrar e consultar tudo; os lembretes ficam visíveis no app.</p>}
-            {push === 'denied' && <p class="muted">As notificações estão bloqueadas para o Rotininha. Libere nas configurações do aparelho ou do navegador.</p>}
+            {push === 'denied' && <p class="muted">As notificações estão bloqueadas para o Ninhora. Libere nas configurações do aparelho ou do navegador.</p>}
             {(push === 'idle' || push === 'active') && (
               <label class="inline"><input type="checkbox" checked={privacy} disabled={push === 'active'} onChange={(e) => setPrivacy(e.target.checked)} /> Esconder detalhes na tela de bloqueio</label>
             )}
@@ -94,7 +94,7 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
               {push === 'active' && <button class="btn ghost" disabled={pushBusy} onClick={() => act(disablePush, 'Notificações desativadas neste aparelho.')}>Desativar</button>}
             </div>
             {pushMsg && <p role="status" class="muted">{pushMsg}</p>}
-            <p class="muted">Notificações dependem da instalação, da permissão e das configurações do aparelho, e podem atrasar ou não chegar. O Rotininha não garante entrega no minuto exato.</p>
+            <p class="muted">Notificações dependem da instalação, da permissão e das configurações do aparelho, e podem atrasar ou não chegar. O Ninhora não garante entrega no minuto exato.</p>
             </section>
           </>
         )}
@@ -116,7 +116,7 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
         </section>
         <h3 class="group-title">Sugestões</h3>
         <section class="group"><button class="btn ghost" onClick={onSuggest}>Enviar sugestão</button></section>
-        <p class="muted">Seus registros não são usados para publicidade. O Rotininha não substitui a orientação do pediatra.</p>
+        <p class="muted">Seus registros não são usados para publicidade. O Ninhora não substitui a orientação do pediatra.</p>
         <button class="btn ghost" onClick={onClose}>Fechar</button>
       </div>
     </div>

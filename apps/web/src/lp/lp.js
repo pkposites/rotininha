@@ -113,7 +113,7 @@ track('lp_visit');
   const DATA = {
     banho: ['🛁 Banho', '18:30', 'O banho aparece em “Próximos lembretes” e, no horário que você escolher, chega uma notificação (se o aparelho permitir).', null],
     agua: ['💧 Beber água', '10:00', 'Cuidado da mãe também entra na rotina — e você pode ocultar essa categoria quando quiser.', null],
-    remedio: ['💊 Remédio', '08:00', 'Registre somente horários conforme orientação de profissional de saúde. O Rotininha não calcula nem sugere doses. Na tela de bloqueio, o aviso fica genérico para proteger sua privacidade.', null],
+    remedio: ['💊 Remédio', '08:00', 'Registre somente horários conforme orientação de profissional de saúde. O Ninhora não calcula nem sugere doses. Na tela de bloqueio, o aviso fica genérico para proteger sua privacidade.', null],
     mamada: ['🍼 Mamada', '', 'Com um toque em “Mamou”, a mamada vira o último cuidado, com hora e tempo desde então.', '16:40 · há 20 min']
   };
   const chips = $$('#pv-chips .chip');
@@ -136,7 +136,7 @@ track('lp_visit');
     lembrar: 'Lembretes que você mesma edita, com notificação quando o aparelho permitir, ajudam a tirar isso da cabeça.',
     registrar: 'Registrar mamada, sono e fralda leva 1 ou 2 toques — dá para fazer com uma mão só.',
     organizar: 'A tela Hoje mostra o último cuidado, há quanto tempo foi e o que vem a seguir.',
-    dividir: 'Hoje o Rotininha é pensado para uma pessoa por aparelho; o compartilhamento entre cuidadores está nos planos, e só anunciaremos quando existir.'
+    dividir: 'Hoje o Ninhora é pensado para uma pessoa por aparelho; o compartilhamento entre cuidadores está nos planos, e só anunciaremos quando existir.'
   };
   $$('.chips', form).forEach((g) => g.addEventListener('click', (e) => {
     const b = e.target.closest('.chip'); if (!b) return;

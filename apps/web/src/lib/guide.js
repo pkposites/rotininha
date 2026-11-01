@@ -80,7 +80,7 @@ export const LESSONS = [
     day: 6, minutes: 2, title: 'Despertares fazem parte do desenvolvimento',
     body: [
       'Acordar durante a noite é comum nos primeiros meses e acontece por vários motivos. Faz parte do desenvolvimento.',
-      'Se algo parecer fora do comum ou preocupar você, converse com o pediatra — o Rotininha não faz diagnóstico nem substitui essa conversa.',
+      'Se algo parecer fora do comum ou preocupar você, converse com o pediatra — o Ninhora não faz diagnóstico nem substitui essa conversa.',
       'Para ajudar a manter o seu ritmo, você pode deixar um lembrete de rotina para a noite.'
     ],
     action: { type: 'task', label: 'Criar lembrete de rotina', task: { title: 'Rotina da noite', category: 'outro', time: '20:00' } }

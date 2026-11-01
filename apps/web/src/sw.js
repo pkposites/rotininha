@@ -15,8 +15,8 @@ self.addEventListener('push', (event) => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch { d = { body: event.data?.text?.() }; }
   event.waitUntil(
-    self.registration.showNotification(d.title || 'Rotininha', {
-      body: d.body || 'Você tem um lembrete do Rotininha',
+    self.registration.showNotification(d.title || 'Ninhora', {
+      body: d.body || 'Você tem um lembrete no Ninhora',
       tag: d.tag || 'rotininha',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',

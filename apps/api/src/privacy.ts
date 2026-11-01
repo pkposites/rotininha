@@ -7,7 +7,7 @@ const pseudoOf = (env: Env, id: string) => sha256Hex(`${env.CODE_PEPPER}:feedbac
 
 /** Cópia legível dos dados da família (portabilidade, LGPD art. 18). Sem segredos (hash de código, chaves de push). */
 export async function exportHousehold(env: Env, householdId: string, now: number) {
-  const hh = await env.DB.prepare('SELECT timezone, valid_until, grace_until, created_at FROM households WHERE id = ?').bind(householdId).first<any>();
+  const hh = await env.DB.prepare('SELECT timezone, valid_until, grace_until, created_at, plan, trial_ends_at, baby_birth_date, contact_email, tips_opt_in, usage_opt_in FROM households WHERE id = ?').bind(householdId).first<any>();
   const recs = await env.DB.prepare('SELECT body, deleted FROM records WHERE household_id = ? ORDER BY seq').bind(householdId).all<{ body: string; deleted: number }>();
   const pays = await env.DB.prepare(
     'SELECT plan, kind, amount_cents, status, email, created_at, approved_at, refunded_at FROM payments WHERE household_id = ? ORDER BY created_at'
@@ -17,7 +17,7 @@ export async function exportHousehold(env: Env, householdId: string, now: number
   const devices = await env.DB.prepare('SELECT COUNT(*) AS n FROM push_subscriptions WHERE household_id = ?').bind(householdId).first<{ n: number }>();
   return {
     exportedAt: new Date(now).toISOString(),
-    conta: { fuso: hh?.timezone, validoAte: hh?.valid_until ? new Date(hh.valid_until).toISOString() : null, criadaEm: hh ? new Date(hh.created_at).toISOString() : null },
+    conta: { plano: hh?.plan, fim_do_teste: hh?.trial_ends_at ? new Date(hh.trial_ends_at).toISOString() : null, nascimento_do_bebe: hh?.baby_birth_date ?? null, email_de_contato: hh?.contact_email ?? null, receber_dicas: !!hh?.tips_opt_in, estatisticas_de_uso: !!hh?.usage_opt_in, fuso: hh?.timezone, validoAte: hh?.valid_until ? new Date(hh.valid_until).toISOString() : null, criadaEm: hh ? new Date(hh.created_at).toISOString() : null },
     registros: recs.results.map((r) => ({ ...JSON.parse(r.body), deleted: !!r.deleted })).filter((r) => !r.deleted),
     pagamentos: pays.results.map((p) => ({
       plano: p.plan, tipo: p.kind, valor_centavos: p.amount_cents, status: p.status, email: p.email,
@@ -41,6 +41,8 @@ export async function purgeHousehold(env: Env, householdId: string) {
     env.DB.prepare('DELETE FROM sessions WHERE household_id = ?').bind(householdId),
     env.DB.prepare('DELETE FROM sent_notifications WHERE key LIKE ?').bind(householdId + ':%'),
     env.DB.prepare('DELETE FROM feedback_suggestions WHERE pseudo_id = ?').bind(pseudo),
+    env.DB.prepare('DELETE FROM usage_daily WHERE hid = (SELECT hid FROM households WHERE id = ? AND hid IS NOT NULL)').bind(householdId),
+    env.DB.prepare('DELETE FROM notification_sends WHERE household_id = ?').bind(householdId),
     env.DB.prepare("UPDATE payments SET email = 'apagado', household_id = NULL, qr_code = NULL, qr_base64 = NULL, delivery_sealed = NULL, poll_hash = 'apagado', fbp = NULL, fbc = NULL, client_ip = NULL, client_ua = NULL WHERE household_id = ?").bind(householdId),
     env.DB.prepare('DELETE FROM households WHERE id = ?').bind(householdId)
   ]);

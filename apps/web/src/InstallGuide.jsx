@@ -14,7 +14,7 @@ export function InstallGuide() {
 
   return (
     <div class="install" data-advice={advice}>
-      {advice === 'installed' && <p role="status">✓ O Rotininha já está instalado neste aparelho.</p>}
+      {advice === 'installed' && <p role="status">✓ O Ninhora já está instalado neste aparelho.</p>}
       {advice === 'in-app' && (
         <>
           <p><strong>Você está dentro de outro app (Instagram, Facebook…).</strong> Para instalar, abra no navegador do celular:</p>
@@ -30,13 +30,13 @@ export function InstallGuide() {
         <ol>
           <li>Toque em <strong>Compartilhar</strong> <span aria-hidden="true">⬆️</span> na barra do Safari.</li>
           <li>Role e toque em <strong>“Adicionar à Tela de Início”</strong>.</li>
-          <li>Abra o Rotininha <strong>pelo ícone</strong> da tela inicial — é assim que os lembretes funcionam no iPhone.</li>
+          <li>Abra o Ninhora <strong>pelo ícone</strong> da tela inicial — é assim que os lembretes funcionam no iPhone.</li>
         </ol>
       )}
       {advice === 'ios-other' && <p>No iPhone, abra este endereço no <strong>Safari</strong> e use Compartilhar → <strong>Adicionar à Tela de Início</strong>. É o que permite receber lembretes.</p>}
-      {advice === 'android-prompt' && <button class="btn" onClick={promptInstall}>Instalar o Rotininha</button>}
+      {advice === 'android-prompt' && <button class="btn" onClick={promptInstall}>Instalar o Ninhora</button>}
       {advice === 'android-menu' && <p>Toque no menu <strong>⋮</strong> do navegador e escolha <strong>“Instalar app”</strong> (ou “Adicionar à tela inicial”).</p>}
-      {advice === 'desktop' && <p>No computador, use o ícone de instalar na barra de endereço do navegador. O Rotininha é pensado para o celular.</p>}
+      {advice === 'desktop' && <p>No computador, use o ícone de instalar na barra de endereço do navegador. O Ninhora é pensado para o celular.</p>}
     </div>
   );
 }

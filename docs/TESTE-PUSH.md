@@ -21,7 +21,7 @@ Já validado em ambiente local: criptografia (vetor oficial RFC 8291), VAPID, Cr
 - [ ] Tocar na notificação → abre o lembrete **sem** marcar como feito.
 - [ ] Criar outro lembrete, marcar **Feito** antes do horário → não toca.
 - [ ] Adiar 10 min → toca no novo horário, não no original.
-- [ ] Remédio → notificação com texto genérico ("Você tem um lembrete do Rotininha").
+- [ ] Remédio → notificação com texto genérico ("Você tem um lembrete no Ninhora").
 - [ ] "Esconder detalhes na tela de bloqueio" → texto genérico.
 - [ ] Safari **sem** instalar: Ajustes mostra orientação para instalar (e não promete lembrete).
 - [ ] Modo avião: registrar cuidado → volta a conexão → sincroniza sem duplicar.

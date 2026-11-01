@@ -225,7 +225,7 @@ function App() {
   return (
     <div class="shell">
       <header class="topbar">
-        <span class="brand"><BrandMark />Rotininha</span>
+        <span class="brand"><BrandMark />Ninhora</span>
         <div class="topbar-actions">
           {syncAvailable && syncStatus === 'offline' && <span class="muted" role="status">sem conexão</span>}
           <button class="icon-btn" aria-label={night ? 'Desativar modo madrugada' : 'Ativar modo madrugada'} onClick={() => setNight(!night)}>
@@ -243,7 +243,7 @@ function App() {
         {tab === 'guia' && <GuideTab rem={rem} account={account} now={now}
           onCreateTask={(p) => setTaskEdit({ task: makeTask(p), isNew: true })} onGoToday={() => setTab('hoje')}
           onSuggest={() => setFeedbackOpen(true)} onRenew={FLAGS.payments ? () => setCheckout({ renewal: true }) : null} />}
-        <p class="muted disclaimer">O Rotininha ajuda a organizar os cuidados e não substitui a orientação do pediatra.</p>
+        <p class="muted disclaimer">O Ninhora ajuda a organizar os cuidados e não substitui a orientação do pediatra.</p>
       </main>
       <nav class="tabs" aria-label="Navegação principal">
         {TABS.map((t) => (

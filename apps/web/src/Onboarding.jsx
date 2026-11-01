@@ -102,7 +102,7 @@ export function Onboarding({ store, rem, connected, onFinish }) {
         )}
 
         {step === 'install' && (
-          <Shell step={step} emoji="📲" title="Instalar e ativar lembretes" lead="Instalado, o Rotininha abre como um app e pode enviar lembretes."
+          <Shell step={step} emoji="📲" title="Instalar e ativar lembretes" lead="Instalado, o Ninhora abre como um app e pode enviar lembretes."
             actions={<button class="btn" onClick={finish}>Concluir</button>}>
             <div class="card"><InstallGuide /></div>
             {connected

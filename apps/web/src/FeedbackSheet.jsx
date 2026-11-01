@@ -29,7 +29,7 @@ export function FeedbackSheet({ onClose, onSent }) {
         {state === 'thanks' ? (
           <div class="stack">
             <h2>Obrigada! 💜</h2>
-            <p role="status">Sua ideia ajuda a melhorar o Rotininha.</p>
+            <p role="status">Sua ideia ajuda a melhorar o Ninhora.</p>
             <button class="btn" onClick={onClose}>Fechar</button>
           </div>
         ) : (
@@ -56,7 +56,7 @@ export function FeedbackCard({ onOpen, onDismiss }) {
   return (
     <section class="card feedback-card" aria-label="Sugestões">
       <p><strong>Mamãe, o que deixaria sua rotina mais leve? 💜</strong></p>
-      <p class="muted">Conta para a gente o que você gostaria de ter no Rotininha.</p>
+      <p class="muted">Conta para a gente o que você gostaria de ter no Ninhora.</p>
       <div class="row">
         <button class="btn" onClick={onOpen}>Dar uma sugestão</button>
         <button class="btn ghost" onClick={onDismiss}>Agora não</button>

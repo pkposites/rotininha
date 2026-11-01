@@ -87,8 +87,8 @@ export default defineConfig({
       includeAssets: ['icons/icon.svg'],
       manifest: {
         id: '/app/',
-        name: 'Rotininha',
-        short_name: 'Rotininha',
+        name: 'Ninhora',
+        short_name: 'Ninhora',
         description: 'Uma ajudinha na sua rotina de mãe.',
         lang: 'pt-BR',
         start_url: '/app/',

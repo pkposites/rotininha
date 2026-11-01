@@ -9,6 +9,12 @@ import { trackingFrom, createPix, paymentStatus, claimAccess, handleMpEvent, acc
 import { verifyMpSignature } from './mpsig';
 import { normEmail, normCpf } from './validate';
 import { exportHousehold, purgeHousehold } from './privacy';
+import { adminGrowth } from './admin';
+import { startTrial } from './trial';
+import { recordUsage, deleteUsage, recordClick, runCampaigns, runAutomations } from './growth';
+import { applyEnforcement } from './settings';
+import { validBirthDate } from '../../../packages/shared/leaps.js';
+import { localParts } from '../../../packages/shared/schedule.js';
 import { submitFeedback, countEvent, FUNNEL_EVENTS, adminOk, feedbackCsv, adminMetrics, STATUSES } from './feedback';
 import { hit } from './ratelimit';
 import { hashCode, issueSession } from './session';
@@ -57,6 +63,15 @@ async function authenticate(env: Env, req: Request, now: number): Promise<Auth |
 
 const clientIp = (req: Request) => req.headers.get('CF-Connecting-IP') ?? 'unknown';
 const validDevice = (d: unknown): d is string => typeof d === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(d);
+
+/** Campanhas a cada minuto; automações a cada 5; início da cobrança do teste a cada hora. `force` (testes) roda tudo. */
+async function runGrowth(env: Env, now: number, force: boolean) {
+  const minute = Math.floor(now / 60000);
+  const out: Record<string, unknown> = { campaigns: await runCampaigns(env, now) };
+  if (force || minute % 5 === 0) out.automations = await runAutomations(env, now);
+  if (force || minute % 60 === 0) out.enforced = await applyEnforcement(env, now);
+  return out;
+}
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
@@ -153,6 +168,24 @@ export default {
         }
       }
 
+      // ===================== Teste grátis (cria a conta, sem senha) =====================
+      if (req.method === 'POST' && url.pathname === '/v1/trial/start') {
+        const body = await readJson(req);
+        if (!body || !validDevice(body.deviceId)) return json({ error: 'bad_request' }, 400, h);
+        if (!(await hit(env.DB, `trial:ip:${clientIp(req)}`, 6, 86_400_000, now)) || !(await hit(env.DB, `trial:dev:${body.deviceId}`, 2, 86_400_000, now)))
+          return json({ error: 'rate_limited' }, 429, h);
+        return json(await startTrial(env, { deviceId: body.deviceId, email: body.email, now }), 201, h);
+      }
+
+      // Clique numa notificação promocional (sid único no payload; não identifica a pessoa por si só)
+      if (req.method === 'POST' && url.pathname === '/v1/push/click') {
+        const body = await readJson(req);
+        if (!body || typeof body.sid !== 'string' || body.sid.length > 64) return json({ error: 'bad_request' }, 400, h);
+        if (!(await hit(env.DB, `click:ip:${clientIp(req)}`, 120, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        await recordClick(env, body.sid, now);
+        return new Response(null, { status: 204, headers: h });
+      }
+
       // ===================== Analytics agregado (sem identificador) =====================
       if (req.method === 'POST' && url.pathname === '/v1/analytics') {
         const body = await readJson(req);
@@ -165,7 +198,7 @@ export default {
       // ===================== Administração mínima (token) =====================
       if (url.pathname.startsWith('/v1/admin/')) {
         if (!env.ADMIN_TOKEN) return json({ error: 'not_found' }, 404, h);
-        if (!(await hit(env.DB, `admin:ip:${clientIp(req)}`, 60, 600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        if (!(await hit(env.DB, `admin:ip:${clientIp(req)}`, 300, 600_000, now))) return json({ error: 'rate_limited' }, 429, h);
         if (!adminOk(env, req)) return json({ error: 'unauthorized' }, 401, h);
         if (req.method === 'GET' && url.pathname === '/v1/admin/feedback.csv') {
           return new Response(await feedbackCsv(env, url.searchParams.get('status')), { status: 200, headers: { ...h, 'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Disposition': 'attachment; filename="sugestoes.csv"' } });
@@ -186,7 +219,8 @@ export default {
           const from = url.searchParams.get('from') ?? '1970-01-01', to = url.searchParams.get('to') ?? '9999-12-31';
           return json(await adminMetrics(env, from, to), 200, h);
         }
-        return json({ error: 'not_found' }, 404, h);
+        const g = await adminGrowth(env, req, url, now, h, json, readJson);
+        return g ?? json({ error: 'not_found' }, 404, h);
       }
 
       // ===================== Recuperação de acesso =====================
@@ -221,7 +255,9 @@ export default {
       if (req.method === 'POST' && url.pathname === '/v1/dev/tick') {
         if (env.ALLOW_DEV_SIGNUP !== 'true') return json({ error: 'not_found' }, 404, h);
         const body = (await readJson(req)) ?? {};
-        return json(await runDue(env, Number.isSafeInteger(body.now) ? body.now : now), 200, h);
+        const at = Number.isSafeInteger(body.now) ? body.now : now;
+        const due = await runDue(env, at);
+        return json({ ...due, growth: await runGrowth(env, at, true) }, 200, h);
       }
 
       // --- Daqui em diante: autenticado ---
@@ -287,6 +323,9 @@ export default {
           return json({ error: 'expired' }, 403, h);
 
         await applyChanges(env, auth.householdId, changes, now);
+        await env.DB.prepare('UPDATE households SET last_seen_at = ? WHERE id = ? AND (last_seen_at IS NULL OR last_seen_at < ?)').bind(now, auth.householdId, now - 600_000).run();
+        if (changes.some((c) => c.kind === 'event' && !c.deleted))
+          await env.DB.prepare('UPDATE households SET first_care_at = ? WHERE id = ? AND first_care_at IS NULL').bind(now, auth.householdId).run();
         return json(await changesSince(env, auth.householdId, body.cursor, PAGE), 200, h);
       }
 
@@ -310,7 +349,94 @@ export default {
       }
       if (req.method === 'POST' && url.pathname === '/v1/push/test') {
         if (!(await hit(env.DB, `pushtest:${auth.householdId}`, 5, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
-        const sent = await pushToHousehold(env, auth.householdId, { title: 'Rotininha', body: 'Tudo certo! Os lembretes chegam neste aparelho. 💜', tag: 'test' }, now);
+        const sent = await pushToHousehold(env, auth.householdId, { title: 'Ninhora', body: 'Tudo certo! Os lembretes chegam neste aparelho. 💜', tag: 'test' }, now);
+        return json({ sent }, 200, h);
+      }
+
+      // --- Ajustes da família (qualquer subconjunto) ---
+      if (req.method === 'POST' && url.pathname === '/v1/settings') {
+        const body = await readJson(req);
+        if (!body || typeof body !== 'object') return json({ error: 'bad_request' }, 400, h);
+        const sets: string[] = [], vals: any[] = [];
+        if (body.timezone !== undefined) {
+          if (typeof body.timezone !== 'string' || !isValidTimeZone(body.timezone)) return json({ error: 'bad_request' }, 400, h);
+          if (body.timezone !== (await householdTz(env, auth.householdId))) {
+            await env.DB.prepare('UPDATE households SET timezone = ? WHERE id = ?').bind(body.timezone, auth.householdId).run();
+            await rescheduleAll(env, auth.householdId, body.timezone, now);
+          }
+        }
+        if (body.tips !== undefined) { if (typeof body.tips !== 'boolean') return json({ error: 'bad_request' }, 400, h); sets.push('tips_opt_in = ?'); vals.push(body.tips ? 1 : 0); }
+        if (body.usage !== undefined) {
+          if (typeof body.usage !== 'boolean') return json({ error: 'bad_request' }, 400, h);
+          sets.push('usage_opt_in = ?'); vals.push(body.usage ? 1 : 0);
+          if (!body.usage) await deleteUsage(env, auth.householdId); // sair apaga o histórico de uso
+        }
+        if (body.babyBirthDate !== undefined) {
+          const tz = await householdTz(env, auth.householdId);
+          if (body.babyBirthDate !== null && !validBirthDate(body.babyBirthDate, localParts(now, tz).date)) return json({ error: 'bad_birth_date' }, 422, h);
+          sets.push('baby_birth_date = ?'); vals.push(body.babyBirthDate);
+        }
+        if (body.contactEmail !== undefined) {
+          const em = body.contactEmail === null ? null : normEmail(body.contactEmail);
+          if (body.contactEmail !== null && !em) return json({ error: 'invalid_email' }, 422, h);
+          sets.push('contact_email = ?'); vals.push(em);
+        }
+        if (sets.length) await env.DB.prepare(`UPDATE households SET ${sets.join(', ')} WHERE id = ?`).bind(...vals, auth.householdId).run();
+        return json({ ok: true }, 200, h);
+      }
+
+      // --- Uso do app (contagens por dia; sem conteúdo nem dados do bebê) ---
+      if (req.method === 'POST' && url.pathname === '/v1/usage') {
+        const body = await readJson(req);
+        if (!body || !Array.isArray(body.events)) return json({ error: 'bad_request' }, 400, h);
+        if (!(await hit(env.DB, `usage:${auth.householdId}`, 60, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        const evs = body.events.filter((e: any) => e && typeof e.event === 'string').map((e: any) => ({ event: e.event, n: Number(e.n) }));
+        return json({ recorded: await recordUsage(env, auth.householdId, evs, now) }, 200, h);
+      }
+
+      if (req.method === 'POST' && url.pathname === '/v1/sync') {
+        const body = await readJson(req);
+        if (!body || !Array.isArray(body.changes) || !Number.isSafeInteger(body.cursor) || body.cursor < 0)
+          return json({ error: 'bad_request' }, 400, h);
+        if (body.changes.length > MAX_CHANGES) return json({ error: 'too_many_changes' }, 413, h);
+        if (!(await hit(env.DB, `sync:${auth.householdId}`, 120, 60_000, now))) return json({ error: 'rate_limited' }, 429, h);
+
+        const changes: WireRecord[] = [];
+        for (const raw of body.changes) {
+          const rec = parseRecord(raw);
+          if (!rec) return json({ error: 'invalid_event' }, 422, h);
+          changes.push({ ...rec, updatedAt: Math.min(rec.updatedAt, now + CLOCK_SKEW) });
+        }
+
+        // Vencido além da carência: leitura continua, escrita não.
+        if (changes.length && auth.graceUntil != null && now > auth.graceUntil)
+          return json({ error: 'expired' }, 403, h);
+
+        await applyChanges(env, auth.householdId, changes, now);
+        return json(await changesSince(env, auth.householdId, body.cursor, PAGE), 200, h);
+      }
+
+      // --- Push ---
+      if (req.method === 'POST' && url.pathname === '/v1/push/subscribe') {
+        const body = await readJson(req);
+        const k = body?.keys;
+        if (!body || typeof body.endpoint !== 'string' || typeof k?.p256dh !== 'string' || typeof k?.auth !== 'string')
+          return json({ error: 'bad_request' }, 400, h);
+        if (!endpointAllowed(env, body.endpoint)) return json({ error: 'endpoint_not_allowed' }, 422, h);
+        if (k.p256dh.length > 100 || k.auth.length > 40) return json({ error: 'bad_request' }, 400, h);
+        if (!(await hit(env.DB, `sub:${auth.householdId}`, 20, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        await saveSubscription(env, auth.householdId, auth.deviceId, { endpoint: body.endpoint, p256dh: k.p256dh, auth: k.auth, privacy: !!body.privacy }, now);
+        return json({ ok: true }, 201, h);
+      }
+      if (req.method === 'POST' && url.pathname === '/v1/push/unsubscribe') {
+        const body = await readJson(req);
+        if (!body || typeof body.endpoint !== 'string') return json({ error: 'bad_request' }, 400, h);
+        await removeSubscription(env, auth.householdId, body.endpoint);
+        return json({ ok: true }, 200, h);
+      }
+      if (req.method === 'POST' && url.pathname === '/v1/push/test') {
+        if (!(await hit(env.DB, `pushtest:${auth.householdId}`, 5, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        const sent = await pushToHousehold(env, auth.householdId, { title: 'Ninhora', body: 'Tudo certo! Os lembretes chegam neste aparelho. 💜', tag: 'test' }, now);
         return json({ sent }, 200, h);
       }
 
@@ -333,6 +459,11 @@ export default {
   },
 
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(runDue(env, Date.now()).then((r) => console.log('cron', JSON.stringify(r))));
+    ctx.waitUntil((async () => {
+      const now = Date.now();
+      const r = await runDue(env, now);
+      const g = await runGrowth(env, now, false);
+      console.log('cron', JSON.stringify({ ...r, growth: g }));
+    })());
   }
 };

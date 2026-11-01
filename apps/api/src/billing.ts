@@ -6,6 +6,7 @@ import { sendEmail } from './email';
 import { hashCode, issueSession } from './session';
 import { sendPurchase, validFbp, validFbc, type Tracking } from './capi';
 import { countEvent } from './feedback';
+import { trialConfig, enforcementActive } from './settings';
 
 const mpBase = (env: Env) => (env.MP_API_BASE ?? 'https://api.mercadopago.com').replace(/\/$/, '');
 const brl = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
@@ -56,7 +57,7 @@ export async function createPix(env: Env, i: CreateInput) {
       headers: { Authorization: `Bearer ${env.MP_ACCESS_TOKEN}`, 'Content-Type': 'application/json', 'X-Idempotency-Key': id },
       body: JSON.stringify({
         transaction_amount: i.plan.cents / 100,
-        description: `Rotininha — acesso por ${i.plan.label}`,
+        description: `Ninhora — acesso por ${i.plan.label}`,
         payment_method_id: 'pix',
         external_reference: id,
         notification_url: `${env.PUBLIC_API_URL.replace(/\/$/, '')}/v1/webhooks/mercadopago`,
@@ -128,7 +129,7 @@ async function grant(env: Env, row: PaymentRow, now: number): Promise<string> {
   const [claimed, ext] = await env.DB.batch([
     env.DB.prepare(`UPDATE payments SET status='approved', approved_at=?1, applied_at=?1, qr_code=NULL, qr_base64=NULL
                      WHERE id=?2 AND applied_at IS NULL`).bind(now, row.id),
-    env.DB.prepare(`UPDATE households SET valid_until = ${base}, grace_until = ${base} + ?3 WHERE id = ?4 AND changes() = 1`)
+    env.DB.prepare(`UPDATE households SET plan = 'paid', valid_until = ${base}, grace_until = ${base} + ?3 WHERE id = ?4 AND changes() = 1`)
       .bind(now, spanMs, GRACE_MS, row.household_id)
   ]);
   if (!claimed.meta.changes) return 'already';
@@ -176,11 +177,11 @@ async function sendReceipt(env: Env, row: PaymentRow, validUntil: number, now: n
   const support = env.SUPPORT_EMAIL ?? 'o canal de suporte do app';
   await sendEmail(env, {
     to: row.email,
-    subject: 'Rotininha — recebemos seu pagamento',
+    subject: 'Ninhora — recebemos seu pagamento',
     text:
 `Olá! Recebemos seu pagamento via Pix.
 
-Produto: acesso ao Rotininha por ${PLANS[row.plan]?.label ?? row.days + ' dias'}
+Produto: acesso ao Ninhora por ${PLANS[row.plan]?.label ?? row.days + ' dias'}
 Valor: ${brl(row.amount_cents)}
 Acesso válido até: ${fmtDate(validUntil)}
 Pagamento nº: ${row.id}
@@ -190,7 +191,7 @@ Perdeu o código de acesso? No app, toque em "Perdi meu código" e informe este 
 
 Direito de arrependimento: em até 7 dias corridos da compra você pode pedir o reembolso, sem justificativa, respondendo este e-mail ou escrevendo para ${support}.
 
-O Rotininha ajuda a organizar os cuidados e não substitui a orientação do pediatra.`
+O Ninhora ajuda a organizar os cuidados e não substitui a orientação do pediatra.`
   }, now);
 }
 
@@ -243,10 +244,21 @@ export async function claimAccess(env: Env, id: string, pollToken: unknown, devi
 // ---------------------------------------------------------------- Conta e recuperação
 
 export async function accountState(env: Env, householdId: string, now: number) {
-  const h = await env.DB.prepare('SELECT valid_until, grace_until FROM households WHERE id = ?').bind(householdId).first<{ valid_until: number | null; grace_until: number | null }>();
+  const h = await env.DB.prepare(
+    `SELECT valid_until, grace_until, plan, trial_ends_at, tips_opt_in, usage_opt_in, baby_birth_date, (contact_email IS NOT NULL) AS has_email
+       FROM households WHERE id = ?`
+  ).bind(householdId).first<any>();
   if (!h) return null;
-  const state = h.valid_until == null ? 'active' : now <= h.valid_until ? 'active' : h.grace_until != null && now <= h.grace_until ? 'grace' : 'expired';
-  return { state, validUntil: h.valid_until, graceUntil: h.grace_until };
+  const cfg = await trialConfig(env);
+  const state = h.plan === 'trial' && h.valid_until != null && now <= h.valid_until ? 'trial'
+    : h.valid_until == null ? 'active' : now <= h.valid_until ? 'active' : h.grace_until != null && now <= h.grace_until ? 'grace' : 'expired';
+  const announced = cfg.enforceFrom != null && now < cfg.enforceFrom && now >= cfg.enforceFrom - cfg.noticeDays * 86_400_000;
+  return {
+    state, plan: h.plan, validUntil: h.valid_until, graceUntil: h.grace_until, trialEndsAt: h.trial_ends_at,
+    trialDays: cfg.days,
+    enforcement: { active: enforcementActive(cfg, now), from: cfg.enforceFrom, announced, noticeDays: cfg.noticeDays },
+    prefs: { tips: !!h.tips_opt_in, usage: !!h.usage_opt_in, babyBirthDate: h.baby_birth_date ?? null, hasEmail: !!h.has_email }
+  };
 }
 
 export const lastPayerEmail = async (env: Env, householdId: string) =>
@@ -254,14 +266,17 @@ export const lastPayerEmail = async (env: Env, householdId: string) =>
 
 /** Sempre "silencioso": quem pede não descobre se o e-mail existe. */
 export async function requestRecovery(env: Env, email: string, now: number) {
-  const rows = await env.DB.prepare(`SELECT DISTINCT household_id FROM payments WHERE email = ? AND applied_at IS NOT NULL AND household_id IS NOT NULL`).bind(email).all<{ household_id: string }>();
+  const rows = await env.DB.prepare(
+    `SELECT household_id FROM payments WHERE email = ? AND applied_at IS NOT NULL AND household_id IS NOT NULL
+     UNION SELECT id AS household_id FROM households WHERE contact_email = ?`
+  ).bind(email, email).all<{ household_id: string }>();
   for (const { household_id } of rows.results) {
     const token = randomToken();
     await env.DB.prepare('INSERT INTO recovery_tokens (hash, household_id, expires_at) VALUES (?,?,?)').bind(await sha256Hex(token), household_id, now + 30 * 60_000).run();
     // O token vai no fragmento (#), que o navegador não envia ao servidor nem aparece em logs de acesso.
     await sendEmail(env, {
-      to: email, subject: 'Rotininha — recuperar acesso',
-      text: `Você pediu para recuperar o acesso ao Rotininha.\n\nAbra este link em até 30 minutos (uso único):\n${env.APP_URL.replace(/\/$/, "")}/app/#recover=${token}\n\nAo confirmar, geramos um NOVO código de acesso e os aparelhos conectados antes serão desconectados. Seus registros continuam salvos.\n\nSe não foi você, ignore este e-mail: nada será alterado.`
+      to: email, subject: 'Ninhora — recuperar acesso',
+      text: `Você pediu para recuperar o acesso ao Ninhora.\n\nAbra este link em até 30 minutos (uso único):\n${env.APP_URL.replace(/\/$/, "")}/app/#recover=${token}\n\nAo confirmar, geramos um NOVO código de acesso e os aparelhos conectados antes serão desconectados. Seus registros continuam salvos.\n\nSe não foi você, ignore este e-mail: nada será alterado.`
     }, now);
   }
 }

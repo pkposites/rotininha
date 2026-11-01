@@ -30,9 +30,9 @@ export async function pushState() {
 /** Deve ser chamado a partir de um toque do usuário (exigência do iOS). */
 export async function enablePush(privacy = false) {
   const st = await pushState();
-  if (st === 'ios-install') throw new Error('No iPhone, primeiro instale o Rotininha na Tela de Início (Compartilhar → Adicionar à Tela de Início) e abra por lá.');
+  if (st === 'ios-install') throw new Error('No iPhone, primeiro instale o Ninhora na Tela de Início (Compartilhar → Adicionar à Tela de Início) e abra por lá.');
   if (st === 'unsupported') throw new Error('Este navegador não oferece notificações para sites instalados.');
-  if (st === 'denied') throw new Error('As notificações estão bloqueadas. Libere nas configurações do aparelho para o Rotininha.');
+  if (st === 'denied') throw new Error('As notificações estão bloqueadas. Libere nas configurações do aparelho para o Ninhora.');
 
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') throw new Error('Sem a permissão, os lembretes não chegam como notificação. Você pode tentar de novo quando quiser.');

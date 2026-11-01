@@ -86,7 +86,7 @@ export function CheckoutSheet({ renewal, resume, onClose, onDone }) {
       <div class="sheet" role="dialog" aria-modal="true" aria-label={renewal ? 'Renovar acesso' : 'Comprar acesso'}>
         {step === 'form' && (
           <form class="stack" onSubmit={submit}>
-            <h2>{renewal ? 'Renovar acesso' : 'Seu acesso ao Rotininha'}</h2>
+            <h2>{renewal ? 'Renovar acesso' : 'Seu acesso ao Ninhora'}</h2>
             {renewal && list.length > 0 && (
               <div class="chips" role="radiogroup" aria-label="Período">
                 {list.map((p) => <button type="button" role="radio" aria-checked={plan === p.id} class="chip" aria-pressed={plan === p.id} onClick={() => setPlan(p.id)}>{p.label} · {brl(p.cents)}</button>)}
@@ -100,12 +100,12 @@ export function CheckoutSheet({ renewal, resume, onClose, onDone }) {
             <label>CPF do pagador
               <input inputMode="numeric" value={cpf} onInput={(e) => setCpf(maskCpf(e.target.value))} placeholder="000.000.000-00" autocomplete="off" required />
             </label>
-            <p class="muted">O Pix exige e-mail e CPF de quem paga. Usamos o e-mail para o comprovante e para recuperar seu acesso; o CPF é enviado ao Mercado Pago e <strong>não fica guardado</strong> no Rotininha.</p>
+            <p class="muted">O Pix exige e-mail e CPF de quem paga. Usamos o e-mail para o comprovante e para recuperar seu acesso; o CPF é enviado ao Mercado Pago e <strong>não fica guardado</strong> no Ninhora.</p>
             {err && <p class="err" role="alert">{err}</p>}
             <button class="btn" disabled={busy || !plans}>{busy ? 'Gerando Pix…' : `Gerar Pix${chosen ? ' de ' + brl(chosen.cents) : ''}`}</button>
             <p class="muted">Direito de arrependimento: em até 7 dias da compra você pode pedir reembolso, sem justificativa{SUPPLIER.email ? ` (${SUPPLIER.email})` : ''}.</p>
             {(SUPPLIER.name || SUPPLIER.cnpj) && <p class="muted">{SUPPLIER.name} {SUPPLIER.cnpj && `· CNPJ ${SUPPLIER.cnpj}`}</p>}
-            <p class="muted">O Rotininha ajuda a organizar os cuidados e não substitui a orientação do pediatra.</p>
+            <p class="muted">O Ninhora ajuda a organizar os cuidados e não substitui a orientação do pediatra.</p>
             <button type="button" class="link" onClick={onClose}>Agora não</button>
           </form>
         )}

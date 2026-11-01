@@ -134,8 +134,8 @@ test('remédio e modo privacidade: texto genérico, sem título', async () => {
   await f.sync([med]); await g.sync([bath]);
   await tick(fireOf(med).fireAt + 5000);
   const a = f.pushes()[0].msg, b = g.pushes()[0].msg;
-  assert.equal(a.body, 'Você tem um lembrete do Rotininha'); assert.ok(!JSON.stringify(a).includes('Dipirona'));
-  assert.equal(b.body, 'Você tem um lembrete do Rotininha'); assert.ok(!JSON.stringify(b).includes('secreto'));
+  assert.equal(a.body, 'Você tem um lembrete no Ninhora'); assert.ok(!JSON.stringify(a).includes('Dipirona'));
+  assert.equal(b.body, 'Você tem um lembrete no Ninhora'); assert.ok(!JSON.stringify(b).includes('secreto'));
 });
 
 test('lembrete muito atrasado (Cron parado) não é enviado', async () => {

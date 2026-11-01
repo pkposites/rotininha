@@ -31,7 +31,7 @@ export function TaskSheet({ task, isNew, tz, onSave, onDelete, onClose }) {
           </select>
         </label>
         {t.category === 'remedio' && (
-          <p class="muted">Registre somente horários conforme orientação de profissional de saúde. O Rotininha não calcula nem sugere doses.</p>
+          <p class="muted">Registre somente horários conforme orientação de profissional de saúde. O Ninhora não calcula nem sugere doses.</p>
         )}
         <label>Horário<input type="time" value={t.time} onInput={(e) => set({ time: e.target.value })} required /></label>
         <label>Repetição

@@ -8,7 +8,7 @@ import { nextFire, inQuietHours, localParts, occId } from '../../../packages/sha
 
 const STALE_MS = 30 * 60_000;      // não envia lembrete atrasado mais de 30 min (Cron parado, por exemplo)
 const MAX_FAILURES = 5;
-const GENERIC_BODY = 'Você tem um lembrete do Rotininha';
+const GENERIC_BODY = 'Você tem um lembrete no Ninhora';
 
 // Só serviços de push conhecidos (evita SSRF por endpoint arbitrário). Em dev, localhost.
 const PUSH_HOSTS = [/(^|\.)fcm\.googleapis\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)push\.apple\.com$/, /(^|\.)notify\.windows\.com$/];
@@ -38,7 +38,7 @@ export async function saveSubscription(
 export const removeSubscription = (env: Env, householdId: string, endpoint: string) =>
   env.DB.prepare('DELETE FROM push_subscriptions WHERE household_id = ? AND endpoint = ?').bind(householdId, endpoint).run();
 
-interface Message { title: string; body: string; occId?: string; tag: string }
+interface Message { title: string; body: string; occId?: string; tag: string; extra?: Record<string, unknown> }
 
 /** Envia a todas as inscrições da família. Texto genérico quando `private`. Retorna quantas foram aceitas. */
 export async function pushToHousehold(env: Env, householdId: string, msg: Message & { sensitive?: boolean }, now: number): Promise<number> {
@@ -50,9 +50,10 @@ export async function pushToHousehold(env: Env, householdId: string, msg: Messag
       const keys = await unseal(env.PUSH_SEAL_KEY, s.keys_sealed);
       const hide = s.privacy || msg.sensitive;
       const payload = {
-        title: hide ? 'Rotininha' : msg.title,
+        title: hide ? 'Ninhora' : msg.title,
         body: hide ? GENERIC_BODY : msg.body,
-        tag: msg.tag, occId: msg.occId ?? null
+        tag: msg.tag, occId: msg.occId ?? null,
+        ...(msg.extra ?? {})
       };
       const status = await sendWebPush({ endpoint: s.endpoint, ...keys }, payload, vapid(env), { now });
       if (status >= 200 && status < 300) {
