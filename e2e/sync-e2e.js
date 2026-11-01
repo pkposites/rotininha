@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
   };
   const connect = async (p, code) => {
     await p.click('[aria-label="Ajustes"]');
-    await p.getByRole('button', { name: 'Entrar com código de acesso' }).click(); await p.fill('input[placeholder^="XXXXX"]', code);
+    await p.getByRole('button', { name: 'Tenho um código de acesso (conta antiga)' }).click(); await p.fill('input[placeholder^="XXXXX"]', code);
     await p.click('text=Conectar');
     const done = await p.w(() => document.querySelector('.sheet [role=status]')?.innerText.includes('Sincronizado'));
     await p.click('text=Fechar');
@@ -29,7 +29,7 @@ const { chromium } = require('playwright');
   await A.w(() => document.querySelector('.toast'));
   await A.waitForTimeout(500);
   await A.click('[aria-label="Ajustes"]');
-  await A.getByRole('button', { name: 'Entrar com código de acesso' }).click(); await A.fill('input[placeholder^="XXXXX"]', 'AAAAA-AAAAA-AAAAA-AAAAA');
+  await A.getByRole('button', { name: 'Tenho um código de acesso (conta antiga)' }).click(); await A.fill('input[placeholder^="XXXXX"]', 'AAAAA-AAAAA-AAAAA-AAAAA');
   await A.click('text=Conectar');
   ok(await A.w(() => document.querySelector('.sheet .err')?.innerText.includes('Código não encontrado')), 'código errado mostra erro');
   await A.click('text=Fechar');

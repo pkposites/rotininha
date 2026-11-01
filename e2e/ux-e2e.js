@@ -122,11 +122,25 @@ const sql = (q) => { const out = execFileSync('npx', ['wrangler', 'd1', 'execute
   await p.fill('.sheet input[type=password]', 'senha de teste 2026'); await p.getByRole('button', { name: 'Entrar', exact: true }).click();
   ok(await p.w(() => /Sincronizado/.test(document.querySelector('.sheet')?.innerText ?? ''), null, 15000), 'entrou com WhatsApp e senha');
   await p.getByRole('button', { name: 'Sair deste aparelho' }).click(); await p.waitForTimeout(800);
-  await p.getByRole('button', { name: 'Perdi meu acesso' }).click();
+  await p.getByRole('button', { name: 'Esqueci a senha' }).click();
   await p.fill('.sheet input[type=email]', em); await p.getByRole('button', { name: 'Enviar link' }).click();
   ok(await p.w(() => /Se houver uma conta/.test(document.querySelector('[role=dialog]')?.innerText ?? '')), 'recuperação: mensagem neutra');
   const mails = (await (await fetch(`${API}/v1/dev/outbox?to=${encodeURIComponent(em)}`)).json()).messages;
   ok(mails.length >= 1 && /recover=/.test(mails[0].body), 'e-mail com link de recuperação gerado (caixa de saída simulada)');
-  ok(p.errs.length === 0, 'sem erros JS ' + p.errs.join('|'));
+  // concluir a recuperação com o link do e-mail, em outro aparelho: registros continuam e a senha antiga deixa de valer
+  const link = /(http:\/\/[^\s]+#recover=[\w-]+)/.exec(mails[0].body)[1];
+  const ctx2 = await b.newContext({ viewport: { width: 390, height: 900 }, locale: 'pt-BR' }); const B = await ctx2.newPage();
+  await B.goto(link); await B.waitForSelector('[aria-label="Recuperar acesso"]'); await B.waitForTimeout(800);
+  ok(/Criar nova senha/.test(await B.locator('[aria-label="Recuperar acesso"]').innerText()) && /não são apagados/.test(await B.locator('[aria-label="Recuperar acesso"]').innerText()), 'link do e-mail abre "Criar nova senha" e garante que os registros ficam');
+  await B.fill('[aria-label="Recuperar acesso"] input[autocomplete=new-password]', 'senha nova 2027 ok'); await B.getByRole('button', { name: 'Salvar nova senha' }).click();
+  ok(await B.waitForFunction(() => /Seus registros continuam aqui/.test(document.querySelector('[aria-label="Recuperar acesso"]')?.innerText ?? ''), null, { timeout: 15000 }).then(() => true, () => false), 'nova senha criada pelo link');
+  ok(await B.locator('.onb').count() === 0, 'quem abre o link de recuperação não vê o onboarding por cima'); await B.getByRole('button', { name: 'Continuar' }).click(); await B.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
+  await B.locator('.tab:has-text("Histórico")').click();
+  ok(await B.waitForFunction(() => /Mamada/.test(document.querySelector('main')?.innerText ?? ''), null, { timeout: 15000 }).then(() => true, () => false), 'os registros continuam acessíveis depois de recuperar');
+  const oldLogin = await fetch(API + '/v1/sessions/password', { method: 'POST', headers: { 'content-type': 'application/json', 'CF-Connecting-IP': '10.91.1.1' }, body: JSON.stringify({ whatsapp: wa, password: 'senha de teste 2026', deviceId: 'devold12345678' }) });
+  ok(oldLogin.status === 401, 'a senha antiga não funciona mais');
+  const reuse = await fetch(API + '/v1/recovery/password', { method: 'POST', headers: { 'content-type': 'application/json', 'CF-Connecting-IP': '10.91.1.2' }, body: JSON.stringify({ token: link.split('#recover=')[1], password: 'outra senha 2028', deviceId: 'devold12345678' }) });
+  ok(reuse.status === 410, 'o link de recuperação só vale uma vez');
+  ok(p.errs.length === 0 && B.errs?.length !== 1, 'sem erros JS ' + p.errs.join('|'));
   await b.close();
 })();

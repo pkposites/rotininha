@@ -110,6 +110,19 @@ export async function requestRecovery(email) {
   if (r.status !== 200) throw new Error('Confira o e-mail.');
 }
 
+/** Nova senha com o link recebido por e-mail (conta e registros continuam). Contas antigas informam também o WhatsApp. */
+export async function resetPassword(token, password, whatsapp) {
+  const r = await publicCall('/v1/recovery/password', { token, password, deviceId: await getDeviceId(), ...(whatsapp ? { whatsapp } : {}) });
+  if (r.status === 410) throw new Error('Este link expirou ou já foi usado. Peça um novo.');
+  if (r.status === 429) throw new Error('Muitas tentativas. Aguarde alguns minutos.');
+  if (r.status === 409) throw new Error('Este WhatsApp já pertence a outra conta.');
+  if (r.status === 422 && r.data?.error === 'whatsapp_required') { const e = new Error('Esta conta ainda não tem WhatsApp cadastrado. Informe o número para entrar com ele daqui em diante.'); e.needsPhone = true; throw e; }
+  if (r.status === 422 && r.data?.error === 'invalid_whatsapp') { const e = new Error('Confira o WhatsApp: DDD + número.'); e.needsPhone = true; throw e; }
+  if (r.status === 422) throw new Error('Escolha uma senha com pelo menos 8 caracteres, que não seja óbvia (como 12345678).');
+  if (r.status !== 200) throw new Error('Não foi possível redefinir agora. Tente de novo.');
+  await adoptSession(r.data.session);
+}
+
 export async function confirmRecovery(token) {
   const r = await publicCall('/v1/recovery/confirm', { token, deviceId: await getDeviceId() });
   if (r.status === 410) throw new Error('Este link expirou ou já foi usado. Peça um novo.');

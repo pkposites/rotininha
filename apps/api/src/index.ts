@@ -5,7 +5,7 @@ import { applyChanges, changesSince, householdTz, rescheduleAll } from './record
 import { saveSubscription, removeSubscription, endpointAllowed, pushToHousehold, runDue } from './push';
 import { isValidTimeZone } from '../../../packages/shared/schedule.js';
 import { PLANS, ENTRY_PLANS, RENEWAL_PLANS, DAY_MS } from './plans';
-import { trackingFrom, createPix, paymentStatus, claimAccess, handleMpEvent, accountState, lastPayerEmail, requestRecovery, confirmRecovery } from './billing';
+import { trackingFrom, createPix, paymentStatus, claimAccess, handleMpEvent, accountState, lastPayerEmail, requestRecovery, confirmRecovery, resetPasswordWithToken } from './billing';
 import { verifyMpSignature } from './mpsig';
 import { normEmail, normCpf } from './validate';
 import { exportHousehold, purgeHousehold } from './privacy';
@@ -273,6 +273,15 @@ export default {
         if (!(await hit(env.DB, `recc:ip:${clientIp(req)}`, 10, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
         const r = await confirmRecovery(env, body.token, body.deviceId, now);
         return r ? json(r, 200, h) : json({ error: 'invalid_or_expired' }, 410, h);
+      }
+
+      if (req.method === 'POST' && url.pathname === '/v1/recovery/password') {
+        const body = await readJson(req);
+        if (!body || !validDevice(body.deviceId)) return json({ error: 'bad_request' }, 400, h);
+        if (!(await hit(env.DB, `recp:ip:${clientIp(req)}`, 10, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        const r = await resetPasswordWithToken(env, { token: body.token, password: body.password, whatsapp: body.whatsapp, deviceId: body.deviceId, now });
+        if ('error' in r) return json({ error: r.error }, r.error === 'invalid_or_expired' ? 410 : r.error === 'phone_in_use' ? 409 : 422, h);
+        return json(r, 200, h);
       }
 
       if (req.method === 'GET' && url.pathname === '/v1/dev/outbox') {

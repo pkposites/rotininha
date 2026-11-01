@@ -14,7 +14,7 @@ const API = 'http://localhost:8787', APP = 'http://localhost:4173';
   await p.click('.sheet >> text=Fechar');
 
   const { code } = await (await fetch(API + '/v1/dev/households', { method: 'POST' })).json();
-  await p.click('[aria-label="Ajustes"]'); await p.getByRole('button', { name: 'Entrar com código de acesso' }).click(); await p.fill('input[placeholder^="XXXXX"]', code); await p.click('text=Conectar');
+  await p.click('[aria-label="Ajustes"]'); await p.getByRole('button', { name: 'Tenho um código de acesso (conta antiga)' }).click(); await p.fill('input[placeholder^="XXXXX"]', code); await p.click('text=Conectar');
   await p.w(() => document.querySelector('.sheet [role=status]')?.innerText.includes('Sincronizado'));
   await p.click('.sheet >> text=Fechar');
   await p.click('.actions >> text=Mamou'); await p.waitForTimeout(1500);

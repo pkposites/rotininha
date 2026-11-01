@@ -39,6 +39,9 @@ import { useReminders } from './lib/useReminders.js';
 import { makeTask, dayItems, markDone, markSkipped, snooze, undo } from './lib/tasks.js';
 import { startSync, subscribe as subSync, syncAvailable } from './lib/sync.js';
 
+// Lido na abertura: o fragmento #recover=… é removido da barra de endereço logo depois.
+const OPENED_WITH_RECOVERY_LINK = typeof location !== 'undefined' && /[#&]recover=/.test(location.hash);
+
 const TABS = [
   { id: 'hoje', label: 'Hoje', Icon: HomeIcon },
   { id: 'historico', label: 'Histórico', Icon: ClockIcon },
@@ -234,6 +237,7 @@ function App() {
   // Primeira abertura: onboarding só para quem ainda não tem dados nem já o concluiu.
   useEffect(() => {
     (async () => {
+      if (OPENED_WITH_RECOVERY_LINK) return;   // quem abriu o link de recuperação vai direto criar a nova senha, sem onboarding por cima
       if (await getPref('onboardingDone', false)) return;
       const has = (await listEvents()).length + (await listTasks()).length > 0;
       if (has) return setPref('onboardingDone', true);

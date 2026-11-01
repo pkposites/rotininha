@@ -3,7 +3,7 @@
 > O app se chama **Ninhora** (antes "Rotininha"). Os identificadores internos (banco local `rotininha`, pacotes, repositório, domínio atual) continuam como estavam para não perder dados já salvos. **A marca "Ninhora" ainda não foi pesquisada no INPI** (`docs/pendencias-lancamento.md`).
 
 ## 1. Teste grátis de 3 dias e cobrança com aviso prévio
-**Fluxo:** o onboarding explica o teste → pessoa toca em *Começar meu teste grátis* (e-mail opcional) → o servidor cria a conta **sem senha** e devolve um **código de acesso mostrado uma vez** → o aparelho já fica conectado (sincronização + notificações).
+**Fluxo:** o onboarding leva à criação da conta (WhatsApp + senha, e-mail opcional) → o servidor cria a conta e o aparelho já fica conectado. Contas criadas antes de 01/11/2026 entravam com um *código de acesso* mostrado uma única vez; ele continua valendo como alternativa. Veja a seção "Entrar, recuperar e compartilhar" no fim deste arquivo.
 
 **Pré-lançamento (hoje):** ninguém é cobrado nem bloqueado. O app diz a verdade: *"quando passarmos a cobrar, avisamos com antecedência"*.
 
@@ -72,3 +72,13 @@ Segurança: volume inicial 35% (teto 80%), temporizador padrão de 30 min com fa
 ## Separação de projetos (importante)
 - LP de captação (`ninhoralp.relatoriorda.com.br`, Netlify `calm-arithmetic-e1bbd9`, Forms + CAPI) é **outro projeto** e não deve ser sobrescrita.
 - O projeto `dapper-monstera-550394` publica este repositório (LP interna em `/` e app em `/app/`).
+
+
+## Entrar, recuperar e compartilhar (atualização 01/11/2026)
+- **Entrada principal:** WhatsApp + senha (mín. 8 caracteres). Só guardamos hashes. O código de acesso continua só como alternativa para contas antigas ("Tenho um código de acesso (conta antiga)").
+- **Recuperação:** só pelo **link enviado ao e-mail cadastrado na conta** (uso único, 30 min): ele cria uma nova senha, mantém os registros, encerra as sessões antigas e invalida o código antigo. Informar WhatsApp ou e-mail, sozinhos, nunca redefine a senha.
+  - **Hoje NÃO funciona em produção**, porque o envio de e-mails não está configurado. O app detecta isso (`/v1/plans → emailRecovery`) e mostra a verdade, sem prometer. Falta: escolher um provedor (ex.: Resend), verificar o domínio (SPF/DKIM) e definir no Worker `EMAIL_PROVIDER = "resend"` (var), `EMAIL_FROM` (var) e o segredo `RESEND_API_KEY`.
+  - **Alternativa que funciona hoje:** quem ainda está conectada em algum aparelho troca a senha em Ajustes → "Alterar senha de acesso".
+  - **Limite conhecido:** o WhatsApp não é verificado (não há canal para enviar código); alguém poderia cadastrar o número de outra pessoa antes dela. Resolver exige verificação por mensagem.
+- **Acesso grátis:** a regra implementada é "grátis, sem data para acabar" até a cobrança ser ligada; depois, 3 dias de teste para quem criar conta e R$ 37,90 vitalício. A página, o cadastro e Ajustes dizem a mesma coisa (`lib/ux.js → trialCopy`). A data 05/11/2026 está gravada, mas inerte enquanto o pagamento estiver desligado.
+- **Compartilhar:** Ajustes → "Sobre a Ninhora" → "Compartilhar a Ninhora" (menu nativo; sem ele, "Copiar link"). Compartilha só `origem do app + / + utm`, nunca dados da conta. Pode ser trocado por `VITE_SHARE_URL`.

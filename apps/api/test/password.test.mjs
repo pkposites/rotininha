@@ -73,3 +73,55 @@ test('exportar não traz hashes; apagar libera o número', async () => {
   assert.equal((await post('/v1/privacy/delete', { confirm: 'APAGAR' }, a.session.accessToken)).status, 200);
   assert.equal((await post('/v1/trial/start', { deviceId: dev(), whatsapp: wa, password: PW })).status, 201, 'número liberado depois de apagar');
 });
+
+// ---------------------------------------------------------------- recuperação de acesso (prova de acesso ao e-mail)
+const outbox = async (to) => (await (await fetch(`${API}/v1/dev/outbox?to=${encodeURIComponent(to)}`)).json()).messages;
+const tokenFrom = (m) => /#recover=([\w-]+)/.exec(m.body)[1];
+const accountOf = async (tok) => (await post('/v1/billing/account', {}, tok)).json();
+
+test('recuperar: só com o link do e-mail; nova senha mantém registros, encerra sessões e o link vale uma vez', async () => {
+  const wa = phone(), email = `rec${rnd()}@exemplo.com`;
+  const a = await (await post('/v1/trial/start', { deviceId: dev(), whatsapp: wa, password: PW, email })).json();
+  const ev = { kind: 'event', id: 'ev-rec-' + rnd(), type: 'mamada', startedAt: Date.now() - 600_000, endedAt: null, note: 'precisa sobreviver', detail: '', updatedAt: Date.now(), deleted: false };
+  assert.equal((await post('/v1/sync', { cursor: 0, changes: [ev] }, a.session.accessToken)).status, 200);
+
+  // pedir: resposta neutra, igual para e-mail que não existe
+  const known = await post('/v1/recovery/request', { email }); const unknown = await post('/v1/recovery/request', { email: `nao${rnd()}@exemplo.com` });
+  assert.equal(known.status, 200); assert.deepEqual(await known.json(), await unknown.json());
+  const mails = await outbox(email); assert.equal(mails.length, 1); assert.match(mails[0].body, /nova senha/); assert.doesNotMatch(mails[0].body, new RegExp(PW));
+  assert.equal((await outbox(`nao@exemplo.com`)).length, 0);
+  const token = tokenFrom(mails[0]);
+
+  // sem o link, ninguém redefine: só com WhatsApp ou e-mail não dá
+  assert.equal((await post('/v1/recovery/password', { deviceId: dev(), whatsapp: wa, password: 'outra senha 2026' })).status, 410);
+  assert.equal((await post('/v1/recovery/password', { deviceId: dev(), token: 'inventado', password: 'outra senha 2026' })).status, 410);
+  assert.equal((await post('/v1/recovery/password', { deviceId: dev(), token, password: '12345678' })).status, 422, 'senha fraca não gasta o link');
+
+  const NEW = 'senha nova 2027 ok';
+  const ok = await post('/v1/recovery/password', { deviceId: dev(), token, password: NEW });
+  assert.equal(ok.status, 200); const nova = (await ok.json()).session;
+  assert.equal((await post('/v1/recovery/password', { deviceId: dev(), token, password: NEW + 'x' })).status, 410, 'link de uso único');
+  assert.equal((await post('/v1/billing/account', {}, a.session.accessToken)).status, 401, 'sessão antiga encerrada');
+  assert.equal((await post('/v1/sessions/password', { whatsapp: wa, password: PW, deviceId: dev() })).status, 401, 'senha antiga não vale mais');
+  const login = await post('/v1/sessions/password', { whatsapp: wa, password: NEW, deviceId: dev() });
+  assert.equal(login.status, 201);
+  const pull = await (await post('/v1/sync', { cursor: 0, changes: [] }, (await login.json()).accessToken)).json();
+  assert.ok(pull.changes.some((c) => c.id === ev.id && c.note === 'precisa sobreviver'), 'registros continuam na conta');
+  assert.equal((await accountOf(nova.accessToken)).prefs.hasPassword, true);
+});
+
+test('recuperar: link vencido é recusado; conta antiga (sem WhatsApp) informa o número e não pode tomar o de outra conta', async () => {
+  const { code } = await (await post('/v1/dev/households', {})).json();
+  const s = await (await post('/v1/sessions', { code, deviceId: dev() })).json();
+  const email = `leg${rnd()}@exemplo.com`;
+  assert.equal((await post('/v1/settings', { contactEmail: email }, s.accessToken)).status, 200);
+  await post('/v1/recovery/request', { email });
+  const token = tokenFrom((await outbox(email))[0]);
+  assert.equal((await post('/v1/recovery/password', { deviceId: dev(), token, password: PW })).status, 422, 'conta sem WhatsApp precisa informá-lo');
+  const taken = phone(); await post('/v1/trial/start', { deviceId: dev(), whatsapp: taken, password: PW });
+  assert.equal((await post('/v1/recovery/password', { deviceId: dev(), token, password: PW, whatsapp: taken })).status, 409, 'número de outra conta');
+  const mine = phone();
+  assert.equal((await post('/v1/recovery/password', { deviceId: dev(), token, password: PW, whatsapp: mine })).status, 200);
+  assert.equal((await post('/v1/sessions', { code, deviceId: dev() })).status, 401, 'o código antigo deixa de valer depois da recuperação');
+  assert.equal((await post('/v1/sessions/password', { whatsapp: mine, password: PW, deviceId: dev() })).status, 201, 'conta antiga passa a entrar com WhatsApp e senha');
+});

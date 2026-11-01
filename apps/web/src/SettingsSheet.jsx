@@ -4,6 +4,9 @@ import { fmtDateTime, maskPhone, validPhone } from './lib/billing.js';
 import { downloadMyData, deleteEverything } from './lib/privacy.js';
 import { setAccountPrefs, setPassword } from './lib/trial.js';
 import { getProfile, saveProfile } from './lib/profile.js';
+import { getPlans } from './lib/billing.js';
+import { ShareIcon } from './icons.jsx';
+import { shareApp, copyShareLink, canNativeShare, shareUrl } from './lib/share.js';
 import { pushState, enablePush, disablePush, sendTestPush } from './lib/push.js';
 
 const LABEL = {
@@ -22,6 +25,10 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
   const [pwMsg, setPwMsg] = useState('');
   const [prof, setProf] = useState({ mom: '', baby: '' });
   const [profMsg, setProfMsg] = useState('');
+  const [mailOk, setMailOk] = useState(false);   // o servidor consegue enviar e-mails de recuperação?
+  const [shareMsg, setShareMsg] = useState('');
+  const [shareFallback, setShareFallback] = useState(false);
+  useEffect(() => { getPlans().then((p) => setMailOk(!!p?.emailRecovery)).catch(() => {}); }, []);
   useEffect(() => { getProfile().then(setProf); }, []);
   useEffect(() => subscribe(setSync), []);
   const [push, setPush] = useState('idle');
@@ -80,7 +87,7 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
 
         <h3 class="group-title">Sincronização</h3>
         <section class="group">
-        {syncAvailable && sync.status === 'signed-out' && <p class="notice-inline">Hoje seus registros estão <strong>só neste aparelho</strong>. Com uma conta, eles ficam guardados nela e você pode abri-los em outro aparelho com o código de acesso. O que já está aqui é enviado para a conta.</p>}
+        {syncAvailable && sync.status === 'signed-out' && <p class="notice-inline">Hoje seus registros estão <strong>só neste aparelho</strong>. Com uma conta, eles ficam guardados nela e você pode abri-los em outro aparelho com o WhatsApp e a senha. O que já está aqui é enviado para a conta.</p>}
         {!syncAvailable && <p class="muted">A sincronização entre aparelhos ainda não está disponível nesta versão. Seus registros ficam salvos neste aparelho.</p>}
         {syncAvailable && (
           <>
@@ -96,21 +103,22 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
                 </label>
                 {err && <p class="err" role="alert">{err}</p>}
                 <button class="btn" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
-                <p class="muted">Esqueceu a senha? Ainda não há recuperação automática. Se você cadastrou e-mail, toque em “Perdi meu acesso”.</p>
-                <button type="button" class="link" onClick={() => { setErr(''); setByCode(true); }}>Entrar com código de acesso</button>
-                <button type="button" class="link" onClick={onRecover}>Perdi meu acesso</button>
+                <button type="button" class="link" onClick={onRecover}>Esqueci a senha</button>
+                <p class="muted">{mailOk ? 'Se esqueceu a senha, enviamos um link para o e-mail cadastrado na conta.' : 'A recuperação por e-mail ainda não está disponível; toque em “Esqueci a senha” para ver as alternativas.'}</p>
+                <button type="button" class="link" onClick={() => { setErr(''); setByCode(true); }}>Tenho um código de acesso (conta antiga)</button>
                 {onStartTrial && <button type="button" class="btn ghost" onClick={onStartTrial}>Criar conta grátis</button>}
                 {onBuy && <button type="button" class="btn ghost" onClick={onBuy}>Ainda não tenho acesso — comprar</button>}
               </form>
               ) : (
               <form onSubmit={connect} class="stack">
+                <p class="muted">Código de acesso: só para contas criadas antes do login com WhatsApp e senha.</p>
                 <label>Código de acesso
                   <input value={code} onInput={(e) => setCode(e.target.value)} autocomplete="off" autocapitalize="characters" spellcheck={false} placeholder="XXXXX-XXXXX-XXXXX-XXXXX" required />
                 </label>
                 {err && <p class="err" role="alert">{err}</p>}
                 <button class="btn" disabled={busy}>{busy ? 'Conectando…' : 'Conectar'}</button>
                 <button type="button" class="link" onClick={() => { setErr(''); setByCode(false); }}>Entrar com WhatsApp e senha</button>
-                <button type="button" class="link" onClick={onRecover}>Perdi meu código</button>
+                <button type="button" class="link" onClick={onRecover}>Esqueci a senha</button>
                 {onBuy && <button type="button" class="btn ghost" onClick={onBuy}>Ainda não tenho acesso — comprar</button>}
               </form>
               )
@@ -120,7 +128,7 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
                 <button class="btn" onClick={syncNow}>Sincronizar agora</button>
                 <button class="btn ghost" onClick={logout}>Sair deste aparelho</button>
               </div>
-              <p class="muted">Para entrar de novo, ou em outro aparelho, você vai precisar do código de acesso que apareceu ao criar a conta.</p>
+              <p class="muted">Para entrar de novo, ou em outro aparelho, use o WhatsApp e a senha que você criou.</p>
               {account?.prefs && (
                 <details class="fold" open={!account.prefs.hasPassword}>
                   <summary>{account.prefs.hasPassword ? 'Alterar senha de acesso' : 'Definir senha de acesso'}</summary>
@@ -186,10 +194,11 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
               <label class="inline"><input type="checkbox" checked={account.prefs.usage} onChange={(e) => savePref({ usage: e.target.checked }, e.target.checked ? 'Obrigada por ajudar!' : 'Pronto: apagamos o histórico de uso.')} /> Ajudar a melhorar o app com estatísticas de uso</label>
               <p class="muted">Contamos só quantas vezes cada recurso é usado. Sem dados do bebê, sem o que você escreve.</p>
               <form class="stack" onSubmit={(e) => { e.preventDefault(); savePref({ contactEmail: email.trim() || null }, email.trim() ? 'E-mail salvo.' : 'E-mail removido.'); }}>
-                <label class="field">E-mail para recuperar o acesso {account.prefs.hasEmail ? '(já cadastrado)' : '(opcional)'}
+                <label class="field">E-mail para recuperar a senha {account.prefs.hasEmail ? '(já cadastrado)' : '(opcional)'}
                   <input type="email" value={email} onInput={(e) => setEmail(e.target.value)} placeholder={account.prefs.hasEmail ? 'digite para trocar' : 'seu@email.com'} autocomplete="email" />
                 </label>
                 <button class="btn ghost">Salvar e-mail</button>
+                <p class="muted">{mailOk ? 'Se esquecer a senha, enviamos um link para este e-mail; só quem abrir o link cria uma nova senha. Seus registros ficam como estão.' : 'Atenção: o envio de e-mails de recuperação ainda não está ativo. Guardamos o e-mail para quando estiver, mas isso ainda não garante a recuperação: anote a sua senha.'}</p>
               </form>
               {prefMsg && <p role="status" class="muted">{prefMsg}</p>}
             </section>
@@ -213,6 +222,22 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
         </section>
         <h3 class="group-title">Sugestões</h3>
         <section class="group"><button class="btn ghost" onClick={onSuggest}>Enviar sugestão</button></section>
+        <h3 class="group-title">Sobre a Ninhora</h3>
+        <section class="group">
+          <button class="share-row" onClick={async () => {
+            setShareMsg('');
+            if (!canNativeShare()) { setShareFallback(true); return; }
+            const r = await shareApp();
+            if (r === 'failed' || r === 'unsupported') setShareFallback(true);   // cancelar não gera mensagem
+          }}><ShareIcon width="20" height="20" aria-hidden="true" /><span>Compartilhar a Ninhora</span></button>
+          {(shareFallback || !canNativeShare()) && (
+            <div class="stack">
+              <button class="btn ghost" onClick={async () => setShareMsg((await copyShareLink()) ? 'Link copiado ✓' : 'Não deu para copiar. Selecione o endereço abaixo e copie à mão.')}>Copiar link</button>
+              {shareMsg.startsWith('Não') && <input readOnly value={shareUrl()} onFocus={(e) => e.target.select()} aria-label="Endereço para copiar" />}
+              <p role="status" class="muted">{shareMsg}</p>
+            </div>
+          )}
+        </section>
         <p class="muted">Seus registros não são usados para publicidade. O Ninhora não substitui a orientação do pediatra.</p>
         <button class="btn ghost" onClick={onClose}>Fechar</button>
       </div>

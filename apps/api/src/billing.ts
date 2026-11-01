@@ -7,6 +7,7 @@ import { hashCode, issueSession } from './session';
 import { sendPurchase, validFbp, validFbc, type Tracking } from './capi';
 import { countEvent } from './feedback';
 import { trialConfig, enforcementActive } from './settings';
+import { normalizePhone, checkPassword, hashPhone, makePassword } from './password';
 
 const mpBase = (env: Env) => (env.MP_API_BASE ?? 'https://api.mercadopago.com').replace(/\/$/, '');
 const brl = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
@@ -276,7 +277,7 @@ export async function requestRecovery(env: Env, email: string, now: number) {
     // O token vai no fragmento (#), que o navegador não envia ao servidor nem aparece em logs de acesso.
     await sendEmail(env, {
       to: email, subject: 'Ninhora — recuperar acesso',
-      text: `Você pediu para recuperar o acesso ao Ninhora.\n\nAbra este link em até 30 minutos (uso único):\n${env.APP_URL.replace(/\/$/, "")}/app/#recover=${token}\n\nAo confirmar, geramos um NOVO código de acesso e os aparelhos conectados antes serão desconectados. Seus registros continuam salvos.\n\nSe não foi você, ignore este e-mail: nada será alterado.`
+      text: `Você pediu para recuperar o acesso ao Ninhora.\n\nAbra este link em até 30 minutos (uso único) para criar uma nova senha:\n${env.APP_URL.replace(/\/$/, "")}/app/#recover=${token}\n\nAo criar a nova senha, os aparelhos conectados antes serão desconectados. Seus registros continuam salvos: nada é apagado.\n\nSe não foi você, ignore este e-mail: nada será alterado.`
     }, now);
   }
 }
@@ -294,4 +295,39 @@ export async function confirmRecovery(env: Env, token: unknown, deviceId: string
   ]);
   if (!used.meta.changes) return null; // outro clique usou o link primeiro
   return { code, session: await issueSession(env, row.household_id, deviceId, now) };
+}
+
+/**
+ * Nova senha a partir do link enviado por e-mail (prova de acesso ao canal). O link é de uso único e vence em 30 min.
+ * Mantém a conta e todos os registros; encerra as sessões anteriores. Contas antigas, sem WhatsApp, informam o número aqui.
+ */
+export async function resetPasswordWithToken(env: Env, input: { token: unknown; password: unknown; whatsapp?: unknown; deviceId: string; now: number }):
+  Promise<{ session: Awaited<ReturnType<typeof issueSession>> } | { error: 'invalid_or_expired' | 'weak_password' | 'invalid_whatsapp' | 'phone_in_use' | 'whatsapp_required' }> {
+  const { token, now } = input;
+  if (typeof token !== 'string' || token.length > 100) return { error: 'invalid_or_expired' };
+  const hash = await sha256Hex(token);
+  const row = await env.DB.prepare('SELECT household_id, expires_at, used_at FROM recovery_tokens WHERE hash = ?').bind(hash).first<any>();
+  if (!row || row.used_at != null || now > row.expires_at) return { error: 'invalid_or_expired' };
+  const hh = await env.DB.prepare('SELECT phone_hash FROM households WHERE id = ?').bind(row.household_id).first<{ phone_hash: string | null }>();
+  if (!hh) return { error: 'invalid_or_expired' };
+
+  let phoneHash = hh.phone_hash;
+  let phone: string | null = null;
+  if (!phoneHash) {
+    if (input.whatsapp == null || input.whatsapp === '') return { error: 'whatsapp_required' };
+    phone = normalizePhone(input.whatsapp);
+    if (!phone) return { error: 'invalid_whatsapp' };
+    phoneHash = await hashPhone(env, phone);
+    if (await env.DB.prepare('SELECT 1 AS x FROM households WHERE phone_hash = ? AND id <> ?').bind(phoneHash, row.household_id).first()) return { error: 'phone_in_use' };
+  }
+  if (checkPassword(input.password, phone) !== 'ok') return { error: 'weak_password' };
+  const pw = await makePassword(env, input.password as string);
+  const [used] = await env.DB.batch([
+    env.DB.prepare('UPDATE recovery_tokens SET used_at = ? WHERE hash = ? AND used_at IS NULL').bind(now, hash),
+    env.DB.prepare('UPDATE households SET pw_hash = ?, pw_salt = ?, phone_hash = ?, code_hash = ? WHERE id = ? AND changes() = 1').bind(pw.pw_hash, pw.pw_salt, phoneHash, await hashCode(env, randomCode()), row.household_id),  // o código antigo também deixa de valer
+    env.DB.prepare('UPDATE sessions SET revoked = 1 WHERE household_id = ? AND changes() = 1').bind(row.household_id),
+    env.DB.prepare('UPDATE recovery_tokens SET used_at = ? WHERE household_id = ? AND used_at IS NULL').bind(now, row.household_id)
+  ]);
+  if (!used.meta.changes) return { error: 'invalid_or_expired' }; // outro clique usou o link primeiro
+  return { session: await issueSession(env, row.household_id, input.deviceId, now) };
 }

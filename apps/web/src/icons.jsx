@@ -22,3 +22,4 @@ export const BrandMark = (props) => (
     <path d="M256 170v90l56 34" fill="none" stroke="#F1ECFA" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
 );
+export const ShareIcon = I(<><path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></>);

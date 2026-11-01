@@ -33,3 +33,9 @@
 - [ ] Decidir o papel da LP interna (`/`) frente à LP de captação separada; não sobrescrever a de captação.
 - [ ] Revisão profissional das dicas de cuidado, saltos e guia; ouvir os 8 sons em aparelhos reais.
 - [ ] Teste real de push (iPhone/Android) e Mercado Pago sandbox antes de ligar pagamentos.
+
+## Pendências de acesso e recuperação (01/11/2026)
+- [ ] **E-mail transacional** para a recuperação de senha funcionar em produção: provedor + domínio verificado + `EMAIL_PROVIDER`, `EMAIL_FROM`, `RESEND_API_KEY`. Até lá o app avisa que a recuperação por e-mail não está disponível.
+- [ ] **Verificação do WhatsApp** (código por mensagem) para impedir cadastro com número de terceiros. Exige canal de envio.
+- [ ] **Decisão comercial:** a data 05/11/2026 (4 dias à frente) é menor que o aviso prévio de 7 dias prometido nos textos. Como ninguém usa ainda, não afeta ninguém, mas defina se o aviso muda para o prazo real ou se a data se move.
+- [ ] **Página pública a compartilhar:** hoje é a raiz do app (`/`). Se preferir a LP de captação, defina `VITE_SHARE_URL`.

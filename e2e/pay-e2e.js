@@ -77,21 +77,21 @@ const approve = async (status = 'approved') => {
 
   // ---------- recuperação ----------
   await A.click('[aria-label="Ajustes"]'); await A.click('text=Sair deste aparelho');
-  await A.getByRole('button', { name: 'Perdi meu acesso' }).click();
+  await A.getByRole('button', { name: 'Esqueci a senha' }).click();
   await A.fill('input[type=email]', email); await A.click('text=Enviar link');
   ok(await A.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Se houver uma conta')), 'recuperação: mensagem neutra');
   const mails = (await (await fetch(`${API}/v1/dev/outbox?to=${encodeURIComponent(email)}`)).json()).messages;
   const link = /(http:\/\/[^\s]+#recover=[\w-]+)/.exec(mails.find((m) => m.subject.includes('recuperar')).body)[1];
   const B = await mk(link);
-  ok(await B.w(() => document.querySelector('[role=dialog]')?.innerText.includes('novo código de acesso')), 'link abre a confirmação (não gera sozinho)');
+  ok(await B.w(() => /Criar nova senha/.test(document.querySelector('[role=dialog]')?.innerText ?? '')), 'link abre a tela de nova senha (nada é alterado sozinho)');
   ok(!(await B.url()).includes('recover='), 'token removido da barra de endereço');
-  await B.click('text=Gerar novo código');
-  ok(await B.w(() => document.querySelector('.access-code')?.innerText.length > 15), 'novo código gerado');
-  const code2 = await B.locator('.access-code').innerText();
-  ok(code2 !== code, 'código novo é diferente');
+  await B.fill('[role=dialog] input[autocomplete=new-password]', 'senha nova 2027 ok'); await B.getByRole('button', { name: 'Salvar nova senha' }).click();
+  ok(await B.w(() => /WhatsApp da conta/.test(document.querySelector('[role=dialog]')?.innerText ?? '')), 'conta criada pela compra (sem WhatsApp) pede o número');
+  await B.fill('[role=dialog] input[type=tel]', `(11) 9${String(Math.floor(Math.random() * 1e8)).padStart(8, '0').replace(/^(\d{4})(\d{4})$/, '$1-$2')}`); await B.getByRole('button', { name: 'Salvar nova senha' }).click();
+  ok(await B.w(() => /Seus registros continuam aqui/.test(document.querySelector('[role=dialog]')?.innerText ?? '')), 'nova senha criada; registros continuam');
   const old = await fetch(API + '/v1/sessions', { method: 'POST', headers: { 'content-type': 'application/json', 'CF-Connecting-IP': '10.88.1.1' }, body: JSON.stringify({ code, deviceId: 'dev12345678' }) });
   ok(old.status === 401, 'código antigo não funciona mais');
-  await B.click('text=Já guardei, continuar'); await B.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
+  await B.getByRole('button', { name: 'Continuar' }).click(); await B.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
   await B.click('[aria-label="Ajustes"]');
   ok(await B.w(() => /Sincronizado/.test(document.querySelector('.sheet')?.innerText)), 'novo aparelho conectado após recuperação');
   await B.click('.sheet >> text=Fechar');

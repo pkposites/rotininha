@@ -273,3 +273,5 @@ main { padding: 8px 16px calc(104px + env(safe-area-inset-bottom)); display: gri
 .how-steps { margin: 6px 0; padding-left: 20px; display: grid; gap: 8px; }
 .pw-row { display: flex; align-items: center; gap: 8px; } .pw-row input { flex: 1; min-width: 0; }
 .lead-short { font-size: 17px; margin: 0; }
+.share-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 4px; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.share-row svg { color: var(--brand-primary); flex: none; }

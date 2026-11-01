@@ -13,7 +13,7 @@ const { chromium } = require('playwright');
   };
   const connect = async (p, code) => {
     await p.click('[aria-label="Ajustes"]');
-    await p.getByRole('button', { name: 'Entrar com código de acesso' }).click(); await p.fill('input[placeholder^="XXXXX"]', code);
+    await p.getByRole('button', { name: 'Tenho um código de acesso (conta antiga)' }).click(); await p.fill('input[placeholder^="XXXXX"]', code);
     await p.click('text=Conectar');
     const done = await p.w(() => document.querySelector('.sheet [role=status]')?.innerText.includes('Sincronizado'));
     await p.click('.sheet >> text=Fechar');

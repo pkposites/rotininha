@@ -32,7 +32,7 @@ const MODE = process.argv[3] || 'off'; // off = pagamento desligado | on = ligad
   ok(t.includes('Quero organizar minha rotina'), 'CTA primário');
   ok(t.includes('Veja como funciona em poucos segundos'), 'texto de prova do produto');
   ok(t.includes('Sem cartão. Sem cobrança automática. Não é assinatura.'), 'oferta: sem cartão, sem cobrança automática, não é assinatura');
-  ok(/Teste grátis por 3 dias/.test(t) && /R\$ 37,90/.test(t) && /Avisamos antes/.test(t), 'teste de 3 dias, preço depois e aviso prévio');
+  ok(/Grátis no lançamento/.test(t) && /R\$ 37,90/.test(t) && /Avisamos com antecedência/.test(t) && /3 dias de teste/.test(t) && !/sem senha/i.test(t), 'regra única: grátis hoje, aviso antes de cobrar, 3 dias de teste depois, preço previsto; sem prometer "sem senha"');
   ok(t.includes('Demonstração ilustrativa'), 'rótulo "Demonstração ilustrativa"');
   ok(t.includes('Notificações dependem da instalação, permissão e configurações do dispositivo.'), 'microtexto de notificações');
   ok(t.includes('não substitui a orientação do pediatra'), 'aviso de saúde');
@@ -44,7 +44,7 @@ const MODE = process.argv[3] || 'off'; // off = pagamento desligado | on = ligad
   ok(await P.locator('footer').innerText().then((x) => /Termos de Uso/.test(x) && /Privacidade/.test(x) && /Reembolso/.test(x) && /Preferências de cookies/.test(x)), 'rodapé com Termos, Privacidade, Reembolso e Preferências');
 
   // ---------- oferta: o teste grátis não depende de pagamento ----------
-  ok((await P.locator('#buy').getAttribute('href')) === '/app/' && /Começar meu teste grátis/.test(await P.locator('#buy').innerText()), 'botão leva ao app: "Começar meu teste grátis"');
+  ok((await P.locator('#buy').getAttribute('href')) === '/app/' && /Começar grátis/.test(await P.locator('#buy').innerText()), 'botão leva ao app: "Começar grátis"');
   ok((await P.locator('.benefits .card').count()) === 5 && /5 sons para a soneca/.test(t) && /saltos/i.test(t) && /Notificações/.test(t), 'benefícios: notificações, sons, saltos');
 
   // ---------- consentimento ----------
