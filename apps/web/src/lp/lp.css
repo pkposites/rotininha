@@ -176,3 +176,4 @@ body.has-sticky{padding-bottom:84px}
 .phone[data-scene="2"] .tap{top:30px;left:calc(50% - 17px)}
 .phone[data-scene="3"] .tap{top:200px;left:calc(100% - 78px)}
 @media (min-width:760px){.phone{height:520px}.phone[data-scene="3"] .tap{top:304px;left:208px}.phone[data-scene="2"] .tap{top:30px;left:120px}}
+.badge{z-index:3}
