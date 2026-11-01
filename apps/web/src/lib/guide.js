@@ -18,7 +18,7 @@ export function unlockedLessons(startDate, now, tz, total = 7) {
 }
 
 /** Acesso ao conteúdo: ativo ou em carência. Vencido → bloqueado (dados continuam visíveis em outras telas). */
-export const guideAccessible = (account) => !account || account.state === 'active' || account.state === 'grace';
+export const guideAccessible = (account) => !account || ['active', 'grace', 'trial'].includes(account.state);
 
 export const SAFE_SLEEP_ITEMS = [
   'O bebê dorme de barriga para cima (menores de 1 ano).',

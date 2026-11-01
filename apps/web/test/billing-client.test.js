@@ -14,7 +14,7 @@ test('máscara e validação de CPF', () => {
 test('e-mail e moeda', () => {
   assert.equal(validEmail('a@b.com'), true);
   assert.equal(validEmail('a@b'), false);
-  assert.equal(brl(1190), 'R$ 11,90'); assert.equal(brl(3990), 'R$ 39,90');
+  assert.equal(brl(3790), 'R$ 37,90');
 });
 test('aviso de vencimento: nada com folga, aviso perto, carência e vencido sem culpa', () => {
   const now = Date.UTC(2026, 10, 1, 12);
@@ -46,4 +46,19 @@ test('medição de anúncios: sem consentimento nada é enviado; com consentimen
   assert.deepEqual(trackingContext(), { marketingConsent: true, sourceUrl: 'https://rotininha.exemplo/', fbp: 'fb.1.1700000000000.123', fbc: 'fb.1.1700000000000.AbC' });
   set(JSON.stringify({ v: 1, marketing: true }), '');
   assert.deepEqual(trackingContext(), { marketingConsent: true, sourceUrl: 'https://rotininha.exemplo/' }, 'aceitou mas sem cookies ainda');
+});
+
+test('teste grátis: contagem regressiva, aviso prévio da cobrança e fim do teste', () => {
+  const now = Date.UTC(2026, 10, 1, 12), day = 86_400_000;
+  const trial = (extra) => ({ state: 'trial', plan: 'trial', trialDays: 3, validUntil: now + 2 * day, graceUntil: now + 3 * day, enforcement: { active: true }, ...extra });
+  const t = accessNotice(trial({}), now);
+  assert.equal(t.kind, 'trial'); assert.match(t.text, /faltam 2 dias/); assert.match(t.text, /R\$ 37,90/); assert.match(t.text, /sem assinatura/);
+  assert.match(accessNotice(trial({ validUntil: now + 3600_000 }), now).text, /termina hoje ou amanhã/);
+  // antes da cobrança: só o aviso prévio (nada muda até lá)
+  const ann = accessNotice({ state: 'active', plan: 'trial', trialDays: 3, validUntil: null, enforcement: { active: false, announced: true, from: now + 5 * day } }, now);
+  assert.equal(ann.kind, 'announce'); assert.match(ann.text, /Até lá, nada muda/); assert.match(ann.text, /3 dias de teste grátis/);
+  assert.equal(accessNotice({ state: 'active', plan: 'trial', validUntil: null, enforcement: { active: false, announced: false, from: null } }, now), null, 'sem aviso quando nada foi anunciado');
+  const end = accessNotice({ state: 'expired', plan: 'trial', validUntil: now - 5 * day, graceUntil: now - 4 * day }, now);
+  assert.match(end.text, /teste grátis terminou/); assert.match(end.text, /ainda pode ver seus registros/); assert.ok(!/erro|falha|atrasad/i.test(end.text));
+  assert.match(accessNotice({ state: 'grace', plan: 'trial', validUntil: now - 1000, graceUntil: now + day }, now).text, /teste terminou/);
 });

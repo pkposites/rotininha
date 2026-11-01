@@ -31,7 +31,7 @@ const approve = async (status = 'approved') => {
   const A = await mk();
   await A.click('[aria-label="Ajustes"]');
   await A.click('text=Ainda não tenho acesso — comprar');
-  ok(await A.w(() => document.querySelector('[role=dialog]')?.innerText.includes('R$ 11,90')), 'tela de compra mostra o preço do servidor');
+  ok(await A.w(() => document.querySelector('[role=dialog]')?.innerText.includes('R$ 37,90')), 'tela de compra mostra o preço do servidor');
   const txt = await A.locator('[role=dialog]').innerText();
   ok(txt.includes('Não é assinatura') && txt.includes('Direito de arrependimento') && txt.includes('não fica guardado'), 'transparência: não é assinatura, arrependimento, CPF');
   await A.fill('input[type=email]', email);
@@ -64,7 +64,7 @@ const approve = async (status = 'approved') => {
   await A.click('[aria-label="Ajustes"]');
   ok(await A.w(() => /Sincronizado/.test(document.querySelector('.sheet')?.innerText) && /Seu acesso/.test(document.querySelector('.sheet')?.innerText)), 'aparelho conectado e validade exibida em Ajustes');
   const acct = await A.locator('.sheet').innerText();
-  ok(/Válido até \d{2}\/\d{2}\/\d{4}/.test(acct), 'validade formatada');
+  ok(/Acesso vitalício/.test(acct), 'acesso vitalício exibido em Ajustes');
 
   // o código não aparece mais em lugar nenhum: recarregar não o mostra
   await A.click('.sheet >> text=Fechar');
@@ -98,18 +98,18 @@ const approve = async (status = 'approved') => {
   await B.click('.tab:has-text("Histórico")');
   ok(await B.w(() => document.querySelector('.timeline')?.innerText.includes('Mamada')), 'registros anteriores continuam disponíveis após recuperar');
 
-  // ---------- renovação ----------
-  await B.click('[aria-label="Ajustes"]'); await B.click('text=Renovar acesso');
-  ok(await B.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Renovar acesso')), 'tela de renovação');
-  await B.w(() => document.querySelectorAll('[role=radio]').length === 3, null, 5000);
-  ok((await B.locator('[role=radio]').count()) === 3, 'renovação oferece 7/30/90 dias');
-  await B.click('[role=radio]:has-text("90 dias")');
+  // ---------- teste grátis → compra do vitalício ----------
+  ok(await B.evaluate(() => document.body.innerText.includes('Renovar')) === false, 'sem botão de renovar (acesso é vitalício)');
+  sql(`UPDATE households SET plan='trial', valid_until=${Date.now() + 86400000}, grace_until=${Date.now() + 2 * 86400000} WHERE id=(SELECT household_id FROM payments WHERE email='${email}' LIMIT 1)`);
+  await B.reload();
+  await B.click('[aria-label="Ajustes"]'); await B.w(() => /Teste grátis até/.test(document.querySelector('.sheet')?.innerText), null, 10000); await B.click('text=Garantir acesso vitalício');
+  ok(await B.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Acesso vitalício ao Ninhora')), 'tela de compra do vitalício');
+  ok((await B.locator('[role=radio]').count()) === 0, 'um único preço, sem escolha de período');
   await B.fill('input[placeholder="000.000.000-00"]', '52998224725');
-  await B.click('text=Gerar Pix de R$ 39,90');
-  ok(await B.w(() => document.querySelector('textarea')?.value.startsWith('00020126PIX')), 'Pix da renovação');
+  await B.click('text=Gerar Pix de R$ 37,90');
+  ok(await B.w(() => document.querySelector('textarea')?.value.startsWith('00020126PIX')), 'Pix do vitalício');
   await approve();
-  ok(await B.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Acesso renovado')), 'renovação confirmada');
-  ok(/vale até \d{2}\/\d{2}\/\d{4}/.test(await B.locator('[role=dialog]').innerText()), 'nova validade exibida');
+  ok(await B.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Acesso garantido')), 'compra confirmada');
   await B.click('text=Continuar');
 
   // ---------- aviso de vencimento ----------

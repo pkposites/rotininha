@@ -4,10 +4,12 @@ import { getPref, setPref } from './lib/prefs.js';
 import { localParts } from '../../../packages/shared/schedule.js';
 import { FLAGS } from './config.js';
 import { track } from './lib/analytics.js';
+import { count } from './lib/usage.js';
+import { CareTips } from './CareTips.jsx';
 
 const REMINDER_ID = 'guide-lesson-reminder';
 
-export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest, onRenew }) {
+export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest, onRenew, onGoSounds }) {
   const [start, setStart] = useState(null);
   const [done, setDone] = useState([]);
   const [finished, setFinished] = useState(false);
@@ -39,7 +41,7 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
     if (reminderOn) return rem.removeTask(REMINDER_ID);
     await rem.saveTask({ id: REMINDER_ID, title: 'Lição do Guia', category: 'outro', time: '20:00', repeat: 'daily', days: [], date: null, leadMin: 0, notify: true, allowQuiet: false, updatedAt: Date.now() });
   };
-  const markDone = async (day) => { const n = [...new Set([...done, day])]; setDone(n); await setPref('guideDone', n); };
+  const markDone = async (day) => { const n = [...new Set([...done, day])]; setDone(n); await setPref('guideDone', n); count('guide_lesson_done'); };
   const setCheck = async (key, i, v) => {
     const arr = [...(checks[key] ?? [])]; arr[i] = v;
     const next = { ...checks, [key]: arr }; setChecks(next); await setPref('guideChecks', next);
@@ -110,7 +112,8 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
 
   return (
     <>
-      <h1 class="h2s">Rotina e Sono em 7 Dias</h1>
+      <CareTips onCreateTask={onCreateTask} onGoSounds={onGoSounds} />
+      <h2 class="h2s">Rotina e Sono em 7 Dias</h2>
       <p class="muted">Uma lição curta por dia (1–2 minutos), sempre com uma ação opcional. Conteúdo educativo: não substitui a orientação do pediatra.</p>
       <div class="card">
         <div class="card-head"><strong>Seu progresso</strong><span class="muted">{done.length} de 7 lições</span></div>

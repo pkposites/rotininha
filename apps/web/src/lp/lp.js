@@ -1,7 +1,6 @@
 import './lp.css';
 
 const API = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
-const SALES = import.meta.env.VITE_PAYMENTS_ENABLED === '1';
 const PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID ?? '';
 const SUPPLIER = {
   name: import.meta.env.VITE_SUPPLIER_NAME ?? '', cnpj: import.meta.env.VITE_SUPPLIER_CNPJ ?? '', email: import.meta.env.VITE_SUPPORT_EMAIL ?? ''
@@ -56,16 +55,9 @@ $$('[data-supplier]').forEach((el) => {
   if (v) el.textContent = k === 'cnpj' ? `· CNPJ ${v}` : k === 'email' ? `· ${v}` : v;
 });
 
-/* ---------- oferta: só libera a compra quando o pagamento estiver ligado ---------- */
+/* ---------- oferta: o teste grátis não depende de pagamento ---------- */
 const buy = $('#buy');
-if (SALES) {
-  buy.textContent = 'Quero organizar minha rotina — R$ 11,90 no Pix';
-  buy.href = '/app/#comprar'; buy.removeAttribute('aria-disabled');
-  $('#buy-note').textContent = 'Você será levada ao app para pagar via Pix com segurança (Mercado Pago).';
-  buy.addEventListener('click', () => { track('lp_cta_click', false); track('checkout_started', false); pixel('InitiateCheckout'); });
-} else {
-  buy.addEventListener('click', (e) => e.preventDefault());
-}
+buy.addEventListener('click', () => { track('lp_cta_click', false); pixel('InitiateCheckout'); });
 $$('[data-cta]').forEach((a) => { if (a !== buy) a.addEventListener('click', () => track('lp_cta_click', false)); });
 
 track('lp_visit');

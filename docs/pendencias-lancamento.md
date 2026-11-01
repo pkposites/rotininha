@@ -20,3 +20,16 @@
 - [ ] Definir o prazo de retenção definitivo (hoje 12 meses após o vencimento: `RETENTION_DAYS_AFTER_EXPIRY` em `apps/api/src/privacy.ts`) e alinhar a Política
 - [ ] Gerar ícones definitivos do app (os atuais são provisórios)
 - [ ] **Ligar o pagamento** só depois de cumprir `docs/ATIVAR-PAGAMENTO.md` (chaves `PAYMENTS_ENABLED` / `VITE_PAYMENTS_ENABLED`, hoje desligadas)
+- [ ] **Publicar o servidor (Cloudflare Worker + D1)**: sem ele não há teste grátis na nuvem, notificações, painel nem estatísticas (ver `docs/NINHORA.md` §7)
+- [ ] **Pesquisar a marca "Ninhora" no INPI** (e domínio) antes de anunciar
+- [ ] Ouvir os 5 sons e testar a reprodução **com a tela bloqueada** em iPhone e Android reais
+- [ ] Revisão por profissional de saúde dos textos dos **Saltos** (referência popular)
+- [ ] Revisar com jurídico: teste grátis (CDC: informação clara do que ocorre depois), coleta de estatísticas de uso (base legal/opt-out), notificações promocionais, data de nascimento do bebê
+- [ ] Definir o texto/valores finais do aviso prévio da cobrança e a data de início
+- [ ] Reintegrar o trabalho do Codex (ver conversa): ele não está neste repositório
+
+## Atualização 01/11/2026
+- [ ] Publicar o Worker `rotininha-api` + D1 (hoje só existe `ninhora-capi-leads` na conta Cloudflare); trocar placeholders do `wrangler.toml` (database_id, ALLOWED_ORIGIN, VAPID_SUBJECT) e definir `VITE_API_BASE_URL` no Netlify.
+- [ ] Decidir o papel da LP interna (`/`) frente à LP de captação separada; não sobrescrever a de captação.
+- [ ] Revisão profissional das dicas de cuidado, saltos e guia; ouvir os 8 sons em aparelhos reais.
+- [ ] Teste real de push (iPhone/Android) e Mercado Pago sandbox antes de ligar pagamentos.

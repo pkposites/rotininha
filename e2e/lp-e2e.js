@@ -12,7 +12,7 @@ const MODE = process.argv[3] || 'off'; // off = pagamento desligado | on = ligad
   const m0 = await metrics();
 
   const mk = async (opts = {}, js = true) => {
-    const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'pt-BR', javaScriptEnabled: js, ...opts });
+    const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'pt-BR', javaScriptEnabled: js, bypassCSP: true, ...opts });
     const p = await ctx.newPage(); p.errs = []; p.reqs = [];
     p.on('pageerror', (e) => p.errs.push(e.message));
     p.on('request', (r) => p.reqs.push(r.url()));
@@ -31,8 +31,8 @@ const MODE = process.argv[3] || 'off'; // off = pagamento desligado | on = ligad
   ok(t.includes('Registre os cuidados do bebê em segundos, organize os próximos lembretes e acompanhe a rotina em um só lugar.'), 'promessa funcional');
   ok(t.includes('Quero organizar minha rotina'), 'CTA primário');
   ok(t.includes('Veja como funciona em poucos segundos'), 'texto de prova do produto');
-  ok(t.includes('Acesso por 7 dias. Renovação opcional, feita manualmente por Pix. Não é assinatura.'), 'aviso antes do Pix');
-  ok(/R\$ 11,90/.test(t) && !/teste gr[aá]tis/i.test(t), 'preço correto e nunca "teste grátis"');
+  ok(t.includes('Sem cartão. Sem cobrança automática. Não é assinatura.'), 'oferta: sem cartão, sem cobrança automática, não é assinatura');
+  ok(/Teste grátis por 3 dias/.test(t) && /R\$ 37,90/.test(t) && /Avisamos antes/.test(t), 'teste de 3 dias, preço depois e aviso prévio');
   ok(t.includes('Demonstração ilustrativa'), 'rótulo "Demonstração ilustrativa"');
   ok(t.includes('Notificações dependem da instalação, permissão e configurações do dispositivo.'), 'microtexto de notificações');
   ok(t.includes('não substitui a orientação do pediatra'), 'aviso de saúde');
@@ -43,12 +43,9 @@ const MODE = process.argv[3] || 'off'; // off = pagamento desligado | on = ligad
   ok(await P.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'sem rolagem horizontal em 390px');
   ok(await P.locator('footer').innerText().then((x) => /Termos de Uso/.test(x) && /Privacidade/.test(x) && /Reembolso/.test(x) && /Preferências de cookies/.test(x)), 'rodapé com Termos, Privacidade, Reembolso e Preferências');
 
-  // ---------- oferta conforme a chave de pagamento ----------
-  if (MODE === 'off') {
-    ok((await P.locator('#buy').getAttribute('aria-disabled')) === 'true' && /Vendas abrem em breve/.test(await P.locator('#buy').innerText()), 'pagamento desligado: botão "Vendas abrem em breve" desabilitado');
-  } else {
-    ok((await P.locator('#buy').getAttribute('href')) === '/app/#comprar', 'pagamento ligado: leva ao checkout no app');
-  }
+  // ---------- oferta: o teste grátis não depende de pagamento ----------
+  ok((await P.locator('#buy').getAttribute('href')) === '/app/' && /Começar meu teste grátis/.test(await P.locator('#buy').innerText()), 'botão leva ao app: "Começar meu teste grátis"');
+  ok((await P.locator('.benefits .card').count()) === 5 && /5 sons para a soneca/.test(t) && /saltos/i.test(t) && /Notificações/.test(t), 'benefícios: notificações, sons, saltos');
 
   // ---------- consentimento ----------
   ok(await P.locator('#consent').isVisible(), 'banner de preferências aparece');

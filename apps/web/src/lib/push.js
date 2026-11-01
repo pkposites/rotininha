@@ -1,6 +1,7 @@
 import { authedCall, syncAvailable } from './sync.js';
 import { getMeta, setMeta } from './db.js';
 import { track } from './analytics.js';
+import { count } from './usage.js';
 
 const b64uToBytes = (str) => {
   const p = str.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (str.length % 4)) % 4);
@@ -50,6 +51,7 @@ export async function enablePush(privacy = false) {
   if (r.status !== 201) throw new Error('Não foi possível ativar agora. Tente novamente em instantes.');
   await setMeta('pushPrivacy', !!privacy);
   track('push_enabled', { once: true });
+  count('push_enabled');
 }
 
 export async function disablePush() {

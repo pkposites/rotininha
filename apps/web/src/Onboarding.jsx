@@ -4,8 +4,9 @@ import { setPref } from './lib/prefs.js';
 import { InstallGuide } from './InstallGuide.jsx';
 import { enablePush } from './lib/push.js';
 import { TYPES } from './lib/events.js';
+import { TrialFlow } from './TrialFlow.jsx';
+import { syncAvailable } from './lib/sync.js';
 
-const ORDER = ['welcome', 'age', 'how', 'templates', 'first', 'install'];
 
 function Shell({ step, emoji, title, lead, children, actions }) {
   return (
@@ -39,6 +40,9 @@ export function Onboarding({ store, rem, connected, onFinish }) {
     for (const t of tasksFromTemplates(picked, times)) await rem.saveTask(t);
     setBusy(false); setStep('first');
   };
+  const withTrial = syncAvailable && !connected;
+  const ORDER = withTrial ? ['welcome', 'age', 'how', 'first', 'trial', 'install'] : ['welcome', 'age', 'how', 'first', 'install'];
+  const afterFirst = () => setStep(withTrial ? 'trial' : 'install');
   const idx = ORDER.indexOf(step === 'templates' ? 'how' : step);
 
   return (
@@ -89,7 +93,7 @@ export function Onboarding({ store, rem, connected, onFinish }) {
 
         {step === 'first' && (
           <Shell step={step} emoji="👶" title="Quer registrar o primeiro cuidado?" lead="É só um toque. Você pode corrigir o horário depois."
-            actions={<button class={logged ? 'btn' : 'link'} onClick={() => setStep('install')}>{logged ? 'Continuar' : 'Depois'}</button>}>
+            actions={<button class={logged ? 'btn' : 'link'} onClick={afterFirst}>{logged ? 'Continuar' : 'Depois'}</button>}>
             <div class="actions">
               {['mamada', 'sono', 'fralda'].map((t) => (
                 <button class={`qa qa-${t}`} disabled={logged} onClick={async () => { await store.quickLog(t); setLogged(true); }}>
@@ -98,6 +102,12 @@ export function Onboarding({ store, rem, connected, onFinish }) {
               ))}
             </div>
             {logged && <p role="status" class="toast">Registrado! 💜</p>}
+          </Shell>
+        )}
+
+        {step === 'trial' && (
+          <Shell step={step} emoji="🎁" title="Teste grátis" actions={<></>}>
+            <TrialFlow compact onDone={() => setStep('install')} onSkip={() => setStep('install')} />
           </Shell>
         )}
 

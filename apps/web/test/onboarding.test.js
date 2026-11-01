@@ -53,6 +53,7 @@ test('guia: acessível com acesso ativo ou em carência; bloqueado quando vencid
   assert.equal(guideAccessible(null), true);
   assert.equal(guideAccessible({ state: 'active' }), true);
   assert.equal(guideAccessible({ state: 'grace' }), true);
+  assert.equal(guideAccessible({ state: 'trial' }), true);
   assert.equal(guideAccessible({ state: 'expired' }), false);
 });
 

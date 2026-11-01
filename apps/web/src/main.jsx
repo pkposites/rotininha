@@ -11,7 +11,11 @@ import { CheckoutSheet } from './CheckoutSheet.jsx';
 import { RecoverSheet } from './RecoverSheet.jsx';
 import { FLAGS } from './config.js';
 import { Onboarding } from './Onboarding.jsx';
-import { HomeIcon, ClockIcon, BookIcon, MoonIcon, SunIcon, GearIcon, BrandMark } from './icons.jsx';
+import { HomeIcon, ClockIcon, BookIcon, MoonIcon, SunIcon, GearIcon, BrandMark, LeafIcon, MusicIcon } from './icons.jsx';
+import { SoundsTab } from './SoundsTab.jsx';
+import { LeapsTab } from './LeapsTab.jsx';
+import { TrialFlow } from './TrialFlow.jsx';
+import { count } from './lib/usage.js';
 import { FeedbackSheet, FeedbackCard } from './FeedbackSheet.jsx';
 import { engagement, shouldShowCard, isEligible } from './lib/feedback.js';
 import { track } from './lib/analytics.js';
@@ -21,6 +25,8 @@ import { listEvents, listTasks } from './lib/db.js';
 import { getAccount, accessNotice, pendingCheckout } from './lib/billing.js';
 import { TaskSheet } from './TaskSheet.jsx';
 import { ReminderSheet } from './ReminderSheet.jsx';
+import { InstallGuide } from './InstallGuide.jsx';
+import { isStandalone } from './lib/push.js';
 import { RemindersCard } from './RemindersCard.jsx';
 import { useReminders } from './lib/useReminders.js';
 import { makeTask, dayItems, markDone, markSkipped, snooze, undo } from './lib/tasks.js';
@@ -29,6 +35,8 @@ import { startSync, subscribe as subSync, syncAvailable } from './lib/sync.js';
 const TABS = [
   { id: 'hoje', label: 'Hoje', Icon: HomeIcon },
   { id: 'historico', label: 'Histórico', Icon: ClockIcon },
+  { id: 'saltos', label: 'Saltos', Icon: LeafIcon },
+  { id: 'sons', label: 'Sons', Icon: MusicIcon },
   { id: 'guia', label: 'Guia', Icon: BookIcon }
 ];
 const hhmm = (ts) => new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -75,14 +83,17 @@ function LastCard({ type, events, now, onEdit }) {
   );
 }
 
-function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedbackNode }) {
+function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedbackNode, onHelp }) {
   const { events, quickLog } = store;
   const [toast, setToast] = useState(null);
   const sleeping = openSleep(events);
+  const [showInstall, setShowInstall] = useState(false);
+  useEffect(() => { (async () => { if (!isStandalone() && !(await getPref('installDismissed', false))) setShowInstall(true); })(); }, []);
   const data = new Date(now).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const log = async (type) => {
     const r = await quickLog(type);
+    count('care_logged');
     onLogged?.();
     const msg = r.woke ? `Acordou às ${hhmm(r.event.endedAt)}` : `${TYPES[type].label} registrada às ${hhmm(r.event.startedAt)}`;
     setToast({ msg, event: r.event });
@@ -115,8 +126,21 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedba
       <section class="lasts" aria-label="Últimos cuidados">
         {['mamada', 'sono', 'fralda'].map((t) => <LastCard type={t} events={events} now={now} onEdit={onEdit} />)}
       </section>
+      {showInstall && (
+        <section class="card install-card" aria-label="Instalar o app">
+          <strong>Leve o Ninhora para a tela inicial</strong>
+          <p class="muted">Abra pelo ícone, sem procurar o link toda vez. Instalar não ativa notificações automaticamente.</p>
+          <InstallGuide />
+          <button class="link" onClick={async () => { setShowInstall(false); await setPref('installDismissed', true); }}>Dispensar</button>
+        </section>
+      )}
       {feedbackNode}
-      <RemindersCard tasks={rem.tasks} occs={rem.occs} now={now} tz={rem.tz} onOpen={onOpenItem} onNew={onNewTask} onQuickDone={(i) => rem.saveOcc(markDone(i))} />
+      <RemindersCard tasks={rem.tasks} occs={rem.occs} now={now} tz={rem.tz} onOpen={onOpenItem} onNew={onNewTask} onQuickDone={(i) => { count('reminder_done'); rem.saveOcc(markDone(i)); }} />
+    <section class="card help-card" aria-label="Ajuda rápida">
+        <strong>Precisa de uma ajuda agora?</strong>
+        <p class="muted">Água e pausas para você, sono e formas de acolher um bebê agitado: veja por que importam e o que tentar, passo a passo.</p>
+        <button class="btn ghost" onClick={onHelp}>Consultar dicas práticas</button>
+      </section>
     </>
   );
 }
@@ -175,7 +199,8 @@ function App() {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [loggedThisSession, setLoggedThisSession] = useState(false);
   const [fbPrefs, setFbPrefs] = useState({ dismissedAt: null, submittedAt: null });
-  useEffect(() => { track('app_first_open', { once: true }); }, []);
+  useEffect(() => { track('app_first_open', { once: true }); count('app_open'); }, []);
+  const [trialOpen, setTrialOpen] = useState(false);
   useEffect(() => { (async () => setFbPrefs({ dismissedAt: await getPref('feedbackDismissedAt'), submittedAt: await getPref('feedbackSubmittedAt') }))(); }, [feedbackOpen]);
   // Primeira abertura: onboarding só para quem ainda não tem dados nem já o concluiu.
   useEffect(() => {
@@ -199,6 +224,7 @@ function App() {
   }, []);
   useEffect(() => { if (syncStatus === 'idle') refreshAccount(); if (syncStatus === 'signed-out') setAccount(null); }, [syncStatus]);
   const notice = accessNotice(account);
+  useEffect(() => { if (notice?.kind === 'trial' || notice?.kind === 'announce') count('trial_banner_seen'); if (notice?.kind === 'expired' || notice?.kind === 'grace') count('paywall_viewed'); }, [notice?.kind]);
   const eng = engagement(store.events, rem.occs, rem.tz);
   const showFeedbackCard = shouldShowCard({
     eng, now, tab, night, loggedThisSession, busy: onboarding || !!checkout || !!recover || settings || !!editing || !!taskEdit || !!openOcc,
@@ -209,9 +235,16 @@ function App() {
   useEffect(() => { startSync(); return subSync((st) => setSyncStatus(st.status)); }, []);
   // Notificação → abre o lembrete para confirmar (nunca conclui sozinho).
   useEffect(() => {
-    const q = new URLSearchParams(location.search).get('occ');
-    if (q) { setOpenOcc(q); history.replaceState(null, '', location.pathname); }
-    const onMsg = (e) => { if (e.data?.type === 'open-occ' && e.data.occId) setOpenOcc(e.data.occId); };
+    const params = new URLSearchParams(location.search);
+    const q = params.get('occ'), go = params.get('go');
+    const goTo = (t) => { if (t === 'ajustes') setSettings(true); else if (['hoje', 'historico', 'saltos', 'sons', 'guia'].includes(t)) setTab(t); };
+    if (q) setOpenOcc(q);
+    if (go) goTo(go);
+    if (q || go) history.replaceState(null, '', location.pathname);
+    const onMsg = (e) => {
+      if (e.data?.type === 'open-occ' && e.data.occId) setOpenOcc(e.data.occId);
+      if (e.data?.type === 'open-target' && e.data.target) goTo(e.data.target);
+    };
     navigator.serviceWorker?.addEventListener('message', onMsg);
     return () => navigator.serviceWorker?.removeEventListener('message', onMsg);
   }, []);
@@ -231,16 +264,18 @@ function App() {
           <button class="icon-btn" aria-label={night ? 'Desativar modo madrugada' : 'Ativar modo madrugada'} onClick={() => setNight(!night)}>
             {night ? <SunIcon /> : <MoonIcon />}
           </button>
-          <button class="icon-btn" aria-label="Ajustes" onClick={() => setSettings(true)}><GearIcon /></button>
+          <button class="icon-btn" aria-label="Ajustes" onClick={() => { setSettings(true); count('settings_opened'); }}><GearIcon /></button>
         </div>
       </header>
       <main>
         {store.error && <p class="card err" role="alert">{store.error}</p>}
-        {notice && <section class={`card notice ${notice.tone}`} role="status"><p>{notice.text}</p>{FLAGS.payments && <button class="btn" onClick={() => setCheckout({ renewal: true })}>Renovar</button>}</section>}
-        {tab === 'hoje' && <Hoje store={store} rem={rem} now={now} onLogged={() => { setLoggedThisSession(true); track('first_record', { once: true }); }}
+        {notice && <section class={`card notice ${notice.tone}`} role="status"><p>{notice.text}</p>{FLAGS.payments && <button class="btn" onClick={() => setCheckout({ renewal: true })}>Garantir acesso</button>}</section>}
+        {tab === 'hoje' && <Hoje onHelp={() => { setTab('guia'); count('help_card_opened'); }} store={store} rem={rem} now={now} onLogged={() => { setLoggedThisSession(true); track('first_record', { once: true }); }}
           feedbackNode={showFeedbackCard ? <FeedbackCard onOpen={() => setFeedbackOpen(true)} onDismiss={async () => { await setPref('feedbackDismissedAt', Date.now()); setFbPrefs((f) => ({ ...f, dismissedAt: Date.now() })); track('feedback_card_dismissed'); }} /> : null} onEdit={setEditing} onOpenItem={(i) => setOpenOcc(i.id)} onNewTask={() => setTaskEdit({ task: makeTask(), isNew: true })} />}
         {tab === 'historico' && <Historico events={store.events} onEdit={setEditing} />}
-        {tab === 'guia' && <GuideTab rem={rem} account={account} now={now}
+        {tab === 'saltos' && <LeapsTab tz={rem.tz} />}
+        {tab === 'sons' && <SoundsTab />}
+        {tab === 'guia' && <GuideTab onGoSounds={() => setTab('sons')} rem={rem} account={account} now={now}
           onCreateTask={(p) => setTaskEdit({ task: makeTask(p), isNew: true })} onGoToday={() => setTab('hoje')}
           onSuggest={() => setFeedbackOpen(true)} onRenew={FLAGS.payments ? () => setCheckout({ renewal: true }) : null} />}
         <p class="muted disclaimer">O Ninhora ajuda a organizar os cuidados e não substitui a orientação do pediatra.</p>
@@ -255,9 +290,9 @@ function App() {
       {onboarding && <Onboarding store={store} rem={rem} connected={syncStatus !== 'signed-out' && syncStatus !== 'off'} onFinish={() => setOnboarding(false)} />}
       {openItem && (
         <ReminderSheet item={openItem} now={now} onClose={() => setOpenOcc(null)}
-          onDone={() => { rem.saveOcc(markDone(openItem)); setOpenOcc(null); }}
+          onDone={() => { count('reminder_done'); rem.saveOcc(markDone(openItem)); setOpenOcc(null); }}
           onSkip={() => { rem.saveOcc(markSkipped(openItem)); setOpenOcc(null); }}
-          onSnooze={(m) => { rem.saveOcc(snooze(openItem, m, Date.now())); setOpenOcc(null); }}
+          onSnooze={(m) => { count('reminder_snoozed'); rem.saveOcc(snooze(openItem, m, Date.now())); setOpenOcc(null); }}
           onUndo={() => { rem.saveOcc(undo(openItem)); setOpenOcc(null); }}
           onEdit={() => { setTaskEdit({ task: openItem.task, isNew: false }); setOpenOcc(null); }} />
       )}
@@ -269,10 +304,12 @@ function App() {
       {feedbackOpen && <FeedbackSheet onClose={() => setFeedbackOpen(false)} />}
       {settings && <SettingsSheet onClose={() => setSettings(false)} night={night} setNight={setNight} account={account}
         onSuggest={() => { setSettings(false); setFeedbackOpen(true); }}
+        onStartTrial={() => { setSettings(false); setTrialOpen(true); }} refreshAccount={refreshAccount}
         onBuy={!FLAGS.payments ? null : () => { setSettings(false); setCheckout({ renewal: false }); }}
         onRenew={!FLAGS.payments ? null : () => { setSettings(false); setCheckout({ renewal: true }); }}
         onRecover={() => { setSettings(false); setRecover({ token: null }); }} />}
       {checkout && <CheckoutSheet renewal={checkout.renewal} resume={checkout.resume} onClose={() => setCheckout(null)} onDone={refreshAccount} />}
+      {trialOpen && <div class="sheet-backdrop"><div class="sheet" role="dialog" aria-modal="true" aria-label="Teste grátis"><TrialFlow onDone={() => { setTrialOpen(false); refreshAccount(); }} onSkip={() => setTrialOpen(false)} /></div></div>}
       {recover && <RecoverSheet token={recover.token} onClose={() => setRecover(null)} />}
       {editing && (
         <EditSheet event={editing} onClose={() => setEditing(null)}

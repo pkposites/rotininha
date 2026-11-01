@@ -20,7 +20,7 @@ self.addEventListener('push', (event) => {
       tag: d.tag || 'rotininha',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
-      data: { occId: d.occId || null }
+      data: { occId: d.occId || null, target: d.target || null, sid: d.sid || null, click: d.click || null }
     })
   );
 });
@@ -28,12 +28,14 @@ self.addEventListener('push', (event) => {
 // Tocar na notificação abre o lembrete para o usuário CONFIRMAR; nunca marca como feito sozinho.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const occId = event.notification.data?.occId;
-  const url = occId ? `/app/?occ=${encodeURIComponent(occId)}` : '/app/';
+  const { occId, target, sid, click } = event.notification.data ?? {};
+  // Avisos promocionais: conta o clique (id único do envio; não identifica a pessoa por si só)
+  if (sid && click) { try { event.waitUntil(fetch(click, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sid }), keepalive: true }).catch(() => {})); } catch {} }
+  const url = occId ? `/app/?occ=${encodeURIComponent(occId)}` : target ? `/app/?go=${encodeURIComponent(target)}` : '/app/';
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of wins) {
-      if ('focus' in c) { c.postMessage({ type: 'open-occ', occId }); return c.focus(); }
+      if ('focus' in c) { c.postMessage(occId ? { type: 'open-occ', occId } : { type: 'open-target', target }); return c.focus(); }
     }
     return self.clients.openWindow(url);
   })());

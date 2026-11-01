@@ -30,6 +30,10 @@ function headersFile() {
   Content-Type: application/manifest+json
   Cache-Control: no-cache
 
+/admin/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: no-store
+
 /sw.js
   Cache-Control: no-cache
   Service-Worker-Allowed: /app/
@@ -67,6 +71,7 @@ export default defineConfig({
       input: {
         lp: resolve(__dirname, 'index.html'),
         app: resolve(__dirname, 'app/index.html'),
+        admin: resolve(__dirname, 'admin/index.html'),
         termos: resolve(__dirname, 'termos.html'),
         privacidade: resolve(__dirname, 'privacidade.html'),
         reembolso: resolve(__dirname, 'reembolso.html')

@@ -22,13 +22,21 @@ export const fmtDateTime = (ts) => new Date(ts).toLocaleString('pt-BR', { day: '
 /** Dias inteiros até o vencimento (arredonda para cima); negativo se vencido. */
 export const daysLeft = (validUntil, now = Date.now()) => Math.ceil((validUntil - now) / 86_400_000);
 
-/** Mensagem do aviso de vencimento (null = nada a mostrar). */
+/** Mensagem do aviso de acesso (null = nada a mostrar): teste grátis, aviso prévio da cobrança, carência, vencido, perto do fim. */
 export function accessNotice(acc, now = Date.now()) {
-  if (!acc || acc.validUntil == null) return null;
-  if (acc.state === 'expired') return { tone: 'warn', text: 'Seu acesso venceu. Você ainda pode ver seus registros; para voltar a editar e receber lembretes, renove.' };
-  if (acc.state === 'grace') return { tone: 'warn', text: `Seu acesso venceu e está na carência até ${fmtDateTime(acc.graceUntil)}. Renove para continuar sem interrupção.` };
+  if (!acc) return null;
+  const fmtDay = (ts) => new Date(ts).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  if (acc.state === 'trial') {
+    const d = daysLeft(acc.validUntil, now);
+    return { tone: 'info', kind: 'trial', text: d <= 1 ? `Seu teste grátis termina hoje ou amanhã (${fmtDateTime(acc.validUntil)}). Para continuar, o acesso vitalício custa R$ 37,90, em pagamento único via Pix — sem assinatura.` : `Teste grátis: faltam ${d} dias (até ${fmtDateTime(acc.validUntil)}). Depois, o acesso vitalício custa R$ 37,90, pagamento único via Pix — sem assinatura e sem cobrança automática.` };
+  }
+  if (acc.plan === 'trial' && acc.enforcement?.announced && acc.enforcement.from)
+    return { tone: 'info', kind: 'announce', text: `Aviso: a partir de ${fmtDay(acc.enforcement.from)}, o Ninhora passa a ter ${acc.trialDays} dias de teste grátis e depois acesso vitalício pago (R$ 37,90, pagamento único via Pix, sem cobrança automática). Até lá, nada muda para você.` };
+  if (acc.validUntil == null) return null;
+  if (acc.state === 'expired') return { tone: 'warn', kind: 'expired', text: acc.plan === 'trial' ? 'Seu teste grátis terminou. Você ainda pode ver seus registros; para voltar a editar e receber lembretes, garanta o acesso vitalício.' : 'Seu acesso venceu. Você ainda pode ver seus registros; para voltar a editar e receber lembretes, renove.' };
+  if (acc.state === 'grace') return { tone: 'warn', kind: 'grace', text: `${acc.plan === 'trial' ? 'Seu teste terminou' : 'Seu acesso venceu'} e está na carência até ${fmtDateTime(acc.graceUntil)}. Garanta o acesso vitalício para continuar sem interrupção.` };
   const d = daysLeft(acc.validUntil, now);
-  if (d <= 2) return { tone: 'info', text: d <= 1 ? `Seu acesso termina hoje ou amanhã (${fmtDateTime(acc.validUntil)}).` : `Seu acesso termina em ${d} dias (${fmtDateTime(acc.validUntil)}).` };
+  if (d <= 2) return { tone: 'info', kind: 'soon', text: d <= 1 ? `Seu acesso termina hoje ou amanhã (${fmtDateTime(acc.validUntil)}).` : `Seu acesso termina em ${d} dias (${fmtDateTime(acc.validUntil)}).` };
   return null;
 }
 

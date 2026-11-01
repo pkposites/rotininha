@@ -2,6 +2,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { syncAvailable, subscribe, login, logout, syncNow } from './lib/sync.js';
 import { fmtDateTime } from './lib/billing.js';
 import { downloadMyData, deleteEverything } from './lib/privacy.js';
+import { setAccountPrefs } from './lib/trial.js';
 import { pushState, enablePush, disablePush, sendTestPush } from './lib/push.js';
 
 const LABEL = {
@@ -9,7 +10,7 @@ const LABEL = {
   expired: 'Acesso vencido — você ainda pode ver os registros', 'signed-out': 'Este aparelho não está conectado', off: ''
 };
 
-export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRenew, onRecover, onSuggest }) {
+export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRenew, onRecover, onSuggest, onStartTrial, refreshAccount }) {
   const [sync, setSync] = useState({ status: 'off' });
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
@@ -21,6 +22,9 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
   const [pushBusy, setPushBusy] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
   const [dataMsg, setDataMsg] = useState('');
+  const [email, setEmail] = useState('');
+  const [prefMsg, setPrefMsg] = useState('');
+  const savePref = async (patch, okMsg) => { setPrefMsg(''); try { await setAccountPrefs(patch); await refreshAccount?.(); setPrefMsg(okMsg ?? 'Salvo.'); } catch (x) { setPrefMsg(x.message); } };
   useEffect(() => { pushState().then(setPush); }, [sync.status]);
 
   const act = async (fn, okMsg) => {
@@ -57,6 +61,7 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
                 {err && <p class="err" role="alert">{err}</p>}
                 <button class="btn" disabled={busy}>{busy ? 'Conectando…' : 'Conectar'}</button>
                 <button type="button" class="link" onClick={onRecover}>Perdi meu código</button>
+                {onStartTrial && <button type="button" class="btn ghost" onClick={onStartTrial}>Ainda não tenho conta — começar teste grátis</button>}
                 {onBuy && <button type="button" class="btn ghost" onClick={onBuy}>Ainda não tenho acesso — comprar</button>}
               </form>
             ) : (
@@ -68,8 +73,12 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
               {account?.validUntil != null && (
                 <>
                   <strong>Seu acesso</strong>
-                  <p class="muted">{account.state === 'expired' ? 'Venceu em' : 'Válido até'} {fmtDateTime(account.validUntil)}</p>
-                  {onRenew && <button class="btn ghost" onClick={onRenew}>Renovar acesso</button>}
+                  {account.plan === 'paid' && account.state === 'active'
+                    ? <p class="muted">Acesso vitalício ✓ — obrigada por apoiar o Ninhora.</p>
+                    : <>
+                        <p class="muted">{account.state === 'trial' ? 'Teste grátis até' : 'Teste encerrado em'} {fmtDateTime(account.validUntil)}</p>
+                        {onRenew && <button class="btn ghost" onClick={onRenew}>Garantir acesso vitalício · R$ 37,90</button>}
+                      </>}
                 </>
               )}
               </>
@@ -95,6 +104,24 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
             </div>
             {pushMsg && <p role="status" class="muted">{pushMsg}</p>}
             <p class="muted">Notificações dependem da instalação, da permissão e das configurações do aparelho, e podem atrasar ou não chegar. O Ninhora não garante entrega no minuto exato.</p>
+            </section>
+          </>
+        )}
+        {account?.prefs && (
+          <>
+            <h3 class="group-title">Avisos e privacidade</h3>
+            <section class="group">
+              <label class="inline"><input type="checkbox" checked={account.prefs.tips} onChange={(e) => savePref({ tips: e.target.checked })} /> Receber dicas e novidades por notificação</label>
+              <p class="muted">Os lembretes que você cria continuam chegando. Dicas e novidades têm no máximo 1 aviso por dia e nunca de madrugada.</p>
+              <label class="inline"><input type="checkbox" checked={account.prefs.usage} onChange={(e) => savePref({ usage: e.target.checked }, e.target.checked ? 'Obrigada por ajudar!' : 'Pronto: apagamos o histórico de uso.')} /> Ajudar a melhorar o app com estatísticas de uso</label>
+              <p class="muted">Contamos só quantas vezes cada recurso é usado. Sem dados do bebê, sem o que você escreve.</p>
+              <form class="stack" onSubmit={(e) => { e.preventDefault(); savePref({ contactEmail: email.trim() || null }, email.trim() ? 'E-mail salvo.' : 'E-mail removido.'); }}>
+                <label class="field">E-mail para recuperar o acesso {account.prefs.hasEmail ? '(já cadastrado)' : '(opcional)'}
+                  <input type="email" value={email} onInput={(e) => setEmail(e.target.value)} placeholder={account.prefs.hasEmail ? 'digite para trocar' : 'seu@email.com'} autocomplete="email" />
+                </label>
+                <button class="btn ghost">Salvar e-mail</button>
+              </form>
+              {prefMsg && <p role="status" class="muted">{prefMsg}</p>}
             </section>
           </>
         )}

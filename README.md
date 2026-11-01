@@ -11,6 +11,7 @@ Uma ajudinha na sua rotina de mãe. PWA + Cloudflare Worker + Pix. Veja `docs/PR
 - [x] Marco 5 — onboarding, modelos editáveis, orientação de instalação e Guia de 7 dias (conteúdo **pendente de revisão profissional**)
 - [x] Marco 6 — landing page com demonstração animada, consentimento, minutas legais
 - [x] Marco 7 — caixa de sugestões e métricas agregadas
+- [x] Fase Ninhora — teste grátis (3 dias, cobrança com aviso prévio), notificações (campanhas + automações + painel `/admin/`), análise de uso, saltos de desenvolvimento e 5 sons para a soneca: `docs/NINHORA.md`
 - [x] Marco 8 — endurecimento: LGPD (exportar/apagar/retenção), CSP, acessibilidade, CI, orçamento de tamanho
 
 Status de cada critério do PRD: `docs/ACEITE.md` · pendências fora do código: `docs/pendencias-lancamento.md` · como rodar: `docs/DEV.md`.

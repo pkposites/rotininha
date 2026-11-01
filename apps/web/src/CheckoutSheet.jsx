@@ -12,7 +12,7 @@ const copy = async (text) => {
 export function CheckoutSheet({ renewal, resume, onClose, onDone }) {
   const [step, setStep] = useState(resume ? 'pix' : 'form'); // form | pix | claiming | code | renewed
   const [plans, setPlans] = useState(null);
-  const [plan, setPlan] = useState(renewal ? '30d' : '7d');
+  const [plan, setPlan] = useState('life');
   const [email, setEmail] = useState('');
   const [cpf, setCpf] = useState('');
   const [err, setErr] = useState('');
@@ -83,17 +83,12 @@ export function CheckoutSheet({ renewal, resume, onClose, onDone }) {
 
   return (
     <div class="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && step !== 'code' && onClose()}>
-      <div class="sheet" role="dialog" aria-modal="true" aria-label={renewal ? 'Renovar acesso' : 'Comprar acesso'}>
+      <div class="sheet" role="dialog" aria-modal="true" aria-label="Comprar acesso vitalício">
         {step === 'form' && (
           <form class="stack" onSubmit={submit}>
-            <h2>{renewal ? 'Renovar acesso' : 'Seu acesso ao Ninhora'}</h2>
-            {renewal && list.length > 0 && (
-              <div class="chips" role="radiogroup" aria-label="Período">
-                {list.map((p) => <button type="button" role="radio" aria-checked={plan === p.id} class="chip" aria-pressed={plan === p.id} onClick={() => setPlan(p.id)}>{p.label} · {brl(p.cents)}</button>)}
-              </div>
-            )}
-            {!renewal && chosen && <p><strong>{chosen.label} de acesso por {brl(chosen.cents)}</strong></p>}
-            <p class="muted">Acesso por {chosen?.label ?? '…'}. Renovação opcional, feita manualmente por Pix. <strong>Não é assinatura</strong> e não há cobrança automática.</p>
+            <h2>{'Acesso vitalício ao Ninhora'}</h2>
+            {chosen && <p><strong>{chosen.label} por {brl(chosen.cents)}</strong></p>}
+            <p class="muted">Pagamento único por Pix, sem mensalidade. <strong>Não é assinatura</strong> e não há cobrança automática nem renovação.</p>
             <label>E-mail{renewal && ' (opcional)'}
               <input type="email" value={email} onInput={(e) => setEmail(e.target.value)} autocomplete="email" required={!renewal} />
             </label>
@@ -148,8 +143,8 @@ export function CheckoutSheet({ renewal, resume, onClose, onDone }) {
 
         {step === 'renewed' && (
           <div class="stack">
-            <h2>Acesso renovado ✓</h2>
-            <p>{until ? `Seu acesso vale até ${fmtDateTime(until)}.` : 'Seu acesso foi renovado.'}</p>
+            <h2>Acesso garantido ✓</h2>
+            <p>Seu acesso vitalício está liberado. Obrigada por apoiar o Ninhora!</p>
             <button class="btn" onClick={onClose}>Continuar</button>
           </div>
         )}
