@@ -21,7 +21,7 @@ const approve = async (status = 'approved') => {
     const ctx = await b.newContext({ viewport: { width: 390, height: 900 }, locale: 'pt-BR', timezoneId: 'America/Sao_Paulo' });
     await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP });
     const p = await ctx.newPage(); p.errs = []; p.on('pageerror', (e) => p.errs.push(e.message));
-    await p.goto(url); await p.getByText('Pular tudo').click({ timeout: 2500 }).catch(() => {});
+    await p.goto(url); await p.getByText('Pular tudo').click({ timeout: 2500 }).catch(() => {}); await p.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
     p.w = (f, arg, t = 15000) => p.waitForFunction(f, arg, { timeout: t }).then(() => true, () => false);
     return p;
   };
@@ -77,7 +77,7 @@ const approve = async (status = 'approved') => {
 
   // ---------- recuperação ----------
   await A.click('[aria-label="Ajustes"]'); await A.click('text=Sair deste aparelho');
-  await A.click('text=Perdi meu código');
+  await A.getByRole('button', { name: 'Perdi meu acesso' }).click();
   await A.fill('input[type=email]', email); await A.click('text=Enviar link');
   ok(await A.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Se houver uma conta')), 'recuperação: mensagem neutra');
   const mails = (await (await fetch(`${API}/v1/dev/outbox?to=${encodeURIComponent(email)}`)).json()).messages;
@@ -91,7 +91,7 @@ const approve = async (status = 'approved') => {
   ok(code2 !== code, 'código novo é diferente');
   const old = await fetch(API + '/v1/sessions', { method: 'POST', headers: { 'content-type': 'application/json', 'CF-Connecting-IP': '10.88.1.1' }, body: JSON.stringify({ code, deviceId: 'dev12345678' }) });
   ok(old.status === 401, 'código antigo não funciona mais');
-  await B.click('text=Já guardei, continuar');
+  await B.click('text=Já guardei, continuar'); await B.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
   await B.click('[aria-label="Ajustes"]');
   ok(await B.w(() => /Sincronizado/.test(document.querySelector('.sheet')?.innerText)), 'novo aparelho conectado após recuperação');
   await B.click('.sheet >> text=Fechar');

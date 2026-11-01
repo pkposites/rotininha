@@ -6,7 +6,7 @@ const API = 'http://localhost:8787', APP = 'http://localhost:4173';
   const ctx = await b.newContext({ viewport: { width: 390, height: 900 }, locale: 'pt-BR', acceptDownloads: true });
   const p = await ctx.newPage(); p.errs = []; p.on('pageerror', (e) => p.errs.push(e.message));
   p.w = (f, arg, t = 8000) => p.waitForFunction(f, arg, { timeout: t }).then(() => true, () => false);
-  await p.goto(APP + '/app/'); await p.getByText('Pular tudo').click({ timeout: 3000 });
+  await p.goto(APP + '/app/'); await p.getByText('Pular tudo').click({ timeout: 3000 }); await p.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
 
   // sem conexão: só apagar neste aparelho
   await p.click('[aria-label="Ajustes"]');
@@ -14,7 +14,7 @@ const API = 'http://localhost:8787', APP = 'http://localhost:4173';
   await p.click('.sheet >> text=Fechar');
 
   const { code } = await (await fetch(API + '/v1/dev/households', { method: 'POST' })).json();
-  await p.click('[aria-label="Ajustes"]'); await p.fill('input[placeholder^="XXXXX"]', code); await p.click('text=Conectar');
+  await p.click('[aria-label="Ajustes"]'); await p.getByRole('button', { name: 'Entrar com código de acesso' }).click(); await p.fill('input[placeholder^="XXXXX"]', code); await p.click('text=Conectar');
   await p.w(() => document.querySelector('.sheet [role=status]')?.innerText.includes('Sincronizado'));
   await p.click('.sheet >> text=Fechar');
   await p.click('.actions >> text=Mamou'); await p.waitForTimeout(1500);

@@ -15,6 +15,15 @@ export function validCpf(c) {
   const dv = (n) => { let s = 0; for (let i = 0; i < n; i++) s += +d[i] * (n + 1 - i); const r = (s * 10) % 11; return r === 10 ? 0 : r; };
   return dv(9) === +d[9] && dv(10) === +d[10];
 }
+/** Máscara de WhatsApp brasileiro: (11) 91234-5678. */
+export function maskPhone(v) {
+  const d = v.replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '').slice(0, 11);
+  if (d.length <= 2) return d ? `(${d}` : '';
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+export const validPhone = (v) => /^[1-9]{2}9?\d{8}$/.test(v.replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '')) && !(v.replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '').length === 11 && v.replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '')[2] !== '9');
 export const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim());
 
 export const fmtDateTime = (ts) => new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });

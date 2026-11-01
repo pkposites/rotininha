@@ -14,9 +14,9 @@ const sql = (q) => { const out = execFileSync('npx', ['wrangler', 'd1', 'execute
   const mamadas = () => p.evaluate(() => new Promise((res) => { const r = indexedDB.open('rotininha'); r.onsuccess = () => { const q = r.result.transaction('events').objectStore('events').getAll(); q.onsuccess = () => res(q.result.filter((e) => e.type === 'mamada' && !e.deleted).length); }; }));
 
   // 1) primeiro acesso sem conta
-  await p.goto(APP + '/app/'); await p.getByText('Pular tudo').click({ timeout: 4000 }); await p.waitForSelector('.actions'); await p.waitForTimeout(600);
+  await p.goto(APP + '/app/'); await p.getByText('Pular tudo').click({ timeout: 4000 }); await p.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {}); await p.waitForSelector('.actions'); await p.waitForTimeout(600);
   ok(await p.getByText('Seus registros estão só neste aparelho').first().isVisible(), 'sem conta: aviso discreto de que os registros estão só no aparelho');
-  ok(await p.locator('.install-card').count() === 1 && !(await p.locator('.install-card').evaluate((e) => e.open)), 'instalação aparece compacta (recolhida)');
+  ok(await p.locator('.install-card').count() === 1 && (await p.locator('.install-card').boundingBox()).height < 260, 'instalação aparece como convite compacto');
   const top = await p.locator('.install-card').boundingBox(); const rem = await p.locator('[aria-label="Próximos lembretes"]').boundingBox();
   ok(rem.y < top.y, 'lembretes vêm antes do convite de instalação');
 
@@ -77,7 +77,7 @@ const sql = (q) => { const out = execFileSync('npx', ['wrangler', 'd1', 'execute
 
   // 6) instalação: dispensar persiste
   await p.locator('.tab:has-text("Hoje")').click();
-  await p.locator('.install-card summary').click(); ok(/Instalar|Chrome|computador|⋮/.test(await p.locator('.install-card').innerText()), 'instalação expande com instruções');
+  await p.locator('.install-card >> text=Ver como instalar').click(); ok(await p.locator('.install-pop').count() === 1, 'convite abre o pop-up com o passo a passo'); await p.locator('.install-pop >> text=Agora não').click(); await p.waitForTimeout(400);
   await p.getByRole('button', { name: 'Dispensar' }).click(); await p.waitForTimeout(700); await p.reload(); await p.waitForSelector('.actions'); await p.waitForTimeout(600);
   ok(await p.locator('.install-card').count() === 0, 'dispensa do convite de instalação persiste');
 
@@ -86,15 +86,18 @@ const sql = (q) => { const out = execFileSync('npx', ['wrangler', 'd1', 'execute
   await p.getByRole('button', { name: 'Criar conta' }).click();
   const t = await p.locator('.sheet').innerText();
   ok(/Acesso grátis no lançamento/.test(t) && /não tem data para acabar/.test(t) && /pelo menos 7 dias de antecedência/.test(t) && !/Seu teste começou/.test(t), 'texto do acesso grátis coerente com a regra real (lançamento, sem prazo)');
+  const wa = `(11) 9${String(Math.floor(Math.random() * 1e8)).padStart(8, '0').replace(/^(\d{4})(\d{4})$/, '$1-$2')}`;
+  await p.fill('.sheet input[type=tel]', wa);
+  await p.fill('.sheet input[autocomplete=new-password]', '1234');
   await p.getByRole('button', { name: 'Criar minha conta grátis' }).click();
-  ok(await p.w(() => document.querySelector('.access-code')?.innerText.length > 15), 'código de acesso entregue');
+  ok(/pelo menos 8 caracteres/.test(await p.locator('.sheet .err').innerText()), 'senha curta é recusada com explicação');
+  await p.fill('.sheet input[autocomplete=new-password]', 'senha de teste 2026');
+  await p.getByRole('button', { name: 'Criar minha conta grátis' }).click();
+  ok(await p.w(() => /Conta criada/.test(document.querySelector('.sheet')?.innerText ?? '')), 'conta criada');
   const t2 = await p.locator('.sheet').innerText();
-  ok(/Conta criada/.test(t2) && /Guarde este código/.test(t2) && /só agora/.test(t2) && !/Seu teste começou/.test(t2), 'mensagem pós-criação clara');
-  const code = await p.locator('.access-code').innerText();
-  await p.getByRole('button', { name: 'Copiar código' }).click();
-  ok(await p.w(() => /Código copiado/.test(document.querySelector('.sheet [role=status]')?.innerText ?? '')), 'confirmação clara ao copiar');
-  ok((await p.evaluate(() => navigator.clipboard.readText())) === code, 'código está na área de transferência');
-  await p.getByRole('button', { name: 'Já guardei, continuar' }).click();
+  ok(/Como entrar em outro aparelho/.test(t2) && /senha que você acabou de criar/.test(t2) && /Anote a senha/.test(t2) && !/Seu teste começou/.test(t2), 'mensagem pós-criação: entra com WhatsApp e senha');
+  ok(await p.locator('.access-code').count() === 0, 'nenhum código é exibido');
+  await p.getByRole('button', { name: 'Entendi, continuar' }).click();
   await p.click('[aria-label="Ajustes"]');
   ok(await p.w(() => /Sincronizado/.test(document.querySelector('.sheet')?.innerText)), 'Ajustes mostra Sincronizado');
   ok(/Acesso grátis do lançamento/.test(await p.locator('.sheet').innerText()), 'Ajustes mostra o tipo de acesso');
@@ -112,7 +115,13 @@ const sql = (q) => { const out = execFileSync('npx', ['wrangler', 'd1', 'execute
   ok(await p.w(() => /E-mail salvo/.test(document.querySelector('.sheet')?.innerText)), 'e-mail de recuperação salvo');
   const em = await p.locator('input[type=email]').inputValue();
   await p.getByRole('button', { name: 'Sair deste aparelho' }).click(); await p.waitForTimeout(800);
-  await p.getByRole('button', { name: 'Perdi meu código' }).click();
+  ok(await p.locator('.sheet input[type=tel]').count() === 1, 'sem conexão: entrar com WhatsApp e senha é o caminho principal');
+  await p.fill('.sheet input[type=tel]', wa); await p.fill('.sheet input[type=password]', 'senha errada 123'); await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  ok(await p.w(() => /não conferem/.test(document.querySelector('.sheet .err')?.innerText ?? '')), 'senha errada: mensagem clara');
+  await p.fill('.sheet input[type=password]', 'senha de teste 2026'); await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  ok(await p.w(() => /Sincronizado/.test(document.querySelector('.sheet')?.innerText ?? ''), null, 15000), 'entrou com WhatsApp e senha');
+  await p.getByRole('button', { name: 'Sair deste aparelho' }).click(); await p.waitForTimeout(800);
+  await p.getByRole('button', { name: 'Perdi meu acesso' }).click();
   await p.fill('.sheet input[type=email]', em); await p.getByRole('button', { name: 'Enviar link' }).click();
   ok(await p.w(() => /Se houver uma conta/.test(document.querySelector('[role=dialog]')?.innerText ?? '')), 'recuperação: mensagem neutra');
   const mails = (await (await fetch(`${API}/v1/dev/outbox?to=${encodeURIComponent(em)}`)).json()).messages;

@@ -42,12 +42,15 @@ export async function enablePush(privacy = false) {
   const { publicKey } = await keyRes.json();
   const reg = await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
+  // Inscrição criada com outra chave do servidor (ex.: chaves trocadas) é recusada pelo serviço de push: refaz com a chave atual.
+  const same = (a, b) => !!a && a.byteLength === b.length && new Uint8Array(a).every((v, i) => v === b[i]);
+  if (sub && !same(sub.options?.applicationServerKey, b64uToBytes(publicKey))) { try { await sub.unsubscribe(); } catch {} sub = null; }
   sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(publicKey) });
 
   const json = sub.toJSON();
   let r;
   try { r = await authedCall('/v1/push/subscribe', { endpoint: json.endpoint, keys: json.keys, privacy }); }
-  catch (e) { if (e.message === 'not-connected') throw new Error('Conecte este aparelho com o código de acesso primeiro.'); throw e; }
+  catch (e) { if (e.message === 'not-connected') throw new Error('Entre ou crie a conta primeiro: sem conta, o servidor não sabe para onde enviar os lembretes.'); throw e; }
   if (r.status !== 201) throw new Error('Não foi possível ativar agora. Tente novamente em instantes.');
   await setMeta('pushPrivacy', !!privacy);
   track('push_enabled', { once: true });
@@ -63,7 +66,8 @@ export async function disablePush() {
 }
 
 export async function sendTestPush() {
-  const r = await authedCall('/v1/push/test', {});
+  let r;
+  try { r = await authedCall('/v1/push/test', {}); } catch (e) { if (e.message === 'not-connected') throw new Error('Este aparelho não está conectado a uma conta. Entre ou crie a conta primeiro.'); throw e; }
   if (r.status === 429) throw new Error('Muitos testes seguidos. Tente mais tarde.');
   if (r.status !== 200) throw new Error('Não foi possível enviar o teste.');
   return r.data.sent;

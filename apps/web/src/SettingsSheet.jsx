@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'preact/hooks';
-import { syncAvailable, subscribe, login, logout, syncNow } from './lib/sync.js';
-import { fmtDateTime } from './lib/billing.js';
+import { syncAvailable, subscribe, login, loginPassword, logout, syncNow } from './lib/sync.js';
+import { fmtDateTime, maskPhone, validPhone } from './lib/billing.js';
 import { downloadMyData, deleteEverything } from './lib/privacy.js';
-import { setAccountPrefs } from './lib/trial.js';
+import { setAccountPrefs, setPassword } from './lib/trial.js';
 import { pushState, enablePush, disablePush, sendTestPush } from './lib/push.js';
 
 const LABEL = {
@@ -15,6 +15,10 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [wa, setWa] = useState('');
+  const [pw, setPw] = useState('');
+  const [byCode, setByCode] = useState(false);
+  const [pwMsg, setPwMsg] = useState('');
   useEffect(() => subscribe(setSync), []);
   const [push, setPush] = useState('idle');
   const [privacy, setPrivacy] = useState(false);
@@ -34,6 +38,19 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
     setPush(await pushState()); setPushBusy(false);
   };
 
+  const connectPw = async (e) => {
+    e.preventDefault(); setErr('');
+    if (!validPhone(wa)) return setErr('Confira o WhatsApp: DDD + número, por exemplo (11) 91234-5678.');
+    setBusy(true);
+    try { await loginPassword(wa, pw); setPw(''); } catch (x) { setErr(x.message); }
+    setBusy(false);
+  };
+  const savePw = async (e) => {
+    e.preventDefault(); setPwMsg('');
+    if (!validPhone(wa)) return setPwMsg('Confira o WhatsApp: DDD + número.');
+    if (pw.length < 8) return setPwMsg('A senha precisa ter pelo menos 8 caracteres.');
+    try { await setPassword(wa, pw); setPw(''); await refreshAccount?.(); setPwMsg('Pronto! Agora você entra em outro aparelho com o WhatsApp e esta senha.'); } catch (x) { setPwMsg(x.message); }
+  };
   const connect = async (e) => {
     e.preventDefault(); setErr(''); setBusy(true);
     try { await login(code); setCode(''); } catch (x) { setErr(x.message); }
@@ -55,16 +72,34 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
           <>
             <p role="status" class="muted">{LABEL[sync.status]}{sync.lastSyncAt && sync.status === 'idle' ? ` · ${new Date(sync.lastSyncAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}</p>
             {sync.status === 'signed-out' ? (
+              !byCode ? (
+              <form onSubmit={connectPw} class="stack">
+                <label>WhatsApp
+                  <input type="tel" inputMode="tel" value={wa} onInput={(e) => setWa(maskPhone(e.target.value))} autocomplete="tel" placeholder="(11) 91234-5678" required />
+                </label>
+                <label>Senha de acesso
+                  <input type="password" value={pw} onInput={(e) => setPw(e.target.value)} autocomplete="current-password" required />
+                </label>
+                {err && <p class="err" role="alert">{err}</p>}
+                <button class="btn" disabled={busy}>{busy ? 'Entrando…' : 'Entrar'}</button>
+                <p class="muted">Esqueceu a senha? Ainda não há recuperação automática. Se você cadastrou e-mail, toque em “Perdi meu acesso”.</p>
+                <button type="button" class="link" onClick={() => { setErr(''); setByCode(true); }}>Entrar com código de acesso</button>
+                <button type="button" class="link" onClick={onRecover}>Perdi meu acesso</button>
+                {onStartTrial && <button type="button" class="btn ghost" onClick={onStartTrial}>Criar conta grátis</button>}
+                {onBuy && <button type="button" class="btn ghost" onClick={onBuy}>Ainda não tenho acesso — comprar</button>}
+              </form>
+              ) : (
               <form onSubmit={connect} class="stack">
                 <label>Código de acesso
                   <input value={code} onInput={(e) => setCode(e.target.value)} autocomplete="off" autocapitalize="characters" spellcheck={false} placeholder="XXXXX-XXXXX-XXXXX-XXXXX" required />
                 </label>
                 {err && <p class="err" role="alert">{err}</p>}
                 <button class="btn" disabled={busy}>{busy ? 'Conectando…' : 'Conectar'}</button>
+                <button type="button" class="link" onClick={() => { setErr(''); setByCode(false); }}>Entrar com WhatsApp e senha</button>
                 <button type="button" class="link" onClick={onRecover}>Perdi meu código</button>
-                {onStartTrial && <button type="button" class="btn ghost" onClick={onStartTrial}>Criar conta grátis</button>}
                 {onBuy && <button type="button" class="btn ghost" onClick={onBuy}>Ainda não tenho acesso — comprar</button>}
               </form>
+              )
             ) : (
               <>
               <div class="row">
@@ -72,6 +107,18 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
                 <button class="btn ghost" onClick={logout}>Sair deste aparelho</button>
               </div>
               <p class="muted">Para entrar de novo, ou em outro aparelho, você vai precisar do código de acesso que apareceu ao criar a conta.</p>
+              {account?.prefs && (
+                <details class="fold" open={!account.prefs.hasPassword}>
+                  <summary>{account.prefs.hasPassword ? 'Alterar senha de acesso' : 'Definir senha de acesso'}</summary>
+                  <form class="stack" onSubmit={savePw}>
+                    <p class="muted">{account.prefs.hasPassword ? 'Troque o WhatsApp ou a senha usados para entrar.' : 'Com WhatsApp e senha você entra em outro aparelho sem perder seus registros.'}</p>
+                    <label>WhatsApp<input type="tel" inputMode="tel" value={wa} onInput={(e) => setWa(maskPhone(e.target.value))} autocomplete="tel" placeholder="(11) 91234-5678" required /></label>
+                    <label>Nova senha<input type="password" value={pw} onInput={(e) => setPw(e.target.value)} autocomplete="new-password" minLength={8} required /></label>
+                    <button class="btn ghost">Salvar senha</button>
+                    {pwMsg && <p role="status" class="muted">{pwMsg}</p>}
+                  </form>
+                </details>
+              )}
               {account?.plan === 'trial' && account.validUntil == null && (
                 <>
                   <strong>Seu acesso</strong>
@@ -98,7 +145,8 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
           <>
             <h3 class="group-title">Lembretes no aparelho</h3>
             <section class="group">
-            {push === 'active' && <p role="status" class="muted">Notificações ativadas neste aparelho.</p>}
+            {(sync.status === 'signed-out') && (push === 'active' || push === 'idle') && <p class="notice-inline" role="status">Para os lembretes chegarem, este aparelho precisa estar <strong>conectado a uma conta</strong>. Crie a conta ou entre acima; depois ative as notificações aqui.</p>}
+            {push === 'active' && sync.status !== 'signed-out' && <p role="status" class="muted">Notificações ativadas neste aparelho.</p>}
             {push === 'ios-install' && <p class="muted">No iPhone, os lembretes só funcionam com o Ninhora instalado: toque em Compartilhar → Adicionar à Tela de Início, depois abra o app por lá e volte aqui.</p>}
             {push === 'unsupported' && <p class="muted">Este navegador não oferece notificações. Você ainda pode registrar e consultar tudo; os lembretes ficam visíveis no app.</p>}
             {push === 'denied' && <p class="muted">As notificações estão bloqueadas para o Ninhora. Libere nas configurações do aparelho ou do navegador.</p>}
@@ -106,8 +154,8 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
               <label class="inline"><input type="checkbox" checked={privacy} disabled={push === 'active'} onChange={(e) => setPrivacy(e.target.checked)} /> Esconder detalhes na tela de bloqueio</label>
             )}
             <div class="row">
-              {push === 'idle' && <button class="btn" disabled={pushBusy} onClick={() => act(() => enablePush(privacy), 'Pronto! Vamos testar?')}>Ativar lembretes neste aparelho</button>}
-              {push === 'active' && <button class="btn" disabled={pushBusy} onClick={() => act(sendTestPush, (n) => n ? 'Notificação enviada. Ela deve aparecer em instantes.' : 'Nada foi enviado: ative novamente os lembretes neste aparelho.')}>Enviar notificação de teste</button>}
+              {push === 'idle' && <button class="btn" disabled={pushBusy || sync.status === 'signed-out'} onClick={() => act(() => enablePush(privacy), 'Pronto! Vamos testar?')}>Ativar lembretes neste aparelho</button>}
+              {push === 'active' && <button class="btn" disabled={pushBusy || sync.status === 'signed-out'} onClick={() => act(sendTestPush, (n) => n ? 'Notificação enviada. Ela deve aparecer em instantes.' : 'Nada foi enviado: ative novamente os lembretes neste aparelho.')}>Enviar notificação de teste</button>}
               {push === 'active' && <button class="btn ghost" disabled={pushBusy} onClick={() => act(disablePush, 'Notificações desativadas neste aparelho.')}>Desativar</button>}
             </div>
             {pushMsg && <p role="status" class="muted">{pushMsg}</p>}

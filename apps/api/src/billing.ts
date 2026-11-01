@@ -245,7 +245,7 @@ export async function claimAccess(env: Env, id: string, pollToken: unknown, devi
 
 export async function accountState(env: Env, householdId: string, now: number) {
   const h = await env.DB.prepare(
-    `SELECT valid_until, grace_until, plan, trial_ends_at, tips_opt_in, usage_opt_in, baby_birth_date, (contact_email IS NOT NULL) AS has_email
+    `SELECT valid_until, grace_until, plan, trial_ends_at, tips_opt_in, usage_opt_in, baby_birth_date, (contact_email IS NOT NULL) AS has_email, (pw_hash IS NOT NULL) AS has_pw
        FROM households WHERE id = ?`
   ).bind(householdId).first<any>();
   if (!h) return null;
@@ -257,7 +257,7 @@ export async function accountState(env: Env, householdId: string, now: number) {
     state, plan: h.plan, validUntil: h.valid_until, graceUntil: h.grace_until, trialEndsAt: h.trial_ends_at,
     trialDays: cfg.days,
     enforcement: { active: enforcementActive(cfg, now), from: cfg.enforceFrom, announced, noticeDays: cfg.noticeDays },
-    prefs: { tips: !!h.tips_opt_in, usage: !!h.usage_opt_in, babyBirthDate: h.baby_birth_date ?? null, hasEmail: !!h.has_email }
+    prefs: { tips: !!h.tips_opt_in, usage: !!h.usage_opt_in, babyBirthDate: h.baby_birth_date ?? null, hasEmail: !!h.has_email, hasPassword: !!h.has_pw }
   };
 }
 

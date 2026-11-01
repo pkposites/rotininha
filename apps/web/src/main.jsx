@@ -25,7 +25,7 @@ import { listEvents, listTasks } from './lib/db.js';
 import { getAccount, accessNotice, pendingCheckout } from './lib/billing.js';
 import { TaskSheet } from './TaskSheet.jsx';
 import { ReminderSheet } from './ReminderSheet.jsx';
-import { InstallGuide } from './InstallGuide.jsx';
+import { InstallPopup } from './InstallPopup.jsx';
 import { MiniPlayer } from './MiniPlayer.jsx';
 import { isStandalone } from './lib/push.js';
 import { registeredMessage } from './lib/ux.js';
@@ -85,7 +85,7 @@ function LastCard({ type, events, now, onEdit }) {
   );
 }
 
-function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedbackNode, onHelp, syncStatus, onConnect, hideLocal }) {
+function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedbackNode, onHelp, syncStatus, onConnect, hideLocal, onInstall }) {
   const { events, quickLog } = store;
   const [toast, setToast] = useState(null);
   const sleeping = openSleep(events);
@@ -152,12 +152,11 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedba
         <button class="btn ghost" onClick={onHelp}>Ver dicas práticas</button>
       </section>
       {showInstall && (
-        <details class="card install-card" aria-label="Instalar o app">
-          <summary>📲 Leve o Ninhora para a tela inicial</summary>
-          <p class="muted">Abra pelo ícone, sem procurar o link toda vez. Instalar não ativa notificações automaticamente.</p>
-          <InstallGuide />
-          <button class="link" onClick={async () => { setShowInstall(false); await setPref('installDismissed', true); }}>Dispensar</button>
-        </details>
+        <section class="card install-card" aria-label="Instalar o app">
+          <div class="card-head"><strong>📲 Instalar na tela inicial</strong><button class="link" onClick={async () => { setShowInstall(false); await setPref('installDismissed', true); }}>Dispensar</button></div>
+          <p class="muted">Abra como um app, sem procurar o link. Mostramos o passo a passo para o seu celular.</p>
+          <button class="btn ghost" onClick={onInstall}>Ver como instalar</button>
+        </section>
       )}
     </>
   );
@@ -219,6 +218,8 @@ function App() {
   const [fbPrefs, setFbPrefs] = useState({ dismissedAt: null, submittedAt: null });
   useEffect(() => { track('app_first_open', { once: true }); count('app_open'); }, []);
   const [trialOpen, setTrialOpen] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
+  const offerInstall = async () => { if (!isStandalone() && !(await getPref('installDismissed', false)) && Date.now() > (await getPref('installSnoozeUntil', 0))) setInstallOpen(true); };
   useEffect(() => { (async () => setFbPrefs({ dismissedAt: await getPref('feedbackDismissedAt'), submittedAt: await getPref('feedbackSubmittedAt') }))(); }, [feedbackOpen]);
   // Primeira abertura: onboarding só para quem ainda não tem dados nem já o concluiu.
   useEffect(() => {
@@ -291,7 +292,7 @@ function App() {
       <main>
         {store.error && <p class="card err" role="alert">{store.error}</p>}
         {notice && <section class={`card notice ${notice.tone}`} role="status"><p>{notice.text}</p>{FLAGS.payments && <button class="btn" onClick={() => setCheckout({ renewal: true })}>Garantir acesso</button>}</section>}
-        {tab === 'hoje' && <Hoje hideLocal={onboarding} syncStatus={syncStatus} onConnect={() => setTrialOpen(true)} onHelp={() => { setTab('guia'); count('help_card_opened'); }} store={store} rem={rem} now={now} onLogged={() => { setLoggedThisSession(true); track('first_record', { once: true }); }}
+        {tab === 'hoje' && <Hoje onInstall={() => setInstallOpen(true)} hideLocal={onboarding} syncStatus={syncStatus} onConnect={() => setTrialOpen(true)} onHelp={() => { setTab('guia'); count('help_card_opened'); }} store={store} rem={rem} now={now} onLogged={() => { setLoggedThisSession(true); track('first_record', { once: true }); }}
           feedbackNode={showFeedbackCard ? <FeedbackCard onOpen={() => setFeedbackOpen(true)} onDismiss={async () => { await setPref('feedbackDismissedAt', Date.now()); setFbPrefs((f) => ({ ...f, dismissedAt: Date.now() })); track('feedback_card_dismissed'); }} /> : null} onEdit={setEditing} onOpenItem={(i) => setOpenOcc(i.id)} onNewTask={() => setTaskEdit({ task: makeTask(), isNew: true })} />}
         {tab === 'historico' && <Historico events={store.events} onEdit={setEditing} />}
         {tab === 'saltos' && <LeapsTab tz={rem.tz} />}
@@ -309,7 +310,7 @@ function App() {
           </button>
         ))}
       </nav>
-      {onboarding && <Onboarding store={store} rem={rem} connected={syncStatus !== 'signed-out' && syncStatus !== 'off'} onFinish={() => setOnboarding(false)} />}
+      {onboarding && <Onboarding store={store} rem={rem} connected={syncStatus !== 'signed-out' && syncStatus !== 'off'} onFinish={() => { setOnboarding(false); offerInstall(); }} />}
       {openItem && (
         <ReminderSheet item={openItem} now={now} onClose={() => setOpenOcc(null)}
           onDone={() => { count('reminder_done'); rem.saveOcc(markDone(openItem)); setOpenOcc(null); }}
@@ -323,6 +324,7 @@ function App() {
           onSave={async (t) => { await rem.saveTask(t); setTaskEdit(null); }}
           onDelete={async (id) => { await rem.removeTask(id); setTaskEdit(null); }} />
       )}
+      {installOpen && !recover && !checkout && !trialOpen && <InstallPopup onClose={() => setInstallOpen(false)} />}
       {feedbackOpen && <FeedbackSheet onClose={() => setFeedbackOpen(false)} />}
       {settings && <SettingsSheet onClose={() => setSettings(false)} night={night} setNight={setNight} account={account}
         onSuggest={() => { setSettings(false); setFeedbackOpen(true); }}

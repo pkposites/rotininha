@@ -1,7 +1,6 @@
 import { useState } from 'preact/hooks';
 import { AGE_BANDS, TEMPLATES, tasksFromTemplates } from './lib/templates.js';
 import { setPref } from './lib/prefs.js';
-import { InstallGuide } from './InstallGuide.jsx';
 import { enablePush } from './lib/push.js';
 import { TYPES } from './lib/events.js';
 import { TrialFlow } from './TrialFlow.jsx';
@@ -42,8 +41,8 @@ export function Onboarding({ store, rem, connected, onFinish }) {
     setBusy(false); setStep('first');
   };
   const withTrial = syncAvailable && !connected;
-  const ORDER = withTrial ? ['welcome', 'age', 'how', 'first', 'trial', 'install'] : ['welcome', 'age', 'how', 'first', 'install'];
-  const afterFirst = () => setStep(withTrial ? 'trial' : 'install');
+  const ORDER = withTrial ? ['welcome', 'age', 'how', 'first', 'trial'] : ['welcome', 'age', 'how', 'first'];
+  const afterFirst = () => withTrial ? setStep('trial') : finish();
   const idx = ORDER.indexOf(step === 'templates' ? 'how' : step);
 
   return (
@@ -119,25 +118,10 @@ export function Onboarding({ store, rem, connected, onFinish }) {
 
         {step === 'trial' && (
           <Shell step={step} emoji="🎁" title="Guardar seus registros" actions={<></>}>
-            <TrialFlow compact onDone={() => setStep('install')} onSkip={() => setStep('install')} />
+            <TrialFlow compact onDone={finish} onSkip={finish} />
           </Shell>
         )}
 
-        {step === 'install' && (
-          <Shell step={step} emoji="📲" title="Instalar e ativar lembretes" lead="Instalado, o Ninhora abre como um app e pode enviar lembretes."
-            actions={<button class="btn" onClick={finish}>Concluir</button>}>
-            <div class="card"><InstallGuide /></div>
-            {connected
-              ? <button class="btn ghost" disabled={busy} onClick={async () => {
-                  setBusy(true); setMsg('');
-                  try { await enablePush(false); setMsg('Lembretes ativados! 🎉'); } catch (e) { setMsg(e.message); }
-                  setBusy(false);
-                }}>Ativar lembretes neste aparelho</button>
-              : <p class="muted">Para receber lembretes no aparelho, conecte com o seu código em Ajustes — dá para fazer depois.</p>}
-            {msg && <p role="status" class="muted">{msg}</p>}
-            <p class="muted">Notificações dependem da instalação, da permissão e das configurações do aparelho.</p>
-          </Shell>
-        )}
       </div>
     </div>
   );

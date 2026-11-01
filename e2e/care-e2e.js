@@ -4,7 +4,7 @@ const { chromium } = require('playwright');
   const ctx = await b.newContext({ viewport: { width: 390, height: 800 }, locale: 'pt-BR' });
   const p = await ctx.newPage(); const errs = [];
   p.on('pageerror', e => errs.push(e.message));
-  await p.goto('http://localhost:4173/app/'); await p.getByText('Pular tudo').click({ timeout: 2500 }).catch(() => {});
+  await p.goto('http://localhost:4173/app/'); await p.getByText('Pular tudo').click({ timeout: 2500 }).catch(() => {}); await p.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
   const w = (f, arg) => p.waitForFunction(f, arg, { timeout: 2500 }).then(() => true, () => false);
   const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) process.exitCode = 1; };
 

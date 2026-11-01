@@ -154,7 +154,7 @@ test('preferências: dicas, nascimento (só para a idade em semanas), e-mail de 
   const f = await household({ push: false });
   assert.equal((await post('/v1/settings', { tips: false, babyBirthDate: '2026-09-20', contactEmail: 'Mae@Exemplo.com' }, f.tok)).status, 200);
   const a = await json(await post('/v1/billing/account', {}, f.tok));
-  assert.deepEqual(a.prefs, { tips: false, usage: true, babyBirthDate: '2026-09-20', hasEmail: true });
+  assert.deepEqual(a.prefs, { tips: false, usage: true, babyBirthDate: '2026-09-20', hasEmail: true, hasPassword: false });
   assert.equal((await post('/v1/settings', { babyBirthDate: '2027-12-31' }, f.tok)).status, 422, 'data muito no futuro');
   assert.equal((await post('/v1/settings', { babyBirthDate: 'ontem' }, f.tok)).status, 422);
   assert.equal((await post('/v1/settings', { contactEmail: 'sem-arroba' }, f.tok)).status, 422);

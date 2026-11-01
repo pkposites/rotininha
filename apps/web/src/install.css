@@ -1,0 +1,36 @@
+/* Animação do passo a passo de instalação (só classes; sem estilos inline por causa da CSP) */
+.install-pop { max-height: 92vh; overflow-y: auto; }
+.hw { display: grid; grid-template-columns: 132px 1fr; gap: 12px; align-items: start; }
+.hw-phone { position: relative; width: 132px; height: 244px; border: 3px solid #2b2f45; border-radius: 20px; background: #fff; overflow: hidden; }
+.hw-notch { position: absolute; z-index: 3; top: 4px; left: 50%; width: 36px; height: 8px; margin-left: -18px; border-radius: 6px; background: #2b2f45; }
+.hw-screen { position: absolute; inset: 0; animation: hwfade .45s ease; }
+.hw-bar { position: absolute; left: 6px; right: 6px; height: 26px; border-radius: 10px; background: #ececf2; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; font-size: 10px; color: #444; }
+.hw-bar.top { top: 20px; } .hw-bar.bottom { bottom: 8px; }
+.hw-btn { font-size: 14px; font-weight: 800; color: #5b4796; }
+.hw-page { position: absolute; left: 10px; right: 10px; top: 30px; display: grid; gap: 8px; } .hw-page i { height: 8px; border-radius: 4px; background: #e3e3ea; }
+.hw-sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 56px; background: #f4f4f8; border-radius: 14px 14px 0 0; padding: 10px 8px; display: grid; gap: 6px; align-content: start; animation: hwup .45s ease; }
+.hw-row { min-height: 24px; border-radius: 7px; background: #fff; font-size: 9px; display: flex; align-items: center; padding: 0 6px; color: #222; }
+.hw-row.dim { background: #e6e6ee; }
+.hw-row.hit { background: #efe9fb; border: 1.5px solid #5b4796; font-weight: 700; color: #33264f; animation: hwpulse 1.1s infinite; }
+.hw-dialog { position: absolute; left: 10px; right: 10px; top: 46px; background: #fff; border-radius: 14px; box-shadow: 0 6px 20px rgba(0,0,0,.22); padding: 12px 8px; display: grid; justify-items: center; gap: 8px; font-size: 11px; color: #222; animation: hwup .4s ease; }
+.hw-ok { background: #5b4796; color: #fff; border-radius: 8px; padding: 5px 12px; font-size: 10px; font-weight: 700; animation: hwpulse 1.1s infinite; }
+.hw-appicon { width: 28px; height: 28px; border-radius: 8px; background: #d9d9e4; color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 800; position: relative; }
+.hw-appicon.big { width: 38px; height: 38px; background: #5b4796; font-size: 18px; }
+.hw-appicon.new { background: #5b4796; animation: hwpop .7s ease both; }
+.hw-appicon.new small { position: absolute; top: 31px; font-size: 7px; color: #222; font-weight: 700; }
+.hw-home { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 4px; padding: 34px 8px; justify-items: center; }
+.hw-tap { position: absolute; z-index: 2; width: 24px; height: 24px; margin: -4px; border-radius: 50%; background: rgba(91,71,150,.3); border: 2px solid #5b4796; animation: hwtap 1.2s ease-in-out infinite; }
+[data-scene=bar-top] .hw-tap { top: 21px; right: 6px; }
+[data-scene=bar-bottom] .hw-tap { bottom: 12px; right: 6px; }
+[data-scene=menu] .hw-tap { top: 128px; left: 54px; }
+[data-scene=confirm] .hw-tap { top: 150px; left: 54px; }
+.hw-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.hw-stepbtn { width: 100%; display: grid; gap: 1px; text-align: left; padding: 6px 8px; min-height: 44px; border: 0; border-radius: 10px; background: transparent; font: inherit; color: inherit; cursor: pointer; }
+.hw-stepbtn small { color: var(--text-muted); }
+.hw-steps li.on .hw-stepbtn { background: var(--surface-subtle, rgba(0,0,0,.06)); }
+@keyframes hwfade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes hwup { from { transform: translateY(24px); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes hwpulse { 50% { box-shadow: 0 0 0 4px rgba(91,71,150,.25) } }
+@keyframes hwtap { 0%, 100% { transform: scale(.85); opacity: .9 } 50% { transform: scale(1.15); opacity: .5 } }
+@keyframes hwpop { 0% { transform: scale(0) } 70% { transform: scale(1.18) } 100% { transform: scale(1) } }
+@media (prefers-reduced-motion: reduce) { .hw-phone *, .hw-phone { animation: none !important; } }

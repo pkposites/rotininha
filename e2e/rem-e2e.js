@@ -6,14 +6,14 @@ const { chromium } = require('playwright');
     const ctx = await b.newContext({ viewport: { width: 390, height: 900 }, locale: 'pt-BR', timezoneId: 'America/Sao_Paulo' });
     const p = await ctx.newPage(); p.errs = [];
     p.on('pageerror', (e) => p.errs.push(e.message));
-    await p.goto('http://localhost:4173/app/'); await p.getByText('Pular tudo').click({ timeout: 2500 }).catch(() => {});
+    await p.goto('http://localhost:4173/app/'); await p.getByText('Pular tudo').click({ timeout: 2500 }).catch(() => {}); await p.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
     p.w = (f, arg, t = 8000) => p.waitForFunction(f, arg, { timeout: t }).then(() => true, () => false);
     p.ctx = ctx;
     return p;
   };
   const connect = async (p, code) => {
     await p.click('[aria-label="Ajustes"]');
-    await p.fill('input[placeholder^="XXXXX"]', code);
+    await p.getByRole('button', { name: 'Entrar com código de acesso' }).click(); await p.fill('input[placeholder^="XXXXX"]', code);
     await p.click('text=Conectar');
     const done = await p.w(() => document.querySelector('.sheet [role=status]')?.innerText.includes('Sincronizado'));
     await p.click('.sheet >> text=Fechar');
@@ -63,7 +63,7 @@ const { chromium } = require('playwright');
   ok(await A.locator('.late-tag').count() === 0, 'concluído não é mais "ainda não registrado"');
 
   // 6) deep link da notificação abre a ação mas NÃO conclui sozinho
-  await A.click('.rem-main'); await A.click('text=Desfazer');
+  await A.click('.rem-main'); await A.click('.sheet >> text=Desfazer');
   await A.waitForTimeout(300);
   const id = await A.evaluate(() => new Promise((res) => {
     const r = indexedDB.open('rotininha'); r.onsuccess = () => { const q = r.result.transaction('tasks').objectStore('tasks').getAll(); q.onsuccess = () => res(q.result[0].id); };

@@ -60,6 +60,20 @@ export async function login(code) {
   await syncNow(); // primeira sincronização imediata; a tela só diz "Sincronizado" quando termina
 }
 
+/** Entrar com WhatsApp + senha (conta criada com senha própria). */
+export async function loginPassword(whatsapp, password) {
+  const { status, data } = await call('/v1/sessions/password', { whatsapp, password, deviceId: await deviceId() });
+  if (status === 401) throw new Error('WhatsApp ou senha não conferem. Confira e tente de novo.');
+  if (status === 429) throw new Error('Muitas tentativas. Aguarde alguns minutos.');
+  if (status === 400) throw new Error('Confira o número de WhatsApp (com DDD).');
+  if (status !== 201) throw new Error('Não foi possível conectar agora.');
+  await setMeta('session', data);
+  await setMeta('cursor', 0);
+  await markAllDirty();
+  emit({ status: 'syncing' });
+  await syncNow();
+}
+
 export async function logout() {
   const s = await getMeta('session');
   if (s) { try { await call('/v1/sessions/logout', {}, s.accessToken); } catch {} }

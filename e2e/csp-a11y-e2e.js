@@ -44,7 +44,7 @@ const CSP = /Content-Security-Policy: (.*)/.exec(headersTxt)[1];
   await A.goto(APP + '/app/');
   ok(await A.w(() => document.querySelector('.onb')), 'onboarding abre');
   await axe(A, 'onboarding');
-  await A.click('text=Pular tudo');
+  await A.click('text=Pular tudo'); await A.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
   await A.click('.actions >> text=Mamou'); await A.click('.actions >> text=Dormiu');
   await A.waitForTimeout(400);
   await axe(A, 'Hoje');

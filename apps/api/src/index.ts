@@ -18,6 +18,7 @@ import { localParts } from '../../../packages/shared/schedule.js';
 import { submitFeedback, countEvent, FUNNEL_EVENTS, adminOk, feedbackCsv, adminMetrics, STATUSES } from './feedback';
 import { hit } from './ratelimit';
 import { hashCode, issueSession } from './session';
+import { normalizePhone, checkPassword, hashPhone, makePassword, verifyLogin } from './password';
 
 const CLOCK_SKEW = 60 * 1000;
 const PAGE = 500;
@@ -104,6 +105,18 @@ export default {
         return json(await issueSession(env, hh.id, body.deviceId, now), 201, h);
       }
 
+      // --- Login com WhatsApp + senha ---
+      if (req.method === 'POST' && url.pathname === '/v1/sessions/password') {
+        const body = await readJson(req);
+        const phone = normalizePhone(body?.whatsapp);
+        if (!body || !phone || typeof body.password !== 'string' || body.password.length > 128 || !validDevice(body.deviceId)) return json({ error: 'bad_request' }, 400, h);
+        if (!(await hit(env.DB, `login:ip:${clientIp(req)}`, 10, 15 * 60_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        if (!(await hit(env.DB, `login:wa:${await hashPhone(env, phone)}`, 8, 15 * 60_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        const id = await verifyLogin(env, phone, body.password);
+        if (!id) return json({ error: 'invalid_credentials' }, 401, h);
+        return json(await issueSession(env, id, body.deviceId, now), 201, h);
+      }
+
       // --- Renovação (rotação do refresh token) ---
       if (req.method === 'POST' && url.pathname === '/v1/sessions/refresh') {
         const body = await readJson(req);
@@ -181,6 +194,16 @@ export default {
         if (!body || !validDevice(body.deviceId)) return json({ error: 'bad_request' }, 400, h);
         if (!(await hit(env.DB, `trial:ip:${clientIp(req)}`, 6, 86_400_000, now)) || !(await hit(env.DB, `trial:dev:${body.deviceId}`, 2, 86_400_000, now)))
           return json({ error: 'rate_limited' }, 429, h);
+        if (body.whatsapp !== undefined || body.password !== undefined) {
+          const phone = normalizePhone(body.whatsapp);
+          if (!phone) return json({ error: 'invalid_whatsapp' }, 422, h);
+          if (checkPassword(body.password, phone) !== 'ok') return json({ error: 'weak_password' }, 422, h);
+          const phone_hash = await hashPhone(env, phone);
+          if (await env.DB.prepare('SELECT 1 AS x FROM households WHERE phone_hash = ?').bind(phone_hash).first()) return json({ error: 'phone_in_use' }, 409, h);
+          try {
+            return json(await startTrial(env, { deviceId: body.deviceId, email: body.email, now, credentials: { phone_hash, ...(await makePassword(env, body.password)) } }), 201, h);
+          } catch (e) { if (/UNIQUE/i.test((e as Error).message)) return json({ error: 'phone_in_use' }, 409, h); throw e; }
+        }
         return json(await startTrial(env, { deviceId: body.deviceId, email: body.email, now }), 201, h);
       }
 
@@ -367,6 +390,20 @@ export default {
       }
 
       // --- Ajustes da família (qualquer subconjunto) ---
+      if (req.method === 'POST' && url.pathname === '/v1/account/password') {
+        const body = await readJson(req);
+        const phone = normalizePhone(body?.whatsapp);
+        if (!phone) return json({ error: 'invalid_whatsapp' }, 422, h);
+        if (checkPassword(body.password, phone) !== 'ok') return json({ error: 'weak_password' }, 422, h);
+        if (!(await hit(env.DB, `pw:${auth.householdId}`, 10, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        const phone_hash = await hashPhone(env, phone);
+        const other = await env.DB.prepare('SELECT id FROM households WHERE phone_hash = ? AND id <> ?').bind(phone_hash, auth.householdId).first();
+        if (other) return json({ error: 'phone_in_use' }, 409, h);
+        const pw = await makePassword(env, body.password);
+        await env.DB.prepare('UPDATE households SET phone_hash = ?, pw_hash = ?, pw_salt = ? WHERE id = ?').bind(phone_hash, pw.pw_hash, pw.pw_salt, auth.householdId).run();
+        return json({ ok: true }, 200, h);
+      }
+
       if (req.method === 'POST' && url.pathname === '/v1/settings') {
         const body = await readJson(req);
         if (!body || typeof body !== 'object') return json({ error: 'bad_request' }, 400, h);

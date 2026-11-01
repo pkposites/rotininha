@@ -8,7 +8,7 @@ const ADMIN = 'admin-token-local-de-teste-1234567890';
   const p = await ctx.newPage(); p.errs = []; p.on('pageerror', (e) => p.errs.push(e.message));
   p.w = (f, arg, t = 8000) => p.waitForFunction(f, arg, { timeout: t }).then(() => true, () => false);
   await p.goto(APP + '/app/');
-  await p.getByText('Pular tudo').click({ timeout: 3000 });
+  await p.getByText('Pular tudo').click({ timeout: 3000 }); await p.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
 
   // Poucos dados: sem cartão mesmo registrando
   await p.click('.actions >> text=Mamou'); await p.waitForTimeout(500);
@@ -65,7 +65,7 @@ const ADMIN = 'admin-token-local-de-teste-1234567890';
 
   // conecta e envia
   const code = (await (await fetch(API + '/v1/dev/households', { method: 'POST' })).json()).code;
-  await p.click('[aria-label="Ajustes"]'); await p.fill('input[placeholder^="XXXXX"]', code); await p.click('text=Conectar');
+  await p.click('[aria-label="Ajustes"]'); await p.getByRole('button', { name: 'Entrar com código de acesso' }).click(); await p.fill('input[placeholder^="XXXXX"]', code); await p.click('text=Conectar');
   await p.w(() => document.querySelector('.sheet [role=status]')?.innerText.includes('Sincronizado'));
   await p.click('.sheet >> text=Enviar sugestão');
   await p.click('.chip:has-text("Lembretes")'); await p.fill('textarea', sent);

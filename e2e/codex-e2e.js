@@ -6,11 +6,11 @@ const APP = 'http://localhost:4173';
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, locale: 'pt-BR', timezoneId: 'America/Sao_Paulo' });
   const p = await ctx.newPage(); p.errs = []; p.on('pageerror', (e) => p.errs.push(e.message));
   p.on('console', (m) => { if (/Content Security Policy|Refused to/i.test(m.text())) p.errs.push(m.text()); });
-  await p.goto(APP + '/app/'); await p.getByText('Pular tudo').click({ timeout: 4000 });
+  await p.goto(APP + '/app/'); await p.getByText('Pular tudo').click({ timeout: 4000 }); await p.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
 
   // Hoje: instalação + ajuda rápida
-  ok(await p.locator('.install-card summary').count() === 1, 'convite de instalação (compacto) na tela Hoje');
-  await p.locator('.install-card summary').click(); await p.getByRole('button', { name: 'Dispensar', exact: true }).click(); await p.waitForTimeout(600);
+  ok(await p.locator('.install-card').count() === 1, 'convite de instalação (compacto) na tela Hoje');
+  await p.getByRole('button', { name: 'Dispensar', exact: true }).click(); await p.waitForTimeout(600);
   await p.reload(); await p.waitForSelector('.actions'); await p.waitForTimeout(600);
   ok(await p.getByText('Leve o Ninhora para a tela inicial').count() === 0, '"Dispensar" dispensa o banner (lembrado)');
   ok(await p.getByText('Precisa de uma ajuda agora?').count() === 1, 'cartão de ajuda rápida');

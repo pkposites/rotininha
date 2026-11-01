@@ -15,7 +15,7 @@ const DAY = 86_400_000;
 const sql = (q) => { const out = execFileSync('npx', ['wrangler', 'd1', 'execute', 'rotininha', '--local', '--persist-to', STATE, '--json', '--command', q], { encoding: 'utf8', cwd: path.resolve(__dirname, '../apps/api'), env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_UPDATE_NOTIFIER: '1' } }); return JSON.parse(out.slice(out.indexOf('[')))[0].results; };
 const post = (p, body, tok) => fetch(API + p, { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}`, ...(tok ? { Authorization: 'Bearer ' + tok } : {}) }, body: JSON.stringify(body) });
 const adm = (p, body) => fetch(API + p, { method: body === undefined ? 'GET' : 'POST', headers: { Authorization: 'Bearer ' + ADMIN, 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) }).then((r) => r.json());
-const login = async (code) => (await (await post('/v1/sessions', { code, deviceId: 'dev' + randomBytes(5).toString('hex') + 'abcd' })).json()).accessToken;
+const login = async (code) => (await (await (typeof code === 'object' ? post('/v1/sessions/password', { whatsapp: code.wa, password: code.pw, deviceId: 'dev' + randomBytes(5).toString('hex') + 'abcd' }) : post('/v1/sessions', { code, deviceId: 'dev' + randomBytes(5).toString('hex') + 'abcd' }))).json()).accessToken;
 const account = async (code) => (await (await post('/v1/billing/account', {}, await login(code))).json());
 
 (async () => {
@@ -44,20 +44,20 @@ const account = async (code) => (await (await post('/v1/billing/account', {}, aw
   // =================================================== APP: teste grátis
   const A = await mk();
   await A.goto(APP + '/app/');
-  await A.click('text=Vamos lá'); await A.click('text=Prefiro não informar'); await A.click('text=Usar um modelo editável'); await A.click('text=Continuar sem modelos'); await A.getByRole('button', { name: 'Depois', exact: true }).click();
+  await A.click('text=Vamos lá'); await A.click('text=Prefiro não informar'); await A.click('text=Usar um modelo editável'); await A.getByRole('button', { name: 'Criar lembretes' }).click(); await A.getByRole('button', { name: 'Depois', exact: true }).click();
   ok(await A.w(() => document.querySelector('.onb')?.innerText.includes('Acesso grátis no lançamento')), 'onboarding: passo da conta grátis');
   const trialTxt = await A.locator('.onb').innerText();
   ok(/avisamos com pelo menos 7 dias de antecedência/.test(trialTxt) && /3 dias de teste/.test(trialTxt), 'antes da cobrança: promete aviso com antecedência (nada é cobrado agora)');
   const email = `mae${Date.now()}@exemplo.com`;
+  const code = { wa: `(11) 9${String(Math.floor(Math.random() * 1e8)).padStart(8, '0').replace(/^(\d{4})(\d{4})$/, '$1-$2')}`, pw: 'senha de teste 2026' };
+  await A.fill('input[type=tel]', code.wa); await A.fill('input[autocomplete=new-password]', code.pw);
   await A.fill('input[type=email]', email);
   await A.click('text=Criar minha conta grátis');
-  ok(await A.w(() => document.querySelector('.access-code')?.innerText.length > 15), 'teste criado: código de acesso mostrado');
-  const code = await A.locator('.access-code').innerText();
-  ok(/^[2-9A-Z]{5}(-[2-9A-Z]{5}){3}$/.test(code), 'formato do código ' + code);
-  ok(/só agora/.test(await A.locator('.onb').innerText()), 'avisa que o código aparece uma vez só');
-  await A.click('text=Já guardei, continuar');
-  ok(await A.w(() => document.querySelector('.install')), 'segue para a instalação');
-  await A.click('text=Concluir');
+  ok(await A.w(() => /Conta criada/.test(document.querySelector('.onb')?.innerText ?? '')), 'conta criada com WhatsApp e senha');
+  ok(!(await A.locator('.access-code').count()), 'nenhum código é mostrado: a pessoa entra com a senha que criou');
+  await A.click('text=Entendi, continuar');
+  ok(await A.w(() => document.querySelector('.install-pop')), 'segue para o pop-up de instalação');
+  await A.locator('.install-pop >> text=Agora não').click();
   const acc = await account(code);
   ok(acc.plan === 'trial' && acc.prefs.hasEmail === true && acc.enforcement.active === false, 'conta de teste criada no servidor, com e-mail, sem cobrança ainda');
   ok(!(await A.locator('.notice').count()), 'pré-lançamento: nenhum aviso de cobrança');
