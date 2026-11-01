@@ -63,7 +63,7 @@ async function webhook(mpId) {
 const pay = (mpId) => { mp.payments.get(String(mpId)).status = 'approved'; return webhook(mpId); };
 
 async function buy(extra = {}, email = `c${rnd()}@Exemplo.com`) {
-  const r = await json(await post('/v1/checkout', { plan: '7d', email, cpf: CPF, ...extra }, null, { 'User-Agent': 'Mozilla/5.0 (iPhone) TesteUA' }));
+  const r = await json(await post('/v1/checkout', { plan: 'life', email, cpf: CPF, ...extra }, null, { 'User-Agent': 'Mozilla/5.0 (iPhone) TesteUA' }));
   assert.equal(r.status, 201, JSON.stringify(r));
   return { ...r, email, mpId: String(mp.seq) };
 }
@@ -80,7 +80,7 @@ test('com consentimento: um Purchase com e-mail em hash, valor e ids do navegado
   const ev = calls[0].body.data[0];
   assert.equal(ev.event_name, 'Purchase'); assert.equal(ev.event_id, c.paymentId); assert.equal(ev.action_source, 'website');
   assert.equal(ev.event_source_url, 'http://localhost:4173/');
-  assert.deepEqual(ev.custom_data, { currency: 'BRL', value: 11.9 });
+  assert.deepEqual(ev.custom_data, { currency: 'BRL', value: 37.9 });
   assert.deepEqual(ev.user_data.em, [sha(c.email.toLowerCase())], 'e-mail normalizado e com hash SHA-256');
   assert.equal(ev.user_data.fbp, FBP); assert.equal(ev.user_data.fbc, FBC);
   assert.ok(ev.user_data.client_ip_address && ev.user_data.client_user_agent.includes('TesteUA'));
@@ -137,15 +137,16 @@ test('Meta fora do ar: o acesso é liberado mesmo assim, sem reenvio e sem reter
   assert.deepEqual([row.a, row.b, row.not_sent].map(Number), [1, 1, 1], 'dados apagados; marcado como não enviado');
 });
 
-test('renovação gera outro evento (outro event_id e valor)', async () => {
+test('compra após o teste gera outro evento (outro event_id e valor)', async () => {
   const c = await buy({ marketingConsent: true, fbp: FBP });
   await pay(c.mpId);
   const claim = await json(await post('/v1/checkout/claim', { paymentId: c.paymentId, pollToken: c.pollToken, deviceId: 'dev' + rnd() + 'abcd' }));
-  const r = await json(await post('/v1/billing/renew', { plan: '30d', cpf: CPF, marketingConsent: true, fbp: FBP }, claim.session.accessToken));
+  sql(`UPDATE households SET plan='trial', valid_until=${Date.now() + 86400000} WHERE id=(SELECT household_id FROM payments WHERE id='${c.paymentId}')`);
+  const r = await json(await post('/v1/billing/renew', { plan: 'life', cpf: CPF, marketingConsent: true, fbp: FBP }, claim.session.accessToken));
   assert.equal(r.status, 201);
   await pay(String(mp.seq));
   const ev = callsFor(r.paymentId)[0].body.data[0];
-  assert.equal(ev.custom_data.value, 19.9); assert.notEqual(ev.event_id, c.paymentId);
+  assert.equal(ev.custom_data.value, 37.9); assert.notEqual(ev.event_id, c.paymentId);
   assert.equal(callsFor(c.paymentId).length, 1);
 });
 

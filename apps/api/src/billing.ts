@@ -183,10 +183,10 @@ async function sendReceipt(env: Env, row: PaymentRow, validUntil: number, now: n
 
 Produto: acesso ao Ninhora por ${PLANS[row.plan]?.label ?? row.days + ' dias'}
 Valor: ${brl(row.amount_cents)}
-Acesso válido até: ${fmtDate(validUntil)}
+Acesso: vitalício (pagamento único)
 Pagamento nº: ${row.id}
 
-Não é assinatura: não há cobrança automática. Para renovar, você paga um novo Pix quando quiser.
+Não é assinatura: o pagamento é único e não há cobrança automática nem renovação.
 Perdeu o código de acesso? No app, toque em "Perdi meu código" e informe este e-mail.
 
 Direito de arrependimento: em até 7 dias corridos da compra você pode pedir o reembolso, sem justificativa, respondendo este e-mail ou escrevendo para ${support}.

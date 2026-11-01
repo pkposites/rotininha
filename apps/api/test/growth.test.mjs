@@ -282,7 +282,7 @@ test('automações: todas nascem desligadas; só enviam quando ligadas, uma vez,
   sql(`INSERT INTO notification_sends (id, campaign_id, household_id, sent_at, status) VALUES ('${crypto.randomUUID()}', 'qualquer', '${tr.id}', ${now - H}, 'sent')`);
   await tick(now + 40 * 60_000);
   assert.equal(tr.pushes().filter((p) => p.cid === 'auto:trial_last_day').length, 1);
-  assert.match(tr.pushes().at(-1).body, /R\$ 11,90/, 'o aviso informa o preço');
+  assert.match(tr.pushes().at(-1).body, /R\$ 37,90/, 'o aviso informa o preço');
 });
 
 test('automações: "sentimos sua falta" respeita intervalo; "salto chegando" avisa uma vez por salto; silêncio adia', async () => {

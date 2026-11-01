@@ -73,7 +73,7 @@ const sql = (q) => {
 };
 
 async function buy(email = `mae${rnd()}@exemplo.com`) {
-  const r = await json(await post('/v1/checkout', { plan: '7d', email, cpf: '529.982.247-25' }));
+  const r = await json(await post('/v1/checkout', { plan: 'life', email, cpf: '529.982.247-25' }));
   assert.equal(r.status, 201, JSON.stringify(r));
   return { ...r, email, mpId: lastMpId() };
 }
@@ -101,14 +101,14 @@ test('assinatura: manifesto, parse e verificação (unidade)', async () => {
   assert.equal(await verifyMpSignature('s', null, 'r', '1'), false);
 });
 
-test('planos: preços vêm do servidor; entrada só 7 dias', async () => {
+test('planos: preço único vitalício vem do servidor', async () => {
   const p = await (await fetch(API + '/v1/plans')).json();
-  assert.deepEqual(p.entry.map((x) => [x.id, x.cents]), [['7d', 1190]]);
-  assert.deepEqual(p.renewal.map((x) => [x.id, x.cents]), [['7d', 1190], ['30d', 1990], ['90d', 3990]]);
+  assert.deepEqual(p.entry.map((x) => [x.id, x.cents]), [['life', 3790]]);
+  assert.deepEqual(p.renewal.map((x) => [x.id, x.cents]), [['life', 3790]]);
 });
 
 test('checkout: validações (plano de renovação na entrada, e-mail, CPF, valor do cliente ignorado)', async () => {
-  const ok = { plan: '7d', email: `a${rnd()}@exemplo.com`, cpf: CPF };
+  const ok = { plan: 'life', email: `a${rnd()}@exemplo.com`, cpf: CPF };
   assert.equal((await post('/v1/checkout', { ...ok, plan: '30d' })).status, 400);
   assert.equal((await post('/v1/checkout', { ...ok, plan: 'grátis' })).status, 400);
   assert.equal((await post('/v1/checkout', { ...ok, email: 'sem-arroba' })).status, 422);
@@ -117,7 +117,7 @@ test('checkout: validações (plano de renovação na entrada, e-mail, CPF, valo
   const before = mp.created.length;
   const r = await post('/v1/checkout', { ...ok, amount: 0.01, transaction_amount: 0.01, cents: 1 });
   assert.equal(r.status, 201);
-  assert.equal(mp.created.at(-1).body.transaction_amount, 11.9, 'valor do cliente é ignorado');
+  assert.equal(mp.created.at(-1).body.transaction_amount, 37.9, 'valor do cliente é ignorado');
   assert.equal(mp.created.length, before + 1);
 });
 
@@ -131,7 +131,7 @@ test('checkout: corpo enviado ao Mercado Pago (idempotência, referência, expir
   assert.equal(body.payer.identification.number, CPF);
   assert.equal(body.notification_url, 'http://localhost:8787/v1/webhooks/mercadopago');
   assert.match(body.date_of_expiration, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.000-03:00$/);
-  assert.equal(c.amountCents, 1190);
+  assert.equal(c.amountCents, 3790);
   assert.match(c.qrCode, /^00020126PIX/);
 });
 
@@ -143,7 +143,7 @@ test('privacidade: CPF não é gravado no banco', async () => {
 
 test('provedor fora do ar → 502, sem acesso liberado', async () => {
   mp.failCreate = true;
-  const r = await post('/v1/checkout', { plan: '7d', email: `f${rnd()}@exemplo.com`, cpf: CPF });
+  const r = await post('/v1/checkout', { plan: 'life', email: `f${rnd()}@exemplo.com`, cpf: CPF });
   mp.failCreate = false;
   assert.equal(r.status, 502);
 });
@@ -172,7 +172,7 @@ test('pagamento aprovado: libera uma vez, entrega o código uma vez e abre sess�
   assert.match(p.code, /^[2-9A-Z]{5}(-[2-9A-Z]{5}){3}$/);
   const acc = await account(p.session.accessToken);
   assert.equal(acc.state, 'active');
-  assert.ok(Math.abs(acc.validUntil - (Date.now() + 7 * DAY)) < 60_000, 'válido por 7 dias');
+  assert.ok(acc.validUntil > Date.now() + 3650 * DAY, 'vitalício');
   assert.equal(acc.graceUntil - acc.validUntil, 24 * 3600_000, 'carência de 24 h');
   // segunda tentativa de entrega (outra aba/aparelho)
   const again = await post('/v1/checkout/claim', { paymentId: p.paymentId, pollToken: p.pollToken, deviceId: 'dev' + rnd() + 'zzzz' });
@@ -191,7 +191,7 @@ test('comprovante por e-mail: valor, validade, arrependimento — e SEM o códig
   const out = await (await fetch(`${API}/v1/dev/outbox?to=${encodeURIComponent(email)}`)).json();
   assert.equal(out.messages.length, 1);
   const m = out.messages[0];
-  assert.match(m.body, /R\$ 11,90/); assert.match(m.body, /7 dias/); assert.match(m.body, /arrependimento/i);
+  assert.match(m.body, /R\$ 37,90/); assert.match(m.body, /vitalício/); assert.match(m.body, /arrependimento/i);
   assert.match(m.body, /Não é assinatura/); assert.ok(m.body.includes(p.paymentId));
   assert.ok(!m.body.includes(p.code), 'o código não vai por e-mail');
 });
@@ -205,7 +205,7 @@ test('webhooks duplicados e simultâneos: um único acesso, validade não duplic
   const claim = await json(await post('/v1/checkout/claim', { paymentId: c.paymentId, pollToken: c.pollToken, deviceId: 'dev' + rnd() + 'abcd' }));
   assert.equal(claim.status, 200);
   const acc = await account(claim.session.accessToken);
-  assert.ok(Math.abs(acc.validUntil - (Date.now() + 7 * DAY)) < 60_000, 'não somou períodos');
+  assert.ok(acc.validUntil > Date.now() + 3650 * DAY && acc.validUntil < Date.now() + 36_600 * DAY, 'não somou períodos (um único vitalício)');
   const hh = sql(`SELECT COUNT(DISTINCT household_id) AS n, COUNT(*) AS rows FROM payments WHERE email='${email}' AND applied_at IS NOT NULL`);
   assert.equal(hh[0].n, 1); assert.equal(hh[0].rows, 1);
   const out = await (await fetch(`${API}/v1/dev/outbox?to=${encodeURIComponent(email)}`)).json();
@@ -221,7 +221,7 @@ test('valor divergente no Mercado Pago → "mismatch", sem acesso', async () => 
 
 test('pagamento de outro produto (external_reference desconhecida) é ignorado', async () => {
   const id = String(++mp.seq);
-  mp.payments.set(id, { id, status: 'approved', transaction_amount: 11.9, currency_id: 'BRL', payment_method_id: 'pix', external_reference: 'outro-sistema' });
+  mp.payments.set(id, { id, status: 'approved', transaction_amount: 37.9, currency_id: 'BRL', payment_method_id: 'pix', external_reference: 'outro-sistema' });
   const r = await json(await webhook(id));
   assert.equal(r.status, 200); assert.equal(r.result, 'unknown');
 });
@@ -240,35 +240,40 @@ test('Pix rejeitado/cancelado vira "failed"', async () => {
   assert.equal(st.status, 'failed'); assert.equal(st.canClaim, false);
 });
 
-test('renovação soma a partir do maior entre vencimento e hoje; carência recalculada', async () => {
+test('teste grátis → compra do vitalício (uma vez, mesmo com webhook duplicado); vencido também compra', async () => {
   const p = await paid(`rn${rnd()}@exemplo.com`);
   const tok = p.session.accessToken;
-  const before = await account(tok);
-  const r = await json(await post('/v1/billing/renew', { plan: '30d', cpf: CPF }, tok));
-  assert.equal(r.status, 201); assert.equal(r.amountCents, 1990);
-  assert.equal(mp.created.at(-1).body.transaction_amount, 19.9);
+  const hid = `(SELECT household_id FROM payments WHERE id='${p.paymentId}')`;
+  sql(`UPDATE households SET plan='trial', valid_until=${Date.now() + DAY}, grace_until=${Date.now() + 2 * DAY} WHERE id=${hid}`);
+  assert.equal((await account(tok)).state, 'trial');
+  const r = await json(await post('/v1/billing/renew', { plan: 'life', cpf: CPF }, tok));
+  assert.equal(r.status, 201); assert.equal(r.amountCents, 3790);
+  assert.equal(mp.created.at(-1).body.transaction_amount, 37.9);
   const mpId = lastMpId(); setMp(mpId, { status: 'approved' });
   await webhook(mpId); await webhook(mpId); // duplicado
   const after = await account(tok);
-  assert.equal(after.validUntil, before.validUntil + 30 * DAY, 'soma 30 dias ao vencimento atual (uma vez)');
-  assert.equal(after.graceUntil, after.validUntil + 24 * 3600_000);
+  assert.equal(after.plan, 'paid'); assert.equal(after.state, 'active');
+  assert.ok(after.validUntil > Date.now() + 3650 * DAY, 'vitalício');
+  const once = after.validUntil;
+  assert.equal((await post('/v1/billing/renew', { plan: 'life', cpf: CPF }, tok)).status, 409, 'já vitalício: não cobra de novo');
+  assert.equal((await account(tok)).validUntil, once);
 
-  // vencido há 3 dias → renova a partir de HOJE
-  sql(`UPDATE households SET valid_until=${Date.now() - 3 * DAY}, grace_until=${Date.now() - 2 * DAY} WHERE id=(SELECT household_id FROM payments WHERE id='${p.paymentId}')`);
+  // teste vencido há 3 dias → compra a partir de HOJE
+  sql(`UPDATE households SET plan='trial', valid_until=${Date.now() - 3 * DAY}, grace_until=${Date.now() - 2 * DAY} WHERE id=${hid}`);
   assert.equal((await account(tok)).state, 'expired');
-  const r2 = await json(await post('/v1/billing/renew', { plan: '7d', cpf: CPF }, tok));
+  const r2 = await json(await post('/v1/billing/renew', { plan: 'life', cpf: CPF }, tok));
   const id2 = lastMpId(); setMp(id2, { status: 'approved' }); await webhook(id2);
   const a2 = await account(tok);
   assert.equal(a2.state, 'active');
-  assert.ok(Math.abs(a2.validUntil - (Date.now() + 7 * DAY)) < 60_000);
+  assert.ok(a2.validUntil > Date.now() + 3650 * DAY);
   assert.ok(r2.paymentId);
 });
 
 test('renovação exige login e valida plano/CPF', async () => {
-  assert.equal((await post('/v1/billing/renew', { plan: '30d', cpf: CPF })).status, 401);
+  assert.equal((await post('/v1/billing/renew', { plan: 'life', cpf: CPF })).status, 401);
   const p = await paid(`rv${rnd()}@exemplo.com`);
   assert.equal((await post('/v1/billing/renew', { plan: 'x', cpf: CPF }, p.session.accessToken)).status, 400);
-  assert.equal((await post('/v1/billing/renew', { plan: '30d', cpf: '123' }, p.session.accessToken)).status, 422);
+  assert.equal((await post('/v1/billing/renew', { plan: 'life', cpf: '123' }, p.session.accessToken)).status, 422);
 });
 
 test('vencido além da carência: leitura continua, escrita é bloqueada e push para', async () => {
@@ -347,7 +352,7 @@ test('recuperação: link expirado não funciona', async () => {
 test('limites: checkout por e-mail e recuperação por e-mail', async () => {
   const email = `lim${rnd()}@exemplo.com`;
   let last;
-  for (let i = 0; i < 6; i++) last = await post('/v1/checkout', { plan: '7d', email, cpf: CPF });
+  for (let i = 0; i < 6; i++) last = await post('/v1/checkout', { plan: 'life', email, cpf: CPF });
   assert.equal(last.status, 429);
   let lr;
   for (let i = 0; i < 4; i++) lr = await post('/v1/recovery/request', { email: `r${rnd()}@x.com` }); // outros e-mails passam

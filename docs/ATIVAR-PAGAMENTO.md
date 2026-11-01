@@ -1,8 +1,7 @@
 # Ativar o pagamento (só quando estiver de fato funcionando)
 
 O Pix está **construído e testado contra um Mercado Pago simulado**, mas fica **desligado** até você confirmar que funciona de verdade.
-Enquanto desligado: o servidor responde `503 payments_disabled` em `/v1/checkout` e `/v1/billing/renew` (nem CPF é coletado), a LP mostra
-**"Vendas abrem em breve"** e o app esconde "comprar" e "renovar". Login, sincronização, lembretes e **webhooks (reembolsos de compras já feitas)** seguem funcionando.
+Enquanto desligado: o servidor responde `503 payments_disabled` em `/v1/checkout` e `/v1/billing/renew` (nem CPF é coletado), o app esconde "comprar" e "renovar" (o **teste grátis** continua funcionando, pois não depende de pagamento). Login, sincronização, lembretes e **webhooks (reembolsos de compras já feitas)** seguem funcionando.
 
 ## Antes de ligar — todos os itens
 1. **Sandbox do Mercado Pago** — percorrer `docs/TESTE-PAGAMENTO.md` inteiro e anotar o resultado. Ajustar o que a API real exigir (ex.: nome do pagador).
@@ -26,7 +25,7 @@ npx wrangler deploy
 VITE_PAYMENTS_ENABLED=1   # e VITE_API_BASE_URL, VITE_SUPPLIER_*, VITE_META_PIXEL_ID (opcional)
 # redeploy do site
 ```
-Faça **uma compra real de R$ 11,90** com você mesma e confira: Pix → acesso liberado → código entregue uma vez → comprovante por e-mail → reembolso pelo painel → acesso encerrado.
+Faça **uma compra real de R$ 37,90** com você mesma e confira: Pix → acesso liberado → código entregue uma vez → comprovante por e-mail → reembolso pelo painel → acesso encerrado.
 
 ## Desligar de novo (se algo der errado)
 `PAYMENTS_ENABLED = "false"` + `VITE_PAYMENTS_ENABLED=0` e redeploy. Quem já comprou continua com acesso; webhooks continuam processando (inclusive reembolsos).

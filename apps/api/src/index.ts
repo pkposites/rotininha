@@ -4,7 +4,7 @@ import { parseRecord, MAX_CHANGES } from './validate';
 import { applyChanges, changesSince, householdTz, rescheduleAll } from './records';
 import { saveSubscription, removeSubscription, endpointAllowed, pushToHousehold, runDue } from './push';
 import { isValidTimeZone } from '../../../packages/shared/schedule.js';
-import { PLANS, ENTRY_PLANS, RENEWAL_PLANS } from './plans';
+import { PLANS, ENTRY_PLANS, RENEWAL_PLANS, DAY_MS } from './plans';
 import { trackingFrom, createPix, paymentStatus, claimAccess, handleMpEvent, accountState, lastPayerEmail, requestRecovery, confirmRecovery } from './billing';
 import { verifyMpSignature } from './mpsig';
 import { normEmail, normCpf } from './validate';
@@ -12,7 +12,7 @@ import { exportHousehold, purgeHousehold } from './privacy';
 import { adminGrowth } from './admin';
 import { startTrial } from './trial';
 import { recordUsage, deleteUsage, recordClick, runCampaigns, runAutomations } from './growth';
-import { applyEnforcement } from './settings';
+import { applyEnforcement, trialConfig, enforcementActive } from './settings';
 import { validBirthDate } from '../../../packages/shared/leaps.js';
 import { localParts } from '../../../packages/shared/schedule.js';
 import { submitFeedback, countEvent, FUNNEL_EVENTS, adminOk, feedbackCsv, adminMetrics, STATUSES } from './feedback';
@@ -119,8 +119,14 @@ export default {
       }
 
       // ===================== Planos e checkout (público) =====================
-      if (req.method === 'GET' && url.pathname === '/v1/plans')
-        return json({ paymentsEnabled: env.PAYMENTS_ENABLED === 'true', entry: ENTRY_PLANS.map((id) => PLANS[id]), renewal: RENEWAL_PLANS.map((id) => PLANS[id]) }, 200, h);
+      if (req.method === 'GET' && url.pathname === '/v1/plans') {
+        const tc = await trialConfig(env);
+        return json({
+          paymentsEnabled: env.PAYMENTS_ENABLED === 'true',
+          trial: { days: tc.days, enforceFrom: tc.enforceFrom, active: enforcementActive(tc, now), noticeDays: tc.noticeDays },
+          entry: ENTRY_PLANS.map((id) => PLANS[id]), renewal: RENEWAL_PLANS.map((id) => PLANS[id])
+        }, 200, h);
+      }
 
       if (req.method === 'POST' && url.pathname === '/v1/checkout') {
         if (env.PAYMENTS_ENABLED !== 'true') return json({ error: 'payments_disabled' }, 503, h);
@@ -279,6 +285,8 @@ export default {
         const cpf = normCpf(body?.cpf);
         if (!body || !RENEWAL_PLANS.includes(body.plan)) return json({ error: 'invalid_plan' }, 400, h);
         if (!cpf) return json({ error: 'invalid_cpf' }, 422, h);
+        const cur = await env.DB.prepare('SELECT plan, valid_until FROM households WHERE id = ?').bind(auth.householdId).first<{ plan: string; valid_until: number | null }>();
+        if (cur?.plan === 'paid' && cur.valid_until != null && cur.valid_until > now + 3650 * DAY_MS) return json({ error: 'already_lifetime' }, 409, h);
         const email = normEmail(body.email) ?? (await lastPayerEmail(env, auth.householdId));
         if (!email) return json({ error: 'invalid_email' }, 422, h);
         if (!(await hit(env.DB, `renew:${auth.householdId}`, 10, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);

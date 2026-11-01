@@ -9,11 +9,11 @@ import { ageInDays, leapStartingSoon } from '../../../packages/shared/leaps.js';
 
 export const USAGE_EVENTS = new Set([
   'app_open', 'care_logged', 'reminder_created', 'reminder_done', 'reminder_snoozed', 'sound_played', 'leap_viewed', 'leap_marked',
-  'guide_lesson_done', 'push_enabled', 'settings_opened', 'paywall_viewed', 'checkout_started', 'trial_banner_seen'
+  'guide_lesson_done', 'push_enabled', 'settings_opened', 'paywall_viewed', 'checkout_started', 'trial_banner_seen', 'care_tip_opened', 'help_card_opened'
 ]);
 export const TARGETS = ['hoje', 'historico', 'saltos', 'sons', 'guia', 'ajustes'];
 export const CAP_MS = 20 * 3_600_000; // no máximo 1 aviso promocional a cada 20 h por família
-const price7 = () => `R$ ${(PLANS['7d'].cents / 100).toFixed(2).replace('.', ',')}`;
+const price7 = () => `R$ ${(PLANS.life.cents / 100).toFixed(2).replace('.', ',')}`;
 
 // ------------------------------------------------------------------ uso (estatísticas sem dados do bebê)
 
@@ -137,10 +137,11 @@ export async function runCampaigns(env: Env, now: number): Promise<{ sent: numbe
       `SELECT h.id, h.plan, h.valid_until, h.trial_ends_at, h.baby_birth_date ${BASE} AND ${sg.where}
          AND NOT EXISTS (SELECT 1 FROM notification_sends s WHERE s.campaign_id = ? AND s.household_id = h.id) LIMIT 200`
     ).bind(...sg.binds, c.id).all<any>();
-    for (const h of elig.results) { if ((await sendOne(env, h, c, now)) === 'sent') sent++; }
-    // termina quando não sobra ninguém, ou depois de 24 h (quem ficou só em horário de silêncio é tentado até lá)
-    const remaining = elig.results.length === 0;
-    if (remaining || now - (c.started_at ?? now) > 24 * 3_600_000) {
+    let deferred = 0;
+    for (const h of elig.results) { const r = await sendOne(env, h, c, now); if (r === 'sent') sent++; else if (r === 'quiet') deferred++; }
+    // termina quando todos foram atendidos (ninguém adiado por silêncio e o lote não estourou), ou depois de 24 h
+    const done = deferred === 0 && elig.results.length < 200;
+    if (done || now - (c.started_at ?? now) > 24 * 3_600_000) {
       await env.DB.prepare(`UPDATE campaigns SET status = 'sent', finished_at = ? WHERE id = ? AND status = 'sending'`).bind(now, c.id).run();
       finished++;
     }
@@ -171,10 +172,10 @@ export const AUTOMATIONS: Record<string, AutoDef> = {
     title: 'Um salto pode estar chegando 🌱', body: 'Seu bebê pode entrar numa fase de mais manha. Veja o que costuma ajudar.', target: 'saltos' },
   trial_ends_tomorrow: { label: 'Teste termina amanhã', when: 'entre 16 h e 32 h antes do fim do teste (só com a cobrança ativa)', once: true, bypassCap: true,
     where: (n) => ({ where: `h.plan = 'trial' AND h.valid_until BETWEEN ? AND ?`, binds: [n + 16 * H, n + 32 * H] }),
-    title: 'Seu teste grátis termina amanhã', body: 'Depois disso, o acesso custa {preco} por 7 dias via Pix. Sem cobrança automática: só paga quem quiser continuar.', target: 'ajustes' },
+    title: 'Seu teste grátis termina amanhã', body: 'Depois disso, o acesso vitalício custa {preco}, em pagamento único via Pix. Sem cobrança automática: só paga quem quiser continuar.', target: 'ajustes' },
   trial_last_day: { label: 'Último dia do teste', when: 'nas últimas 10 h do teste', once: true, bypassCap: true,
     where: (n) => ({ where: `h.plan = 'trial' AND h.valid_until BETWEEN ? AND ?`, binds: [n, n + 10 * H] }),
-    title: 'Último dia do teste grátis', body: 'Seu teste termina hoje. Para continuar, o acesso custa {preco} por 7 dias via Pix — sem assinatura.', target: 'ajustes' },
+    title: 'Último dia do teste grátis', body: 'Seu teste termina hoje. Para continuar, o acesso vitalício custa {preco}, pagamento único via Pix — sem assinatura.', target: 'ajustes' },
   trial_ended: { label: 'Teste terminou', when: 'nas 24 h depois do fim do teste', once: true, bypassCap: true,
     where: (n) => ({ where: `h.plan = 'trial' AND h.valid_until BETWEEN ? AND ?`, binds: [n - 24 * H, n] }),
     title: 'Seu teste terminou', body: 'Você continua vendo seus registros. Para voltar a editar e receber lembretes, renove por Pix.', target: 'ajustes' },

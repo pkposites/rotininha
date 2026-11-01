@@ -10,11 +10,11 @@ test('planos informam que as vendas estão fechadas', { skip }, async () => {
   assert.equal(p.paymentsEnabled, false);
 });
 test('checkout e renovação são recusados (503) antes de qualquer validação ou chamada ao Mercado Pago', { skip }, async () => {
-  const r = await post('/v1/checkout', { plan: '7d', email: 'a@b.com', cpf: '52998224725' });
+  const r = await post('/v1/checkout', { plan: 'life', email: 'a@b.com', cpf: '52998224725' });
   assert.equal(r.status, 503); assert.equal((await r.json()).error, 'payments_disabled');
   const { code } = await (await post('/v1/dev/households', {})).json();
   const s = await (await post('/v1/sessions', { code, deviceId: 'devoffabcdef' })).json();
-  const r2 = await post('/v1/billing/renew', { plan: '30d', cpf: '52998224725' }, s.accessToken);
+  const r2 = await post('/v1/billing/renew', { plan: 'life', cpf: '52998224725' }, s.accessToken);
   assert.equal(r2.status, 503);
 });
 test('o que já existe continua funcionando (login, sincronização, conta); webhook segue exigindo assinatura', { skip }, async () => {

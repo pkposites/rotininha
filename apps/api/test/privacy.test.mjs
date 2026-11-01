@@ -25,8 +25,9 @@ const sql = (q) => {
 
 async function family() {
   const { code } = await (await post('/v1/dev/households', {})).json();
-  const s = await (await post('/v1/sessions', { code, deviceId: 'dev' + rnd() + 'abcd' })).json();
-  const hh = sql(`SELECT id FROM households ORDER BY created_at DESC LIMIT 1`)[0].id;
+  const deviceId = 'dev' + rnd() + 'abcd';
+  const s = await (await post('/v1/sessions', { code, deviceId })).json();
+  const hh = sql(`SELECT household_id AS id FROM sessions WHERE device_id='${deviceId}' LIMIT 1`)[0].id;
   return { code, tok: s.accessToken, id: hh };
 }
 const ev = (over = {}) => ({ kind: 'event', id: 'ev' + rnd() + 'abcd', type: 'mamada', startedAt: Date.now() - 1000, endedAt: null, note: 'nota', detail: '', updatedAt: Date.now(), deleted: false, ...over });
@@ -60,7 +61,7 @@ test('apagar: exige confirmação explícita; depois nada resta e o acesso deixa
   await post('/v1/sync', { cursor: 0, changes: [e] }, f.tok);
   await post('/v1/sync', { cursor: 0, changes: [ev({ note: 'manter-' + rnd() })] }, keep.tok);
   await post('/v1/feedback', { category: 'outros', text: 'sugestão ' + e.note }, f.tok);
-  sql(`INSERT INTO payments (id, kind, plan, days, amount_cents, status, email, household_id, poll_hash, created_at, applied_at) VALUES ('pay-${f.id}', 'entry', '7d', 7, 1190, 'approved', 'mae-${f.id}@exemplo.com', '${f.id}', 'hash', ${Date.now()}, ${Date.now()})`);
+  sql(`INSERT INTO payments (id, kind, plan, days, amount_cents, status, email, household_id, poll_hash, created_at, applied_at) VALUES ('pay-${f.id}', 'entry', 'life', 36500, 3790, 'approved', 'mae-${f.id}@exemplo.com', '${f.id}', 'hash', ${Date.now()}, ${Date.now()})`);
 
   assert.equal((await post('/v1/privacy/delete', {}, f.tok)).status, 400, 'sem confirmação não apaga');
   assert.equal((await post('/v1/privacy/delete', { confirm: 'sim' }, f.tok)).status, 400);
