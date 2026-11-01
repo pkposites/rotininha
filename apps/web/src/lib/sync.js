@@ -65,6 +65,24 @@ export function requestSync(delay = 400) {
   timer = setTimeout(syncNow, delay);
 }
 
+// Fuso da família: o servidor agenda lembretes no fuso informado pelo aparelho.
+async function syncTimezone(token) {
+  const tz = deviceTimeZone();
+  if ((await getMeta('tzSent')) === tz) return;
+  const r = await call('/v1/settings', { timezone: tz }, token);
+  if (r.status === 200) await setMeta('tzSent', tz);
+}
+export const deviceTimeZone = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo'; } catch { return 'America/Sao_Paulo'; } };
+
+/** Chamada autenticada (renova token se preciso). Lança 'not-connected' sem sessão. */
+export async function authedCall(path, body) {
+  let token = await accessToken();
+  if (!token) throw new Error('not-connected');
+  let r = await call(path, body, token);
+  if (r.status === 401) { token = await accessToken(true); if (!token) throw new Error('not-connected'); r = await call(path, body, token); }
+  return r;
+}
+
 export async function syncNow() {
   if (!syncAvailable) return;
   if (running) { again = true; return; }
@@ -75,21 +93,23 @@ export async function syncNow() {
     for (let guard = 0; guard < 20; guard++) {
       let token = await accessToken();
       if (!token) return emit({ status: 'signed-out' });
-      const pending = await listDirty();
+      const dirty = await listDirty();
+      const pending = dirty.map(({ kind, rec }) => toWire(rec, kind));
       const cursor = (await getMeta('cursor')) ?? 0;
-      let r = await call('/v1/sync', { cursor, changes: pending.map(toWire) }, token);
+      let r = await call('/v1/sync', { cursor, changes: pending }, token);
       if (r.status === 401) { // access token revogado/expirado: tenta uma renovação
         token = await accessToken(true);
         if (!token) return emit({ status: 'signed-out' });
-        r = await call('/v1/sync', { cursor, changes: pending.map(toWire) }, token);
+        r = await call('/v1/sync', { cursor, changes: pending }, token);
       }
       if (r.status === 403 && r.data?.error === 'expired') return emit({ status: 'expired' });
       if (r.status !== 200) throw new Error('http ' + r.status);
-      await markPushed(pending);
+      await markPushed(dirty);
       await applyRemote(r.data.changes);
       await setMeta('cursor', r.data.cursor);
       if (r.data.changes.length) changed.forEach((f) => f());
-      if (!r.data.more && pending.length < 200) break;
+      await syncTimezone(token);
+      if (!r.data.more && dirty.length < 200) break;
     }
     emit({ status: 'idle', lastSyncAt: Date.now() });
   } catch {

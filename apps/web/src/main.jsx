@@ -7,6 +7,11 @@ import {
 } from './lib/events.js';
 import { EditSheet } from './EditSheet.jsx';
 import { SettingsSheet } from './SettingsSheet.jsx';
+import { TaskSheet } from './TaskSheet.jsx';
+import { ReminderSheet } from './ReminderSheet.jsx';
+import { RemindersCard } from './RemindersCard.jsx';
+import { useReminders } from './lib/useReminders.js';
+import { makeTask, dayItems, markDone, markSkipped, snooze, undo } from './lib/tasks.js';
 import { startSync, subscribe as subSync, syncAvailable } from './lib/sync.js';
 
 const TABS = [
@@ -15,6 +20,8 @@ const TABS = [
   { id: 'guia', label: 'Guia' }
 ];
 const hhmm = (ts) => new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+const dateOfOcc = (id) => { const m = /_(\d{4})(\d{2})(\d{2})$/.exec(id); return m ? `${m[1]}-${m[2]}-${m[3]}` : undefined; };
 
 function greeting() {
   const h = new Date().getHours();
@@ -55,7 +62,7 @@ function LastCard({ type, events, now, onEdit }) {
   );
 }
 
-function Hoje({ store, now, onEdit }) {
+function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask }) {
   const { events, quickLog } = store;
   const [toast, setToast] = useState(null);
   const sleeping = openSleep(events);
@@ -94,10 +101,7 @@ function Hoje({ store, now, onEdit }) {
       <section class="lasts" aria-label="Últimos cuidados">
         {['mamada', 'sono', 'fralda'].map((t) => <LastCard type={t} events={events} now={now} onEdit={onEdit} />)}
       </section>
-      <section class="card empty">
-        <h3>Próximos lembretes</h3>
-        <p class="muted">Você ainda não criou lembretes. Em breve você poderá começar do zero ou usar um modelo.</p>
-      </section>
+      <RemindersCard tasks={rem.tasks} occs={rem.occs} now={now} tz={rem.tz} onOpen={onOpenItem} onNew={onNewTask} onQuickDone={(i) => rem.saveOcc(markDone(i))} />
     </>
   );
 }
@@ -147,9 +151,21 @@ function App() {
   const [tab, setTab] = useState('hoje');
   const [night, setNight] = useState(() => { try { return localStorage.getItem('night') === '1'; } catch { return false; } });
   const [editing, setEditing] = useState(null);
+  const rem = useReminders();
+  const [openOcc, setOpenOcc] = useState(null);   // id da ocorrência aberta (sheet de ação)
+  const [taskEdit, setTaskEdit] = useState(null); // { task, isNew }
   const [settings, setSettings] = useState(false);
   const [syncStatus, setSyncStatus] = useState('off');
   useEffect(() => { startSync(); return subSync((st) => setSyncStatus(st.status)); }, []);
+  // Notificação → abre o lembrete para confirmar (nunca conclui sozinho).
+  useEffect(() => {
+    const q = new URLSearchParams(location.search).get('occ');
+    if (q) { setOpenOcc(q); history.replaceState(null, '', location.pathname); }
+    const onMsg = (e) => { if (e.data?.type === 'open-occ' && e.data.occId) setOpenOcc(e.data.occId); };
+    navigator.serviceWorker?.addEventListener('message', onMsg);
+    return () => navigator.serviceWorker?.removeEventListener('message', onMsg);
+  }, []);
+  const openItem = openOcc ? dayItems(rem.tasks, rem.occs, now, rem.tz).find((i) => i.id === openOcc) ?? dayItems(rem.tasks, rem.occs, now, rem.tz, dateOfOcc(openOcc)).find((i) => i.id === openOcc) : null;
   useEffect(() => {
     document.documentElement.dataset.theme = night ? 'night' : 'day';
     try { localStorage.setItem('night', night ? '1' : '0'); } catch {}
@@ -169,7 +185,7 @@ function App() {
       </header>
       <main>
         {store.error && <p class="card err" role="alert">{store.error}</p>}
-        {tab === 'hoje' && <Hoje store={store} now={now} onEdit={setEditing} />}
+        {tab === 'hoje' && <Hoje store={store} rem={rem} now={now} onEdit={setEditing} onOpenItem={(i) => setOpenOcc(i.id)} onNewTask={() => setTaskEdit({ task: makeTask(), isNew: true })} />}
         {tab === 'historico' && <Historico events={store.events} onEdit={setEditing} />}
         {tab === 'guia' && <section class="card empty"><h2>Rotina e Sono em 7 Dias</h2><p class="muted">Conteúdo em preparação, com revisão profissional antes de publicar.</p></section>}
         <p class="muted disclaimer">O Rotininha ajuda a organizar os cuidados e não substitui a orientação do pediatra.</p>
@@ -179,6 +195,19 @@ function App() {
           <button class="tab" aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>{t.label}</button>
         ))}
       </nav>
+      {openItem && (
+        <ReminderSheet item={openItem} now={now} onClose={() => setOpenOcc(null)}
+          onDone={() => { rem.saveOcc(markDone(openItem)); setOpenOcc(null); }}
+          onSkip={() => { rem.saveOcc(markSkipped(openItem)); setOpenOcc(null); }}
+          onSnooze={(m) => { rem.saveOcc(snooze(openItem, m, Date.now())); setOpenOcc(null); }}
+          onUndo={() => { rem.saveOcc(undo(openItem)); setOpenOcc(null); }}
+          onEdit={() => { setTaskEdit({ task: openItem.task, isNew: false }); setOpenOcc(null); }} />
+      )}
+      {taskEdit && (
+        <TaskSheet task={taskEdit.task} isNew={taskEdit.isNew} tz={rem.tz} onClose={() => setTaskEdit(null)}
+          onSave={async (t) => { await rem.saveTask(t); setTaskEdit(null); }}
+          onDelete={async (id) => { await rem.removeTask(id); setTaskEdit(null); }} />
+      )}
       {settings && <SettingsSheet onClose={() => setSettings(false)} night={night} setNight={setNight} />}
       {editing && (
         <EditSheet event={editing} onClose={() => setEditing(null)}

@@ -58,3 +58,14 @@ main { flex: 1; padding: var(--space-3); display: grid; gap: var(--space-3); ali
 .sheet .inline { display: flex; align-items: center; gap: var(--space-1); min-height: var(--touch); }
 .sheet .inline input { min-height: 24px; width: 24px; }
 .stack { display: grid; gap: var(--space-2); }
+
+.card-head { display: flex; justify-content: space-between; align-items: center; }
+.rem { display: flex; align-items: stretch; border-top: 1px solid var(--border-subtle); }
+.rem .row-btn { border-top: 0; flex: 1; }
+.rem.handled .rem-main { opacity: .55; }
+.rem.late .rem-main { background: var(--warning-bg); border-radius: 12px; padding-inline: 8px; }
+.late-tag { color: var(--warning-ink); font-weight: 600; }
+.done-btn { align-self: center; margin-left: var(--space-1); background: var(--success-bg); color: var(--success-ink); border-color: transparent; }
+.ok-mark { align-self: center; padding: 0 12px; color: var(--success-ink); font-weight: 700; }
+.note-quiet { align-items: flex-start !important; }
+.note-quiet input { margin-top: 4px; }

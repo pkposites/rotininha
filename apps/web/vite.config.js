@@ -6,7 +6,11 @@ export default defineConfig({
   plugins: [
     preact(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
+      injectManifest: { globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'] },
       includeAssets: ['icons/icon.svg'],
       manifest: {
         name: 'Rotininha',
@@ -23,8 +27,7 @@ export default defineConfig({
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
-      },
-      workbox: { navigateFallback: '/index.html' }
+      }
     })
   ]
 });
