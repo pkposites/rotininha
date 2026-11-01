@@ -44,7 +44,7 @@ const account = async (code) => (await (await post('/v1/billing/account', {}, aw
   // =================================================== APP: teste grátis
   const A = await mk();
   await A.goto(APP + '/app/');
-  await A.click('text=Vamos lá'); await A.click('text=Prefiro não informar'); await A.click('text=Começar do zero'); await A.getByRole('button', { name: 'Depois', exact: true }).click();
+  await A.click('text=Vamos lá'); await A.click('text=Prefiro não informar'); await A.click('text=Usar um modelo editável'); await A.click('text=Continuar sem modelos'); await A.getByRole('button', { name: 'Depois', exact: true }).click();
   ok(await A.w(() => document.querySelector('.onb')?.innerText.includes('Acesso grátis no lançamento')), 'onboarding: passo da conta grátis');
   const trialTxt = await A.locator('.onb').innerText();
   ok(/avisamos com pelo menos 7 dias de antecedência/.test(trialTxt) && /3 dias de teste/.test(trialTxt), 'antes da cobrança: promete aviso com antecedência (nada é cobrado agora)');

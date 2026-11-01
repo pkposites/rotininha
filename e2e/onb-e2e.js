@@ -47,13 +47,13 @@ const { chromium } = require('playwright');
   // ---------- instalação dentro do Instagram ----------
   const I = await mk({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605 Mobile/15E148 Instagram 300.0' });
   await I.goto('http://localhost:4173/app/');
-  await I.click('text=Vamos lá'); await I.click('text=Prefiro não informar'); await I.click('text=Começar do zero'); await I.getByRole('button', { name: 'Depois', exact: true }).click(); await I.click('text=Agora não');
+  await I.click('text=Vamos lá'); await I.click('text=Prefiro não informar'); await I.click('text=Usar um modelo editável'); await I.click('text=Continuar sem modelos'); await I.getByRole('button', { name: 'Depois', exact: true }).click(); await I.click('text=Agora não');
   ok(await I.w(() => document.querySelector('.onb .install')?.dataset.advice === 'in-app'), 'navegador do Instagram: orienta abrir no navegador');
   ok((await I.locator('.onb .install').innerText()).includes('Abrir no navegador'), 'texto "Abrir no navegador"');
   await I.screenshot({ path: (process.argv[2] || '/tmp') + '/instagram.png' });
   const S = await mk({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605 Version/17.0 Mobile/15E148 Safari/604.1' });
   await S.goto('http://localhost:4173/app/');
-  await S.click('text=Vamos lá'); await S.click('text=Prefiro não informar'); await S.click('text=Começar do zero'); await S.getByRole('button', { name: 'Depois', exact: true }).click(); await S.click('text=Agora não');
+  await S.click('text=Vamos lá'); await S.click('text=Prefiro não informar'); await S.click('text=Usar um modelo editável'); await S.click('text=Continuar sem modelos'); await S.getByRole('button', { name: 'Depois', exact: true }).click(); await S.click('text=Agora não');
   await S.w(() => document.querySelector('.onb .install'));
   ok((await S.locator('.onb .install').innerText()).includes('Adicionar à Tela de Início'), 'iPhone/Safari: Adicionar à Tela de Início');
 

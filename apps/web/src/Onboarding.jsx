@@ -68,8 +68,15 @@ export function Onboarding({ store, rem, connected, onFinish }) {
         )}
 
         {step === 'how' && (
-          <Shell step={step} emoji="✨" title="Como quer começar?" lead="Os modelos são só pontos de partida: dá para editar tudo."
-            actions={<><button class="btn" onClick={() => setStep('templates')}>Usar um modelo editável</button><button class="btn ghost" onClick={() => setStep('first')}>Começar do zero</button></>} />
+          <Shell step={step} emoji="✨" title="Comece por aqui" lead="O Ninhora ajuda você a lembrar do que o seu bebê precisa e a registrar o dia dele, de um jeito simples."
+            actions={<button class="btn" onClick={() => setStep('templates')}>Usar um modelo editável</button>}>
+            <ul class="how-list">
+              <li><span aria-hidden="true">🍼</span><span><strong>Registre em um toque</strong><br />Mamadas, sono e fraldas, com o horário certinho.</span></li>
+              <li><span aria-hidden="true">🔔</span><span><strong>Receba lembretes</strong><br />Banho, remédio conforme orientação, consulta… Você escolhe os horários.</span></li>
+              <li><span aria-hidden="true">🕘</span><span><strong>Veja o dia de relance</strong><br />O que já foi feito e o que vem a seguir.</span></li>
+            </ul>
+            <p class="muted">Para começar, vamos sugerir alguns <strong>modelos de lembretes</strong>. São só um ponto de partida: você ajusta os horários e apaga o que não fizer sentido.</p>
+          </Shell>
         )}
 
         {step === 'templates' && (

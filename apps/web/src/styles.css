@@ -261,3 +261,6 @@ main { padding: 8px 16px calc(104px + env(safe-area-inset-bottom)); display: gri
 .segs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 14px; background: var(--surface-subtle, rgba(0,0,0,.05)); }
 .segs .chip { justify-content: center; }
 .fold > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.how-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.how-list li { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; }
+.how-list li > span:first-child { font-size: 26px; line-height: 1; text-align: center; }
