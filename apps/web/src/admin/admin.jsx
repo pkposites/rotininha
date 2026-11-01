@@ -67,6 +67,16 @@ function Overview() {
     <div class="grid">
       <div class="row" style="justify-content:space-between"><h2>Uso do app</h2>
         <label class="f" style="max-width:180px">Período<select value={days} onChange={(e) => setDays(Number(e.target.value))}><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option></select></label></div>
+      <div class="card grid"><h3>Da lista de espera ao uso (só quantidades)</h3>
+        <div class="grid kpis">
+          <Kpi l="Leads na lista" v={o.funnel.leads.configured ? (o.funnel.leads.total ?? '—') : 'não configurado'} s={o.funnel.leads.error ? 'Netlify indisponível agora' : o.funnel.leads.configured ? `${o.funnel.leads.inWindow}${o.funnel.leads.capped ? '+' : ''} no período` : 'falta o token do Netlify'} />
+          <Kpi l="Chegaram da LP ao app" v={o.funnel.fromLp} s="abriram o app pelo link da LP" />
+          <Kpi l="Instalações" v={o.funnel.installs} s="app aberto pelo ícone, no período" />
+          <Kpi l="Alertas ativos" v={o.funnel.activePush} s="famílias com notificação ligada" />
+          <Kpi l="Programações" v={o.funnel.remindersActive} s={`${o.funnel.remindersCreated} criadas no período`} />
+          <Kpi l="Sugestões" v={o.funnel.suggestions.total} s={`${o.funnel.suggestions.inWindow} no período · ${o.funnel.suggestions.new} novas`} />
+        </div>
+        <p class="muted">Leads e usuárias não são ligados por pessoa: o painel só compara quantidades.</p></div>
       <div class="grid kpis">
         <Kpi l="Famílias cadastradas" v={o.users.total} s={`${o.users.newInWindow} novas no período`} />
         <Kpi l="Ativas hoje (DAU)" v={o.users.dau} s={`${o.users.wau} na semana · ${o.users.mau} no mês`} />

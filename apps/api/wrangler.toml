@@ -16,5 +16,7 @@ ALLOWED_ORIGIN = "http://localhost:5173"
 ALLOW_DEV_SIGNUP = "false"
 PAYMENTS_ENABLED = "false" # só "true" quando o Pix estiver validado no Mercado Pago (docs/TESTE-PAGAMENTO.md)
 VAPID_SUBJECT = "mailto:contato@exemplo.com.br" # trocar pelo e-mail real de suporte
-# Secrets (wrangler secret put): CODE_PEPPER, PUSH_SEAL_KEY, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY
+NETLIFY_LP_SITE_ID = "8a4412f9-7cfc-4df9-a1ce-073db2af892b" # LP de captação (só leitura do nº de leads)
+NETLIFY_LP_FORM = "ninhora-leads"
+# Secrets (wrangler secret put): CODE_PEPPER, PUSH_SEAL_KEY, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, ADMIN_TOKEN, NETLIFY_TOKEN
 # Local: crie .dev.vars (ignorado pelo git) — veja .dev.vars.example

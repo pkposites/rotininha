@@ -328,13 +328,17 @@ test('análise de uso: ativação, retenção D1/D3/D7, recursos, notificações
   sql(`DELETE FROM usage_daily WHERE hid='${hid}'`);
   const d0 = new Date(created - 3 * H).toISOString().slice(0, 10);
   const plus = (n) => new Date(Date.parse(d0 + 'T00:00:00Z') + n * DAY).toISOString().slice(0, 10);
-  for (const [n, ev] of [[0, 'app_open'], [1, 'app_open'], [3, 'app_open'], [7, 'app_open'], [7, 'sound_played'], [0, 'care_logged']])
+  for (const [n, ev] of [[0, 'app_open'], [1, 'app_open'], [3, 'app_open'], [7, 'app_open'], [7, 'sound_played'], [0, 'care_logged'], [0, 'app_installed'], [0, 'lp_arrival']])
     sql(`INSERT INTO usage_daily (hid, day, event, n) VALUES ('${hid}', '${plus(n)}', '${ev}', 1)`);
   const ov = await adm('/v1/admin/overview?days=30');
   assert.ok(ov.users.total >= 1 && ov.users.trials >= 1);
   assert.ok(ov.activation.cohort >= 1 && ov.activation.within24h > 0 && ov.activation.ever >= ov.activation.within24h);
   for (const k of ['d1', 'd3', 'd7']) { assert.ok(ov.retention[k].cohort >= 1, k); assert.ok(ov.retention[k].returned >= 1, k); assert.ok(ov.retention[k].rate > 0 && ov.retention[k].rate <= 1, k); }
   assert.ok(ov.features.sound_played.households >= 1);
+  assert.deepEqual(ov.funnel.leads, { configured: false }, 'sem token do Netlify: não configurado, sem inventar número');
+  assert.ok(ov.funnel.installs >= 1 && ov.funnel.fromLp >= 1 && ov.funnel.activePush >= 1);
+  for (const k of ['remindersCreated', 'remindersActive']) assert.equal(typeof ov.funnel[k], 'number', k);
+  assert.equal(typeof ov.funnel.suggestions.total, 'number');
   assert.ok(Array.isArray(ov.series.dau) && Array.isArray(ov.series.signups));
   assert.ok(ov.push.withPush >= 1 && ov.push.optInRate > 0 && ov.push.optInRate <= 1);
   assert.ok(ov.trial.started >= 1); assert.equal(typeof ov.trial.conversion, 'number');

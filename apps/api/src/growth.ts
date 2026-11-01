@@ -9,7 +9,7 @@ import { ageInDays, leapStartingSoon } from '../../../packages/shared/leaps.js';
 
 export const USAGE_EVENTS = new Set([
   'app_open', 'care_logged', 'reminder_created', 'reminder_done', 'reminder_snoozed', 'sound_played', 'leap_viewed', 'leap_marked',
-  'guide_lesson_done', 'push_enabled', 'settings_opened', 'paywall_viewed', 'checkout_started', 'trial_banner_seen', 'care_tip_opened', 'help_card_opened'
+  'guide_lesson_done', 'push_enabled', 'settings_opened', 'paywall_viewed', 'checkout_started', 'trial_banner_seen', 'care_tip_opened', 'help_card_opened', 'app_installed', 'lp_arrival'
 ]);
 export const TARGETS = ['hoje', 'historico', 'saltos', 'sons', 'guia', 'ajustes'];
 export const CAP_MS = 20 * 3_600_000; // no máximo 1 aviso promocional a cada 20 h por família

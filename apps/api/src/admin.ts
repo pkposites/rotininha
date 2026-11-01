@@ -14,6 +14,29 @@ const one = async (env: Env, sql: string, ...b: any[]) => env.DB.prepare(sql).bi
 
 // ------------------------------------------------------------------ análise de uso
 
+let leadsCache: { at: number; v: any } | null = null;
+/** Quantidade de leads da LP (Netlify Forms). Só números: nada de nome ou WhatsApp passa por aqui. */
+export async function leadsCount(env: Env, now: number, days: number) {
+  if (!env.NETLIFY_TOKEN || !env.NETLIFY_LP_SITE_ID) return { configured: false as const };
+  if (leadsCache && now - leadsCache.at < 5 * 60_000 && leadsCache.v.days === days) return leadsCache.v;
+  const hdr = { Authorization: `Bearer ${env.NETLIFY_TOKEN}` };
+  try {
+    const forms = await (await fetch(`https://api.netlify.com/api/v1/sites/${env.NETLIFY_LP_SITE_ID}/forms`, { headers: hdr })).json<any[]>();
+    const f = forms.find((x) => x.name === (env.NETLIFY_LP_FORM ?? 'ninhora-leads'));
+    if (!f) return { configured: true as const, error: 'form_not_found' };
+    let inWindow = 0, capped = false;
+    for (let page = 1; page <= 5; page++) {
+      const subs = await (await fetch(`https://api.netlify.com/api/v1/forms/${f.id}/submissions?per_page=100&page=${page}`, { headers: hdr })).json<any[]>();
+      for (const s of subs) if (Date.parse(s.created_at) >= now - days * DAY_MS) inWindow++;
+      if (subs.length < 100 || Date.parse(subs[subs.length - 1].created_at) < now - days * DAY_MS) break;
+      if (page === 5) capped = true;
+    }
+    const v = { configured: true as const, total: f.submission_count ?? null, inWindow, capped, days };
+    leadsCache = { at: now, v };
+    return v;
+  } catch { return { configured: true as const, error: 'netlify_unavailable' }; }
+}
+
 export async function overview(env: Env, days: number, now: number) {
   const today = dayBR(now), from = addDays(today, -(days - 1));
   const fromMs = now - days * DAY_MS;
@@ -67,9 +90,23 @@ export async function overview(env: Env, days: number, now: number) {
             SUM(valid_until IS NOT NULL AND valid_until < ?) AS ended FROM households h WHERE trial_ends_at IS NOT NULL AND created_at >= ?`, now, fromMs);
   const revenue = await one(env, `SELECT COUNT(*) AS n, COALESCE(SUM(amount_cents),0) AS cents FROM payments WHERE applied_at IS NOT NULL AND refunded_at IS NULL AND applied_at >= ?`, fromMs);
 
+  // funil leads → uso (só quantidades)
+  const ev = async (e: string) => (await one(env, `SELECT COUNT(DISTINCT hid) AS n FROM usage_daily WHERE event = ? AND day >= ?`, e, from))?.n ?? 0;
+  const remMade = (await one(env, `SELECT COALESCE(SUM(n),0) AS n FROM usage_daily WHERE event = 'reminder_created' AND day >= ?`, from))?.n ?? 0;
+  const remActive = (await one(env, `SELECT COUNT(*) AS n FROM records WHERE kind = 'task' AND deleted = 0`))?.n ?? 0;
+  const pushActive = (await one(env, `SELECT COUNT(DISTINCT household_id) AS n FROM push_subscriptions`))?.n ?? 0;
+  const sugg = await one(env, `SELECT COUNT(*) AS total, SUM(created_at >= ?) AS inWindow, SUM(status = 'novo') AS novas FROM feedback_suggestions`, fromMs);
+  const funnel = {
+    leads: await leadsCount(env, now, days),
+    fromLp: await ev('lp_arrival'), installs: await ev('app_installed'), accounts: totals?.total ?? 0,
+    activePush: pushActive, remindersCreated: remMade, remindersActive: remActive,
+    suggestions: { total: sugg?.total ?? 0, inWindow: sugg?.inWindow ?? 0, new: sugg?.novas ?? 0 }
+  };
+
   const rate = (a: number | null, b: number | null) => (b ? (a ?? 0) / b : null);
   return {
     generatedAt: new Date(now).toISOString(), days,
+    funnel,
     users: { total: totals?.total ?? 0, trials: totals?.trials ?? 0, newInWindow: totals?.novos ?? 0, dau: dau1, wau, mau, stickiness: mau ? dau1 / mau : null },
     series: { signups, dau },
     activation: { cohort: act?.cohort ?? 0, within24h: rate(act?.d1, act?.cohort), within72h: rate(act?.d3, act?.cohort), ever: rate(act?.ever, act?.cohort) },

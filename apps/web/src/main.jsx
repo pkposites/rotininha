@@ -240,7 +240,10 @@ function App() {
     const goTo = (t) => { if (t === 'ajustes') setSettings(true); else if (['hoje', 'historico', 'saltos', 'sons', 'guia'].includes(t)) setTab(t); };
     if (q) setOpenOcc(q);
     if (go) goTo(go);
-    if (q || go) history.replaceState(null, '', location.pathname);
+    const src = params.get('src');
+    if (src) { (async () => { if (src === 'lp' && !(await getPref('lpArrival', false))) { await setPref('lpArrival', true); count('lp_arrival'); } })(); }
+    (async () => { if (isStandalone() && !(await getPref('installCounted', false))) { await setPref('installCounted', true); count('app_installed'); } })();
+    if (q || go || src) history.replaceState(null, '', location.pathname);
     const onMsg = (e) => {
       if (e.data?.type === 'open-occ' && e.data.occId) setOpenOcc(e.data.occId);
       if (e.data?.type === 'open-target' && e.data.target) goTo(e.data.target);
