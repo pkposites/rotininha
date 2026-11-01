@@ -1,6 +1,9 @@
-import type { Env, Auth, ClientEvent } from './types';
+import type { Env, Auth, WireRecord } from './types';
 import { sha256Hex, randomCode, normalizeCode, randomToken } from './crypto';
-import { parseEvent, MAX_CHANGES } from './validate';
+import { parseRecord, MAX_CHANGES } from './validate';
+import { applyChanges, changesSince, householdTz, rescheduleAll } from './records';
+import { saveSubscription, removeSubscription, endpointAllowed, pushToHousehold, runDue } from './push';
+import { isValidTimeZone } from '../../../packages/shared/schedule.js';
 import { hit } from './ratelimit';
 
 const ACCESS_TTL = 60 * 60 * 1000;            // 1 h
@@ -102,6 +105,16 @@ export default {
         return json(await issueSession(env, row.household_id, row.device_id, now), 201, h);
       }
 
+      if (req.method === 'GET' && url.pathname === '/v1/push/key')
+        return json({ publicKey: env.VAPID_PUBLIC_KEY }, 200, h);
+
+      // Execução manual do Cron com relógio controlado — só em desenvolvimento.
+      if (req.method === 'POST' && url.pathname === '/v1/dev/tick') {
+        if (env.ALLOW_DEV_SIGNUP !== 'true') return json({ error: 'not_found' }, 404, h);
+        const body = (await readJson(req)) ?? {};
+        return json(await runDue(env, Number.isSafeInteger(body.now) ? body.now : now), 200, h);
+      }
+
       // --- Daqui em diante: autenticado ---
       const auth = await authenticate(env, req, now);
       if (!auth) return json({ error: 'unauthorized' }, 401, h);
@@ -118,68 +131,54 @@ export default {
         if (body.changes.length > MAX_CHANGES) return json({ error: 'too_many_changes' }, 413, h);
         if (!(await hit(env.DB, `sync:${auth.householdId}`, 120, 60_000, now))) return json({ error: 'rate_limited' }, 429, h);
 
-        const changes: ClientEvent[] = [];
+        const changes: WireRecord[] = [];
         for (const raw of body.changes) {
-          const ev = parseEvent(raw);
-          if (!ev) return json({ error: 'invalid_event' }, 422, h);
-          changes.push({ ...ev, updatedAt: Math.min(ev.updatedAt, now + CLOCK_SKEW) });
+          const rec = parseRecord(raw);
+          if (!rec) return json({ error: 'invalid_event' }, 422, h);
+          changes.push({ ...rec, updatedAt: Math.min(rec.updatedAt, now + CLOCK_SKEW) });
         }
 
         // Vencido além da carência: leitura continua, escrita não.
         if (changes.length && auth.graceUntil != null && now > auth.graceUntil)
           return json({ error: 'expired' }, 403, h);
 
-        if (changes.length) {
-          // Último vence (LWW por updatedAt); idempotente por (household, id).
-          const existing = new Map<string, number>();
-          const ids = changes.map((c) => c.id);
-          const q = await env.DB.prepare(
-            `SELECT id, updated_at FROM care_events WHERE household_id = ? AND id IN (${ids.map(() => '?').join(',')})`
-          ).bind(auth.householdId, ...ids).all<{ id: string; updated_at: number }>();
-          for (const r of q.results) existing.set(r.id, r.updated_at);
+        await applyChanges(env, auth.householdId, changes, now);
+        return json(await changesSince(env, auth.householdId, body.cursor, PAGE), 200, h);
+      }
 
-          const winners = new Map<string, ClientEvent>();
-          for (const c of changes) {
-            const cur = winners.get(c.id);
-            if (cur && cur.updatedAt >= c.updatedAt) continue;
-            const ex = existing.get(c.id);
-            if (ex != null && ex >= c.updatedAt) continue;
-            winners.set(c.id, c);
-          }
+      // --- Push ---
+      if (req.method === 'POST' && url.pathname === '/v1/push/subscribe') {
+        const body = await readJson(req);
+        const k = body?.keys;
+        if (!body || typeof body.endpoint !== 'string' || typeof k?.p256dh !== 'string' || typeof k?.auth !== 'string')
+          return json({ error: 'bad_request' }, 400, h);
+        if (!endpointAllowed(env, body.endpoint)) return json({ error: 'endpoint_not_allowed' }, 422, h);
+        if (k.p256dh.length > 100 || k.auth.length > 40) return json({ error: 'bad_request' }, 400, h);
+        if (!(await hit(env.DB, `sub:${auth.householdId}`, 20, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        await saveSubscription(env, auth.householdId, auth.deviceId, { endpoint: body.endpoint, p256dh: k.p256dh, auth: k.auth, privacy: !!body.privacy }, now);
+        return json({ ok: true }, 201, h);
+      }
+      if (req.method === 'POST' && url.pathname === '/v1/push/unsubscribe') {
+        const body = await readJson(req);
+        if (!body || typeof body.endpoint !== 'string') return json({ error: 'bad_request' }, 400, h);
+        await removeSubscription(env, auth.householdId, body.endpoint);
+        return json({ ok: true }, 200, h);
+      }
+      if (req.method === 'POST' && url.pathname === '/v1/push/test') {
+        if (!(await hit(env.DB, `pushtest:${auth.householdId}`, 5, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        const sent = await pushToHousehold(env, auth.householdId, { title: 'Rotininha', body: 'Tudo certo! Os lembretes chegam neste aparelho. 💜', tag: 'test' }, now);
+        return json({ sent }, 200, h);
+      }
 
-          if (winners.size) {
-            const r = await env.DB.prepare('UPDATE households SET seq = seq + ? WHERE id = ? RETURNING seq')
-              .bind(winners.size, auth.householdId).first<{ seq: number }>();
-            let seq = (r!.seq) - winners.size;
-            const stmts = [...winners.values()].map((c) =>
-              env.DB.prepare(
-                `INSERT INTO care_events (household_id, id, type, started_at, ended_at, note, detail, updated_at, deleted, seq)
-                 VALUES (?,?,?,?,?,?,?,?,?,?)
-                 ON CONFLICT(household_id, id) DO UPDATE SET
-                   type=excluded.type, started_at=excluded.started_at, ended_at=excluded.ended_at,
-                   note=excluded.note, detail=excluded.detail, updated_at=excluded.updated_at,
-                   deleted=excluded.deleted, seq=excluded.seq
-                 WHERE excluded.updated_at > care_events.updated_at`
-              ).bind(auth.householdId, c.id, c.type, c.startedAt, c.endedAt, c.note, c.detail, c.updatedAt, c.deleted ? 1 : 0, ++seq)
-            );
-            await env.DB.batch(stmts);
-          }
+      // --- Ajustes da família ---
+      if (req.method === 'POST' && url.pathname === '/v1/settings') {
+        const body = await readJson(req);
+        if (!body || typeof body.timezone !== 'string' || !isValidTimeZone(body.timezone)) return json({ error: 'bad_request' }, 400, h);
+        if (body.timezone !== (await householdTz(env, auth.householdId))) {
+          await env.DB.prepare('UPDATE households SET timezone = ? WHERE id = ?').bind(body.timezone, auth.householdId).run();
+          await rescheduleAll(env, auth.householdId, body.timezone, now);
         }
-
-        const rows = await env.DB.prepare(
-          `SELECT id, type, started_at, ended_at, note, detail, updated_at, deleted, seq
-             FROM care_events WHERE household_id = ? AND seq > ? ORDER BY seq LIMIT ?`
-        ).bind(auth.householdId, body.cursor, PAGE + 1).all<any>();
-        const more = rows.results.length > PAGE;
-        const page = rows.results.slice(0, PAGE);
-        return json({
-          cursor: page.length ? page[page.length - 1].seq : body.cursor,
-          more,
-          changes: page.map((r) => ({
-            id: r.id, type: r.type, startedAt: r.started_at, endedAt: r.ended_at, note: r.note,
-            detail: r.detail, updatedAt: r.updated_at, deleted: !!r.deleted
-          }))
-        }, 200, h);
+        return json({ ok: true }, 200, h);
       }
 
       return json({ error: 'not_found' }, 404, h);
@@ -187,5 +186,9 @@ export default {
       console.error('unhandled', (e as Error).message); // sem tokens/códigos nos logs
       return json({ error: 'server_error' }, 500, h);
     }
+  },
+
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(runDue(env, Date.now()).then((r) => console.log('cron', JSON.stringify(r))));
   }
 };

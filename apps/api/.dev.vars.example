@@ -1,2 +1,8 @@
-CODE_PEPPER=troque-por-um-valor-aleatorio-longo
+# Gere valores reais com: node scripts/gen-vapid.mjs
+CODE_PEPPER=troque
+PUSH_SEAL_KEY=troque
+VAPID_PUBLIC_KEY=troque
+VAPID_PRIVATE_KEY=troque
+VAPID_SUBJECT=mailto:dev@example.com
 ALLOW_DEV_SIGNUP=true
+ALLOWED_ORIGIN=http://localhost:4173

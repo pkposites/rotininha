@@ -8,8 +8,12 @@ database_name = "rotininha"
 database_id = "00000000-0000-0000-0000-000000000000" # substituir após `wrangler d1 create rotininha`
 migrations_dir = "migrations"
 
+[triggers]
+crons = ["* * * * *"]
+
 [vars]
 ALLOWED_ORIGIN = "http://localhost:5173"
 ALLOW_DEV_SIGNUP = "false"
-# Secrets (wrangler secret put): CODE_PEPPER
+VAPID_SUBJECT = "mailto:contato@exemplo.com.br" # trocar pelo e-mail real de suporte
+# Secrets (wrangler secret put): CODE_PEPPER, PUSH_SEAL_KEY, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY
 # Local: crie .dev.vars (ignorado pelo git) — veja .dev.vars.example
