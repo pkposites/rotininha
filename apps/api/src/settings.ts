@@ -9,12 +9,19 @@ export async function setSetting(env: Env, key: string, value: string | null) {
   else await env.DB.prepare('INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(key, value).run();
 }
 
-export interface TrialConfig { days: number; enforceFrom: number | null; noticeDays: number }
+export interface TrialConfig {
+  days: number; noticeDays: number;
+  enforceFrom: number | null;     // valor EFETIVO: nulo enquanto o pagamento estiver desligado (ninguém é bloqueado sem poder pagar)
+  rawEnforceFrom: number | null;  // data programada no painel
+  payable: boolean;               // pagamento ligado no servidor
+}
 
 /** Teste grátis: duração e data a partir da qual a cobrança passa a valer. Sem data = ninguém é cobrado (pré-lançamento). */
 export async function trialConfig(env: Env): Promise<TrialConfig> {
   const [d, f, n] = await Promise.all([getSetting(env, 'trial_days'), getSetting(env, 'trial_enforce_from'), getSetting(env, 'notice_days')]);
-  return { days: d ? Number(d) : 3, enforceFrom: f ? Number(f) : null, noticeDays: n ? Number(n) : 7 };
+  const payable = env.PAYMENTS_ENABLED === 'true';
+  const raw = f ? Number(f) : null;
+  return { days: d ? Number(d) : 3, enforceFrom: payable ? raw : null, rawEnforceFrom: raw, noticeDays: n ? Number(n) : 7, payable };
 }
 
 export const enforcementActive = (c: TrialConfig, now: number) => c.enforceFrom != null && now >= c.enforceFrom;

@@ -211,7 +211,8 @@ function Billing() {
     <div class="grid" style="max-width:640px">
       <h2>Teste grátis e cobrança</h2>
       <div class={`card ${s.active ? 'err' : ''}`}>{s.active ? <b>Cobrança em vigor.</b> : s.enforceFrom ? <b>Cobrança agendada para {new Date(s.enforceFrom).toLocaleDateString('pt-BR')}.</b> : <b>Pré-lançamento: ninguém é cobrado.</b>}
-        <p class="muted">{s.trials} famílias em teste{s.trialsWithoutEnd ? ` (${s.trialsWithoutEnd} ainda sem data de fim)` : ''}.</p></div>
+        <p class="muted">{s.trials} famílias em teste{s.trialsWithoutEnd ? ` (${s.trialsWithoutEnd} ainda sem data de fim)` : ''}.</p>
+        {s.enforceFrom && !s.payments && <p class="err" role="alert"><b>Atenção:</b> o pagamento está <b>desligado</b> no servidor. Por segurança, a cobrança e o bloqueio <b>não entram em vigor</b> nesta data enquanto o pagamento não for ligado — ninguém é bloqueado sem ter como pagar.</p>}</div>
       <div class="card grid">
         <label class="f">Duração do teste (dias)<input type="number" min="1" max="30" value={f.days} onInput={(e) => setF({ ...f, days: e.target.value })} /></label>
         <label class="f">Aviso prévio mínimo (dias)<input type="number" min="1" max="60" value={f.notice} onInput={(e) => setF({ ...f, notice: e.target.value })} /></label>

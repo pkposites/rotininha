@@ -218,7 +218,7 @@ export async function adminGrowth(env: Env, req: Request, url: URL, now: number,
   if (m === 'GET' && p === '/v1/admin/settings') {
     const c = await trialConfig(env);
     const trials = await one(env, `SELECT COUNT(*) AS n, SUM(valid_until IS NULL) AS unlimited FROM households WHERE plan = 'trial'`);
-    return json({ trialDays: c.days, enforceFrom: c.enforceFrom, noticeDays: c.noticeDays, active: enforcementActive(c, now), trials: trials?.n ?? 0, trialsWithoutEnd: trials?.unlimited ?? 0 }, 200, h);
+    return json({ trialDays: c.days, enforceFrom: c.rawEnforceFrom, payments: c.payable, noticeDays: c.noticeDays, active: enforcementActive(c, now), trials: trials?.n ?? 0, trialsWithoutEnd: trials?.unlimited ?? 0 }, 200, h);
   }
   if (m === 'POST' && p === '/v1/admin/settings') {
     const b = await read(req); if (!b) return json({ error: 'bad_request' }, 400, h);
@@ -229,7 +229,7 @@ export async function adminGrowth(env: Env, req: Request, url: URL, now: number,
       const from = Number(b.enforceFrom);
       // aviso prévio: a cobrança só pode começar depois de `notice` dias a partir de agora (a menos que já esteja valendo)
       const devSkip = env.ALLOW_DEV_SIGNUP === 'true' && b.devSkipNotice === true; // só em desenvolvimento/testes
-      if (!Number.isFinite(from) || (!devSkip && from < now + notice * DAY_MS && !(c.enforceFrom != null && c.enforceFrom === from)))
+      if (!Number.isFinite(from) || (!devSkip && from < now + notice * DAY_MS && !(c.rawEnforceFrom != null && c.rawEnforceFrom === from)))
         return json({ error: 'notice_required', minFrom: now + notice * DAY_MS }, 422, h);
       await setSetting(env, 'trial_enforce_from', String(from));
     } else if (b.enforceFrom === null) {

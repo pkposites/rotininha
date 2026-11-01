@@ -29,6 +29,8 @@ import { InstallPopup } from './InstallPopup.jsx';
 import { MiniPlayer } from './MiniPlayer.jsx';
 import { isStandalone } from './lib/push.js';
 import { registeredMessage } from './lib/ux.js';
+import { isBlocked } from './lib/gate.js';
+import { PaywallSheet } from './PaywallSheet.jsx';
 import { RemindersCard } from './RemindersCard.jsx';
 import { useReminders } from './lib/useReminders.js';
 import { makeTask, dayItems, markDone, markSkipped, snooze, undo } from './lib/tasks.js';
@@ -85,7 +87,7 @@ function LastCard({ type, events, now, onEdit }) {
   );
 }
 
-function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedbackNode, onHelp, syncStatus, onConnect, hideLocal, onInstall }) {
+function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedbackNode, onHelp, syncStatus, onConnect, hideLocal, onInstall, blocked, onBlocked }) {
   const { events, quickLog } = store;
   const [toast, setToast] = useState(null);
   const sleeping = openSleep(events);
@@ -98,6 +100,7 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedba
   const data = new Date(now).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const log = async (type) => {
+    if (blocked) return onBlocked();
     const r = await quickLog(type);
     if (!r.duplicate) { count('care_logged'); onLogged?.(); }
     setToast({ msg: registeredMessage(type, r.event, r.woke), r, dup: !!r.duplicate });
@@ -137,7 +140,7 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedba
       <section class="lasts" aria-label="Últimos cuidados">
         {['mamada', 'sono', 'fralda'].map((t) => <LastCard type={t} events={events} now={now} onEdit={onEdit} />)}
       </section>
-      <RemindersCard tasks={rem.tasks} occs={rem.occs} now={now} tz={rem.tz} onOpen={onOpenItem} onNew={onNewTask} onQuickDone={(i) => { count('reminder_done'); rem.saveOcc(markDone(i)); }} />
+      <RemindersCard tasks={rem.tasks} occs={rem.occs} now={now} tz={rem.tz} onOpen={onOpenItem} onNew={() => blocked ? onBlocked() : onNewTask()} onQuickDone={(i) => { if (blocked) return onBlocked(); count('reminder_done'); rem.saveOcc(markDone(i)); }} />
       {feedbackNode}
       {syncStatus === 'signed-out' && !localDismissed && !hideLocal && (
         <section class="card local-card" aria-label="Seus registros estão só neste aparelho">
@@ -219,6 +222,7 @@ function App() {
   useEffect(() => { track('app_first_open', { once: true }); count('app_open'); }, []);
   const [trialOpen, setTrialOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
+  const [paywall, setPaywall] = useState(false);
   const offerInstall = async () => { if (!isStandalone() && !(await getPref('installDismissed', false)) && Date.now() > (await getPref('installSnoozeUntil', 0))) setInstallOpen(true); };
   useEffect(() => { (async () => setFbPrefs({ dismissedAt: await getPref('feedbackDismissedAt'), submittedAt: await getPref('feedbackSubmittedAt') }))(); }, [feedbackOpen]);
   // Primeira abertura: onboarding só para quem ainda não tem dados nem já o concluiu.
@@ -233,6 +237,7 @@ function App() {
   const [checkout, setCheckout] = useState(null);   // { renewal, resume }
   const [recover, setRecover] = useState(null);     // { token }
   const [account, setAccount] = useState(null);
+  const blocked = isBlocked(account);   // acesso vencido: só leitura até pagar
   const refreshAccount = async () => setAccount(await getAccount());
   // Link de recuperação: #recover=TOKEN (fragmento: não vai ao servidor). Pagamento em andamento: retoma.
   useEffect(() => {
@@ -292,11 +297,11 @@ function App() {
       <main>
         {store.error && <p class="card err" role="alert">{store.error}</p>}
         {notice && <section class={`card notice ${notice.tone}`} role="status"><p>{notice.text}</p>{FLAGS.payments && <button class="btn" onClick={() => setCheckout({ renewal: true })}>Garantir acesso</button>}</section>}
-        {tab === 'hoje' && <Hoje onInstall={() => setInstallOpen(true)} hideLocal={onboarding} syncStatus={syncStatus} onConnect={() => setTrialOpen(true)} onHelp={() => { setTab('guia'); count('help_card_opened'); }} store={store} rem={rem} now={now} onLogged={() => { setLoggedThisSession(true); track('first_record', { once: true }); }}
+        {tab === 'hoje' && <Hoje blocked={blocked} onBlocked={() => setPaywall(true)} onInstall={() => setInstallOpen(true)} hideLocal={onboarding} syncStatus={syncStatus} onConnect={() => setTrialOpen(true)} onHelp={() => { setTab('guia'); count('help_card_opened'); }} store={store} rem={rem} now={now} onLogged={() => { setLoggedThisSession(true); track('first_record', { once: true }); }}
           feedbackNode={showFeedbackCard ? <FeedbackCard onOpen={() => setFeedbackOpen(true)} onDismiss={async () => { await setPref('feedbackDismissedAt', Date.now()); setFbPrefs((f) => ({ ...f, dismissedAt: Date.now() })); track('feedback_card_dismissed'); }} /> : null} onEdit={setEditing} onOpenItem={(i) => setOpenOcc(i.id)} onNewTask={() => setTaskEdit({ task: makeTask(), isNew: true })} />}
         {tab === 'historico' && <Historico events={store.events} onEdit={setEditing} />}
         {tab === 'saltos' && <LeapsTab tz={rem.tz} />}
-        {tab === 'sons' && <SoundsTab />}
+        {tab === 'sons' && <SoundsTab blocked={blocked} onBlocked={() => setPaywall(true)} />}
         {tab === 'guia' && <GuideTab onGoSounds={() => setTab('sons')} rem={rem} account={account} now={now}
           onCreateTask={(p) => setTaskEdit({ task: makeTask(p), isNew: true })} onGoToday={() => setTab('hoje')}
           onSuggest={() => setFeedbackOpen(true)} onRenew={FLAGS.payments ? () => setCheckout({ renewal: true }) : null} />}
@@ -313,17 +318,18 @@ function App() {
       {onboarding && <Onboarding store={store} rem={rem} connected={syncStatus !== 'signed-out' && syncStatus !== 'off'} onFinish={() => { setOnboarding(false); offerInstall(); }} />}
       {openItem && (
         <ReminderSheet item={openItem} now={now} onClose={() => setOpenOcc(null)}
-          onDone={() => { count('reminder_done'); rem.saveOcc(markDone(openItem)); setOpenOcc(null); }}
-          onSkip={() => { rem.saveOcc(markSkipped(openItem)); setOpenOcc(null); }}
-          onSnooze={(m) => { count('reminder_snoozed'); rem.saveOcc(snooze(openItem, m, Date.now())); setOpenOcc(null); }}
-          onUndo={() => { rem.saveOcc(undo(openItem)); setOpenOcc(null); }}
+          onDone={() => { if (blocked) { setOpenOcc(null); return setPaywall(true); } count('reminder_done'); rem.saveOcc(markDone(openItem)); setOpenOcc(null); }}
+          onSkip={() => { if (blocked) { setOpenOcc(null); return setPaywall(true); } rem.saveOcc(markSkipped(openItem)); setOpenOcc(null); }}
+          onSnooze={(m) => { if (blocked) { setOpenOcc(null); return setPaywall(true); } count('reminder_snoozed'); rem.saveOcc(snooze(openItem, m, Date.now())); setOpenOcc(null); }}
+          onUndo={() => { if (blocked) { setOpenOcc(null); return setPaywall(true); } rem.saveOcc(undo(openItem)); setOpenOcc(null); }}
           onEdit={() => { setTaskEdit({ task: openItem.task, isNew: false }); setOpenOcc(null); }} />
       )}
       {taskEdit && (
         <TaskSheet task={taskEdit.task} isNew={taskEdit.isNew} tz={rem.tz} onClose={() => setTaskEdit(null)}
-          onSave={async (t) => { await rem.saveTask(t); setTaskEdit(null); }}
+          onSave={async (t) => { if (blocked) { setTaskEdit(null); return setPaywall(true); } await rem.saveTask(t); setTaskEdit(null); }}
           onDelete={async (id) => { await rem.removeTask(id); setTaskEdit(null); }} />
       )}
+      {paywall && <PaywallSheet account={account} onClose={() => setPaywall(false)} onPay={() => { setPaywall(false); setCheckout({ renewal: true }); }} />}
       {installOpen && !recover && !checkout && !trialOpen && <InstallPopup onClose={() => setInstallOpen(false)} />}
       {feedbackOpen && <FeedbackSheet onClose={() => setFeedbackOpen(false)} />}
       {settings && <SettingsSheet onClose={() => setSettings(false)} night={night} setNight={setNight} account={account}
@@ -337,7 +343,7 @@ function App() {
       {recover && <RecoverSheet token={recover.token} onClose={() => setRecover(null)} />}
       {editing && (
         <EditSheet event={editing} onClose={() => setEditing(null)}
-          onSave={async (e) => { await store.save(e); setEditing(null); }}
+          onSave={async (e) => { if (blocked) { setEditing(null); return setPaywall(true); } await store.save(e); setEditing(null); }}
           onDelete={async (id) => { await store.remove(id); setEditing(null); }} />
       )}
     </div>

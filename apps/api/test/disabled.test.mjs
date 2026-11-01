@@ -25,3 +25,21 @@ test('o que já existe continua funcionando (login, sincronização, conta); web
   const w = await fetch(OFF + '/v1/webhooks/mercadopago?data.id=1&type=payment', { method: 'POST', body: '{}' });
   assert.equal(w.status, 401, 'webhook continua protegido (reembolsos de compras existentes precisam ser processados)');
 });
+
+test('data de cobrança agendada NÃO bloqueia ninguém enquanto o pagamento está desligado', { skip }, async () => {
+  const ADMIN = 'Bearer admin-token-local-de-teste-1234567890';
+  const adm = (path, body) => fetch(OFF + path, { method: body ? 'POST' : 'GET', headers: { 'Content-Type': 'application/json', Authorization: ADMIN, 'CF-Connecting-IP': `10.8.${Math.floor(Math.random() * 250)}.1` }, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
+  const past = Date.now() - 86_400_000;
+  try {
+    assert.equal((await adm('/v1/admin/settings', { enforceFrom: past, devSkipNotice: true })).ok, true);
+    const s = await adm('/v1/admin/settings');
+    assert.equal(s.enforceFrom, past, 'o painel mostra a data programada'); assert.equal(s.payments, false, 'e avisa que o pagamento está desligado'); assert.equal(s.active, false);
+    const p = await (await fetch(OFF + '/v1/plans')).json();
+    assert.equal(p.trial.enforceFrom, null); assert.equal(p.trial.active, false, 'público: sem cobrança');
+    const t = await post('/v1/trial/start', { deviceId: 'dev' + Math.random().toString(36).slice(2, 10) + 'abcd', whatsapp: `(11) 9${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`, password: 'senha de teste 2026' });
+    const j = await t.json();
+    assert.equal(t.status, 201); assert.equal(j.enforced, false, 'conta nova não ganha prazo');
+    const acc = await (await post('/v1/billing/account', {}, j.session.accessToken)).json();
+    assert.equal(acc.state, 'active'); assert.equal(acc.validUntil, null); assert.equal(acc.enforcement.active, false);
+  } finally { await adm('/v1/admin/settings', { enforceFrom: null }); }
+});

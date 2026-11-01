@@ -34,3 +34,17 @@ Faça **uma compra real de R$ 37,90** com você mesma e confira: Pix → acesso 
 - O Pixel (LP) só carrega se a pessoa aceitar "Medição de anúncios". Eventos: `PageView`, `ViewContent`, `InitiateCheckout` — sem parâmetros.
 - O `Purchase` vai **pelo servidor** (API de Conversões) só se a pessoa tiver consentido: e-mail em hash, valor, `event_id` = nº do pagamento, ids do navegador (`_fbp`/`_fbc`). Nunca CPF, idade do bebê, quiz, horários, remédios ou histórico. Os ids de rastreio são **apagados depois do envio**.
 - Teste no Gerenciador de Eventos com `META_TEST_EVENT_CODE` antes de produção.
+
+## Cobrança a partir de 05/11/2026 (decisão do proprietário)
+A estrutura está pronta e testada (`e2e/block-e2e.js`, `apps/api/test/disabled.test.mjs`):
+- **Teste**: quem cria conta depois do início da cobrança tem 3 dias grátis; quem já usava ganha 3 dias a partir da data de início.
+- **Bloqueio** (acesso vencido, depois de 24 h de carência): vira só leitura. Ficam bloqueados registrar cuidados, criar/concluir/adiar lembretes e tocar sons; o servidor também recusa gravações e pára os lembretes por notificação. **Continuam livres**: ver o histórico, baixar e apagar os dados e todas as informações de segurança (Guia, "Quando buscar ajuda").
+- **Liberação**: pagar o Pix de R$ 37,90 (pagamento único, vitalício) libera tudo na hora; o que a pessoa registrar depois sincroniza normalmente.
+- **Trava de segurança**: enquanto `PAYMENTS_ENABLED` não for `"true"` no Worker, a data de cobrança fica **inerte**: ninguém é bloqueado sem ter como pagar (o painel avisa disso). Para a cobrança valer em 05/11: concluir os itens acima, ligar `PAYMENTS_ENABLED = "true"` no Worker e `VITE_PAYMENTS_ENABLED=1` no Netlify **antes** da data.
+- Decisão em aberto: quem usa o app **sem conta** não é bloqueado (não há como medir). Sem conta não há lembretes por notificação nem sincronização. Se quiser exigir conta depois da data, é uma mudança pequena.
+
+### O que falta do lado do Mercado Pago ("ML")
+1. Credenciais de **produção**: `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET` (painel de desenvolvedores → sua aplicação).
+2. Cadastrar o webhook de pagamentos: `https://rotininha-api.robson-oc96.workers.dev/v1/webhooks/mercadopago`.
+3. Antes de produção, testar com credenciais de **teste** (sandbox) seguindo `docs/TESTE-PAGAMENTO.md`.
+4. Dados do fornecedor (razão social, CNPJ, e-mail de suporte) e provedor de e-mail para o comprovante.

@@ -7,7 +7,7 @@ import { count } from './lib/usage.js';
 
 const mmss = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
-export function SoundsTab() {
+export function SoundsTab({ blocked, onBlocked }) {
   const [st, setSt] = useState(getState());
   const [timer, setTimerSel] = useState(30);
   const [favs, setFavs] = useState([]);
@@ -16,6 +16,7 @@ export function SoundsTab() {
   useEffect(() => { (async () => { const v = await getPref('soundVolume'); if (typeof v === 'number') setVolume(v); const t = await getPref('soundTimer', 30); setTimerSel(t); setFavs(await getPref('soundFavs', [])); })(); }, []);
 
   const tap = async (id) => {
+    if (blocked && !(st.playing && st.id === id)) return onBlocked?.();
     if (st.playing && st.id === id) return stop();
     await play(id); setTimer(timer); count('sound_played');
   };
