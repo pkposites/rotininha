@@ -86,3 +86,11 @@ export const markPushed = (pushed) =>
 export const getMeta = (key) => run(META, 'readonly', async (s) => (await get(s, key))?.value);
 export const setMeta = (key, value) => run(META, 'readwrite', (s) => { s.put({ key, value }); });
 export const delMeta = (key) => run(META, 'readwrite', (s) => { s.delete(key); });
+
+/** Fecha a conexão e apaga TODO o armazenamento local (registros, lembretes, sessão, preferências). */
+export async function wipeLocal() {
+  try { (await open()).close(); } catch {}
+  dbPromise = undefined;
+  await new Promise((res) => { const r = indexedDB.deleteDatabase(DB_NAME); r.onsuccess = r.onerror = r.onblocked = () => res(); });
+  try { localStorage.clear(); sessionStorage.clear(); } catch {}
+}

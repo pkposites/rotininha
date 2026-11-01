@@ -7,7 +7,7 @@ export function RemindersCard({ tasks, occs, now, tz, onOpen, onNew, onQuickDone
   return (
     <section class="card" aria-label="Próximos lembretes">
       <div class="card-head">
-        <h3>Próximos lembretes</h3>
+        <h2 class="h3s">Próximos lembretes</h2>
         <button class="link" onClick={onNew}>+ Novo</button>
       </div>
       {tasks.length === 0 && (

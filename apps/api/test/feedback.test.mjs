@@ -4,6 +4,10 @@ import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { csvCell } from '../src/csv.ts';
 
+// Conexões ociosas reaproveitadas pelo Node podem ter sido fechadas pelo servidor local: uma retentativa resolve.
+const _fetch = globalThis.fetch;
+globalThis.fetch = async (...a) => { try { return await _fetch(...a); } catch { return _fetch(...a); } };
+
 const API = process.env.API_URL ?? 'http://localhost:8787';
 const STATE = process.env.D1_STATE ?? '/tmp/claude-0/d1state';
 const ADMIN = 'admin-token-local-de-teste-1234567890';
@@ -12,7 +16,15 @@ const ipH = () => ({ 'CF-Connecting-IP': `10.${Math.floor(Math.random() * 250)}.
 const post = (path, body, token, extra = {}) =>
   fetch(API + path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...ipH(), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra }, body: JSON.stringify(body) });
 const admin = (path, init = {}) => fetch(API + path, { ...init, headers: { Authorization: `Bearer ${ADMIN}`, 'Content-Type': 'application/json', ...ipH(), ...(init.headers ?? {}) } });
-const sql = (q) => { const out = execFileSync('npx', ['wrangler', 'd1', 'execute', 'rotininha', '--local', '--persist-to', STATE, '--json', '--command', q], { encoding: 'utf8', cwd: new URL('..', import.meta.url).pathname }); return JSON.parse(out.slice(out.indexOf('[')))[0].results; };
+const sql = (q) => {
+  for (let i = 0; ; i++) {
+    try {
+      const out = execFileSync('npx', ['wrangler', 'd1', 'execute', 'rotininha', '--local', '--persist-to', STATE, '--json', '--command', q],
+        { encoding: 'utf8', cwd: new URL('..', import.meta.url).pathname, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_UPDATE_NOTIFIER: '1' } });
+      return JSON.parse(out.slice(out.indexOf('[')))[0].results;
+    } catch (e) { if (i >= 3) throw e; } // a CLI do wrangler às vezes falha em chamadas de rede auxiliares
+  }
+};
 
 async function family() {
   const { code } = await (await post('/v1/dev/households', {})).json();

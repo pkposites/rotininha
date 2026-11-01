@@ -1,0 +1,25 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Tipos (Worker)
+        run: npx tsc --noEmit -p apps/api
+      - name: Testes unitários (app, horários compartilhados, API pura)
+        run: |
+          npm test --workspace @rotininha/web
+          (cd packages/shared && node --test test/*.test.js)
+          (cd apps/api && node --test test/webpush.test.mjs)
+      - name: Build + orçamento de tamanho
+        run: |
+          VITE_API_BASE_URL=https://api.exemplo.invalid npm run build
+          node scripts/check-bundle.mjs
+      - name: Integração da API (Worker local + D1)
+        run: scripts/ci-integration.sh

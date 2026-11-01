@@ -14,3 +14,8 @@
 - [ ] Definir retenção do e-mail do pagador (tabela `payments`) e do histórico de pagamentos (LGPD)
 - [ ] Proteção anti-robô no checkout (ex.: Cloudflare Turnstile) — hoje só limite de tentativas por IP e por e-mail
 - [ ] Decidir se a carência de 24 h entra na divulgação comercial (hoje o app a aplica)
+- [ ] Revisão profissional do conteúdo do Guia (hoje `GUIDE_REVIEWED=false` em `apps/web/src/lib/guide.js`: o app mostra "versão preliminar"). Trocar para `true` só depois da revisão
+- [ ] Definir domínio e `VITE_LP_INDEX=1` (a LP sai com `noindex` por padrão)
+- [ ] Configurar `ADMIN_TOKEN` (≥ 24 caracteres) no Worker para exportar sugestões; sem ele as rotas `/v1/admin/*` ficam desligadas
+- [ ] Definir o prazo de retenção definitivo (hoje 12 meses após o vencimento: `RETENTION_DAYS_AFTER_EXPIRY` em `apps/api/src/privacy.ts`) e alinhar a Política
+- [ ] Gerar ícones definitivos do app (os atuais são provisórios)

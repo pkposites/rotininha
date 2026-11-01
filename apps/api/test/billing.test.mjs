@@ -7,6 +7,10 @@ import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { manifest, signManifest, verifyMpSignature, parseSignature } from '../src/mpsig.ts';
 
+// Conexões ociosas reaproveitadas pelo Node podem ter sido fechadas pelo servidor local: uma retentativa resolve.
+const _fetch = globalThis.fetch;
+globalThis.fetch = async (...a) => { try { return await _fetch(...a); } catch { return _fetch(...a); } };
+
 const API = process.env.API_URL ?? 'http://localhost:8787';
 const MP_PORT = 19877, PUSH_PORT = 19878, SECRET = 'whsec_test';
 const STATE = process.env.D1_STATE ?? '/tmp/claude-0/d1state';
@@ -58,8 +62,15 @@ async function webhook(mpId, { secret = SECRET, reqId = 'req-' + rnd(), badSig =
     body: JSON.stringify({ action: 'payment.updated', data: { id: String(mpId) }, type: 'payment' })
   });
 }
-const sql = (q) => { const out = execFileSync('npx', ['wrangler', 'd1', 'execute', 'rotininha', '--local', '--persist-to', STATE, '--json', '--command', q], { encoding: 'utf8', cwd: new URL('..', import.meta.url).pathname });
-  return JSON.parse(out.slice(out.indexOf('[')))[0].results; };
+const sql = (q) => {
+  for (let i = 0; ; i++) {
+    try {
+      const out = execFileSync('npx', ['wrangler', 'd1', 'execute', 'rotininha', '--local', '--persist-to', STATE, '--json', '--command', q],
+        { encoding: 'utf8', cwd: new URL('..', import.meta.url).pathname, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_UPDATE_NOTIFIER: '1' } });
+      return JSON.parse(out.slice(out.indexOf('[')))[0].results;
+    } catch (e) { if (i >= 3) throw e; } // a CLI do wrangler às vezes falha em chamadas de rede auxiliares
+  }
+};
 
 async function buy(email = `mae${rnd()}@exemplo.com`) {
   const r = await json(await post('/v1/checkout', { plan: '7d', email, cpf: '529.982.247-25' }));

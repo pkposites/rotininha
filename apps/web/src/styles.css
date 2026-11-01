@@ -98,3 +98,5 @@ main { flex: 1; padding: var(--space-3); display: grid; gap: var(--space-3); ali
 
 [hidden]{display:none!important}
 .card.empty .muted,.feedback-card .muted,.notice.info .muted,.onb .tpl .muted{color:var(--text-muted-on-lilac)}
+.h2s{font-size:24px;line-height:30px;font-weight:700}
+.h3s{font-size:20px;line-height:26px;font-weight:700}

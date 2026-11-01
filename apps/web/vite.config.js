@@ -5,6 +5,36 @@ import { resolve, join } from 'node:path';
 import { readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 
 // Duas "áreas": a LP estática na raiz (rápida, sem service worker) e o app em /app/ (PWA).
+// Cabeçalhos de segurança do Netlify. A CSP libera a API (VITE_API_BASE_URL) e, só para o Pixel (opt-in), a Meta.
+function headersFile() {
+  let api = '';
+  try { api = process.env.VITE_API_BASE_URL ? new URL(process.env.VITE_API_BASE_URL).origin : ''; } catch {}
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' https://connect.facebook.net",
+    "style-src 'self'",
+    "img-src 'self' data: https://www.facebook.com",
+    "font-src 'self'",
+    `connect-src 'self' ${api} https://www.facebook.com https://connect.facebook.net`.replace(/\s+/g, ' ').trim(),
+    "worker-src 'self'", "manifest-src 'self'", "object-src 'none'",
+    "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'"
+  ].join('; ');
+  return `/*
+  Content-Security-Policy: ${csp}
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+/sw.js
+  Cache-Control: no-cache
+  Service-Worker-Allowed: /app/
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+`;
+}
+
 // Pré-lançamento: LP fora dos buscadores até VITE_LP_INDEX=1.
 const robots = () => {
   let outDir = 'dist';
@@ -22,6 +52,7 @@ const robots = () => {
         if (n !== h) writeFileSync(p, n);
       });
       walk(resolve(__dirname, outDir));
+      writeFileSync(join(resolve(__dirname, outDir), '_headers'), headersFile());
     } }
   };
 };

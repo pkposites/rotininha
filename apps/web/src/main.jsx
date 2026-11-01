@@ -128,7 +128,7 @@ function Historico({ events, onEdit }) {
   };
   return (
     <>
-      <h2>Histórico</h2>
+      <h1 class="h2s">Histórico</h1>
       <div class="chips" role="group" aria-label="Filtrar por tipo">
         {[['todos', 'Todos'], ...Object.entries(TYPES).map(([k, v]) => [k, v.label])].map(([k, l]) => (
           <button class="chip" aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>
@@ -139,7 +139,7 @@ function Historico({ events, onEdit }) {
         const s = summarize(evs);
         return (
           <section class="card" key={key}>
-            <h3 class="day">{dayLabel(key)}</h3>
+            <h2 class="day h3s">{dayLabel(key)}</h2>
             <p class="muted">{s.mamadas} mamadas · {s.fraldas} fraldas · {s.sonos} sonos{s.sonoMs ? ` (${formatDuration(s.sonoMs)})` : ''}</p>
             <ul class="timeline">
               {evs.map((e) => (

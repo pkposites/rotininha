@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { syncAvailable, subscribe, login, logout, syncNow } from './lib/sync.js';
 import { fmtDateTime } from './lib/billing.js';
+import { downloadMyData, deleteEverything } from './lib/privacy.js';
 import { pushState, enablePush, disablePush, sendTestPush } from './lib/push.js';
 
 const LABEL = {
@@ -18,6 +19,8 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
   const [privacy, setPrivacy] = useState(false);
   const [pushMsg, setPushMsg] = useState('');
   const [pushBusy, setPushBusy] = useState(false);
+  const [confirmWipe, setConfirmWipe] = useState(false);
+  const [dataMsg, setDataMsg] = useState('');
   useEffect(() => { pushState().then(setPush); }, [sync.status]);
 
   const act = async (fn, okMsg) => {
@@ -90,6 +93,20 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
             <p class="muted">Notificações dependem da instalação, da permissão e das configurações do aparelho, e podem atrasar ou não chegar. O Rotininha não garante entrega no minuto exato.</p>
           </>
         )}
+        <h3>Seus dados</h3>
+        {sync.status !== 'signed-out' && sync.status !== 'off' && <button class="btn ghost" onClick={async () => { setDataMsg(''); try { await downloadMyData(); setDataMsg('Cópia baixada.'); } catch (x) { setDataMsg(x.message); } }}>Baixar meus dados</button>}
+        {!confirmWipe
+          ? <button class="link-danger" onClick={() => setConfirmWipe(true)}>Apagar meus dados</button>
+          : (
+            <div class="stack" role="alertdialog" aria-label="Confirmar exclusão">
+              <p><strong>Isso apaga todos os seus registros e lembretes{sync.status !== 'signed-out' && sync.status !== 'off' ? ', na nuvem e neste aparelho' : ' deste aparelho'}, e não dá para desfazer.</strong> {sync.status !== 'signed-out' && sync.status !== 'off' ? 'Baixe uma cópia antes, se quiser.' : ''}</p>
+              <div class="row">
+                <button class="btn danger" onClick={async () => { try { await deleteEverything(); location.replace('/app/'); } catch (x) { setDataMsg(x.message); setConfirmWipe(false); } }}>Sim, apagar tudo</button>
+                <button class="btn ghost" onClick={() => setConfirmWipe(false)}>Manter</button>
+              </div>
+            </div>
+          )}
+        {dataMsg && <p role="status" class="muted">{dataMsg}</p>}
         <h3>Sugestões</h3>
         <button class="btn ghost" onClick={onSuggest}>Enviar sugestão</button>
         <p class="muted">Seus registros não são usados para publicidade. O Rotininha não substitui a orientação do pediatra.</p>

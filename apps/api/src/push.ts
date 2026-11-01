@@ -3,6 +3,7 @@ import { sendWebPush, type VapidConfig } from './webpush';
 import { seal, unseal } from './seal';
 import { householdTz, DEFAULT_TZ } from './records';
 import { purgeOldFeedback } from './feedback';
+import { purgeExpired } from './privacy';
 import { nextFire, inQuietHours, localParts, occId } from '../../../packages/shared/schedule.js';
 
 const STALE_MS = 30 * 60_000;      // não envia lembrete atrasado mais de 30 min (Cron parado, por exemplo)
@@ -159,6 +160,7 @@ export async function runDue(env: Env, now: number): Promise<TickResult> {
   // limpeza horária: dedupe (3 dias) e sugestões além da retenção
   if (Math.floor(now / 60000) % 60 === 0) {
     await purgeOldFeedback(env, now);
+    await purgeExpired(env, now);
     await env.DB.prepare('DELETE FROM sent_notifications WHERE sent_at < ?').bind(now - 3 * 86400000).run();
   }
   return res;

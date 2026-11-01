@@ -49,7 +49,7 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
   if (finished && open === 'finish') {
     return (
       <section class="card">
-        <h2>Primeira semana concluída 🎉</h2>
+        <h1 class="h2s">Primeira semana concluída 🎉</h1>
         <p>Parabéns pelo cuidado! Seus registros e lembretes continuam aqui.</p>
         <div class="stack">
           <button class="btn" onClick={onGoToday}>Voltar para o Hoje</button>
@@ -67,14 +67,14 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
       <section class="card lesson">
         <button class="link" onClick={() => setOpen(null)}>← Todas as lições</button>
         <p class="muted">Dia {l.day} · {l.minutes} min de leitura</p>
-        <h2>{l.title}</h2>
+        <h1 class="h2s">{l.title}</h1>
         {l.body.map((p) => <p>{p}</p>)}
 
         {a.type === 'task' && <button class="btn" onClick={() => onCreateTask(a.task)}>{a.label}</button>}
         {a.type === 'go-today' && <button class="btn" onClick={onGoToday}>{a.label}</button>}
         {a.type === 'checklist' && (
           <div class="stack" role="group" aria-label={a.label}>
-            <h3>{a.label}</h3>
+            <h2 class="h3s">{a.label}</h2>
             {SAFE_SLEEP_ITEMS.map((it, i) => (
               <label class="inline"><input type="checkbox" checked={!!checks[a.key]?.[i]} onChange={(e) => setCheck(a.key, i, e.target.checked)} /> {it}</label>
             ))}
@@ -83,7 +83,7 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
         )}
         {a.type === 'ritual' && (
           <div class="stack">
-            <h3>Meu ritual da noite</h3>
+            <h2 class="h3s">Meu ritual da noite</h2>
             {ritual.map((it, i) => (
               <div class="rit-row">
                 <label class="inline"><input type="checkbox" checked={!!checks.ritual?.[i]} onChange={(e) => setCheck('ritual', i, e.target.checked)} /> {it}</label>
@@ -110,7 +110,7 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
 
   return (
     <>
-      <h2>Rotina e Sono em 7 Dias</h2>
+      <h1 class="h2s">Rotina e Sono em 7 Dias</h1>
       <p class="muted">Uma lição curta por dia (1–2 minutos), sempre com uma ação opcional. Conteúdo educativo: não substitui a orientação do pediatra.</p>
       {!GUIDE_REVIEWED && <p class="card notice info" role="note">Versão preliminar do conteúdo, ainda em revisão por profissional de saúde.</p>}
       {!accessible && <p class="card notice warn" role="status">Seu acesso venceu, então as lições ficam em pausa. Seus registros continuam disponíveis.</p>}

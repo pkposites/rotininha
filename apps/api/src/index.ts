@@ -8,6 +8,7 @@ import { PLANS, ENTRY_PLANS, RENEWAL_PLANS } from './plans';
 import { createPix, paymentStatus, claimAccess, handleMpEvent, accountState, lastPayerEmail, requestRecovery, confirmRecovery } from './billing';
 import { verifyMpSignature } from './mpsig';
 import { normEmail, normCpf } from './validate';
+import { exportHousehold, purgeHousehold } from './privacy';
 import { submitFeedback, countEvent, FUNNEL_EVENTS, adminOk, feedbackCsv, adminMetrics, STATUSES } from './feedback';
 import { hit } from './ratelimit';
 import { hashCode, issueSession } from './session';
@@ -26,8 +27,14 @@ function cors(env: Env, req: Request): Record<string, string> {
   };
 }
 
+const SECURITY = {
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'"
+};
 const json = (data: unknown, status: number, h: Record<string, string>) =>
-  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...h } });
+  new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...SECURITY, ...h } });
 
 async function readJson(req: Request): Promise<any | null> {
   try {
@@ -241,6 +248,18 @@ export default {
         if (!(await hit(env.DB, `renew:${auth.householdId}`, 10, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
         const pix = await createPix(env, { kind: 'renewal', plan: PLANS[body.plan], email, cpf, householdId: auth.householdId, now });
         return pix ? json(pix, 201, h) : json({ error: 'provider_unavailable' }, 502, h);
+      }
+
+      // ===================== Privacidade (LGPD): portabilidade e exclusão =====================
+      if (req.method === 'POST' && url.pathname === '/v1/privacy/export') {
+        if (!(await hit(env.DB, `pexp:${auth.householdId}`, 5, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        return json(await exportHousehold(env, auth.householdId, now), 200, h);
+      }
+      if (req.method === 'POST' && url.pathname === '/v1/privacy/delete') {
+        const body = await readJson(req);
+        if (body?.confirm !== 'APAGAR') return json({ error: 'confirmation_required' }, 400, h); // evita exclusão acidental
+        await purgeHousehold(env, auth.householdId);
+        return json({ ok: true }, 200, h);
       }
 
       if (req.method === 'POST' && url.pathname === '/v1/feedback') {
