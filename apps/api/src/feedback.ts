@@ -11,7 +11,7 @@ export const RETENTION_DAYS = 365;
 // Eventos agregados permitidos. Nada aqui carrega identificador de pessoa.
 export const FUNNEL_EVENTS = new Set([
   'lp_visit', 'lp_motion_viewed', 'lp_preview_used', 'lp_quiz_started', 'lp_quiz_done', 'lp_cta_click',
-  'checkout_started', 'app_first_open', 'app_installed', 'push_enabled', 'first_record',
+  'checkout_started', 'pix_paid', 'renewal_paid', 'app_first_open', 'app_installed', 'push_enabled', 'first_record',
   'feedback_eligible', 'feedback_card_shown', 'feedback_card_dismissed', 'feedback_submitted', 'guide_completed'
 ]);
 

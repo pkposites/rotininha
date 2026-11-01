@@ -32,18 +32,32 @@ export function accessNotice(acc, now = Date.now()) {
   return null;
 }
 
+/** Contexto de medição de anúncios: SÓ se a pessoa aceitou "Medição de anúncios" na LP (mesma origem). Sem consentimento: vazio. */
+export function trackingContext() {
+  try {
+    const c = JSON.parse(localStorage.getItem('rotininha:consent'));
+    if (c?.marketing !== true) return {};
+    const cookie = (n) => document.cookie.split('; ').find((x) => x.startsWith(n + '='))?.slice(n.length + 1);
+    const t = { marketingConsent: true, sourceUrl: location.origin + '/' };
+    const fbp = cookie('_fbp'), fbc = cookie('_fbc');
+    if (fbp) t.fbp = fbp; if (fbc) t.fbc = fbc;
+    return t;
+  } catch { return {}; }
+}
+
 export const getPlans = async () => (await publicCall('/v1/plans', null, 'GET')).data;
 
 const ERR = {
   invalid_email: 'Confira o e-mail.', invalid_cpf: 'Confira o CPF.', invalid_plan: 'Plano indisponível.',
   rate_limited: 'Muitas tentativas. Aguarde um pouco e tente de novo.',
-  provider_unavailable: 'O Pix não pôde ser gerado agora. Tente novamente em instantes — nada foi cobrado.'
+  provider_unavailable: 'O Pix não pôde ser gerado agora. Tente novamente em instantes — nada foi cobrado.',
+  payments_disabled: 'As vendas ainda não foram abertas. Em breve!'
 };
 
 export async function startCheckout({ email, cpf, plan, renewal }) {
   const r = renewal
-    ? await authedCall('/v1/billing/renew', { plan, cpf, email: email || undefined })
-    : await publicCall('/v1/checkout', { plan, email, cpf });
+    ? await authedCall('/v1/billing/renew', { plan, cpf, email: email || undefined, ...trackingContext() })
+    : await publicCall('/v1/checkout', { plan, email, cpf, ...trackingContext() });
   if (r.status !== 201) throw new Error(ERR[r.data?.error] ?? 'Não foi possível iniciar o pagamento.');
   await setMeta('checkout', { paymentId: r.data.paymentId, pollToken: r.data.pollToken, renewal: !!renewal });
   return r.data;

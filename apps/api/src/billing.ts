@@ -4,6 +4,8 @@ import { sha256Hex, randomToken, randomCode } from './crypto';
 import { sealText, unsealText } from './seal';
 import { sendEmail } from './email';
 import { hashCode, issueSession } from './session';
+import { sendPurchase, validFbp, validFbc, type Tracking } from './capi';
+import { countEvent } from './feedback';
 
 const mpBase = (env: Env) => (env.MP_API_BASE ?? 'https://api.mercadopago.com').replace(/\/$/, '');
 const brl = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
@@ -34,16 +36,18 @@ export async function getMpPayment(env: Env, mpId: string): Promise<any | null> 
   return r.json();
 }
 
-export interface CreateInput { kind: 'entry' | 'renewal'; plan: Plan; email: string; cpf: string; householdId?: string; now: number }
+export interface CreateInput { kind: 'entry' | 'renewal'; plan: Plan; email: string; cpf: string; householdId?: string; now: number; tracking?: Tracking | null }
 
 /** Cria o Pix. O CPF só atravessa esta função em direção ao Mercado Pago: não é gravado nem registrado em log. */
 export async function createPix(env: Env, i: CreateInput) {
   const id = crypto.randomUUID(), pollToken = randomToken();
   const expiresAt = i.now + PIX_TTL_MS;
   await env.DB.prepare(
-    `INSERT INTO payments (id, kind, plan, days, amount_cents, email, household_id, poll_hash, expires_at, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`
-  ).bind(id, i.kind, i.plan.id, i.plan.days, i.plan.cents, i.email, i.householdId ?? null, await sha256Hex(pollToken), expiresAt, i.now).run();
+    `INSERT INTO payments (id, kind, plan, days, amount_cents, email, household_id, poll_hash, expires_at, created_at,
+                           marketing_consent, fbp, fbc, client_ip, client_ua, source_url)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  ).bind(id, i.kind, i.plan.id, i.plan.days, i.plan.cents, i.email, i.householdId ?? null, await sha256Hex(pollToken), expiresAt, i.now,
+    i.tracking ? 1 : 0, i.tracking?.fbp ?? null, i.tracking?.fbc ?? null, i.tracking?.ip ?? null, i.tracking?.ua ?? null, i.tracking?.sourceUrl ?? null).run();
 
   let res: Response;
   try {
@@ -116,7 +120,7 @@ async function grant(env: Env, row: PaymentRow, now: number): Promise<string> {
         .bind(await sealText(env.PUSH_SEAL_KEY, code), now + DELIVERY_TTL_MS, row.id, householdId)
     ]);
     if (!claimed.meta.changes) return 'already';
-    await sendReceipt(env, row, validUntil, now);
+    await afterGrant(env, row, validUntil, now);
     return 'granted';
   }
 
@@ -129,8 +133,26 @@ async function grant(env: Env, row: PaymentRow, now: number): Promise<string> {
   ]);
   if (!claimed.meta.changes) return 'already';
   const h = await env.DB.prepare('SELECT valid_until FROM households WHERE id = ?').bind(row.household_id).first<{ valid_until: number }>();
-  if (h && ext.meta.changes) await sendReceipt(env, row, h.valid_until, now);
+  if (h && ext.meta.changes) await afterGrant(env, row, h.valid_until, now);
   return 'granted';
+}
+
+/** Depois de conceder (uma única vez): comprovante, contador agregado do funil e evento de compra (se houve consentimento). */
+async function afterGrant(env: Env, row: PaymentRow, validUntil: number, now: number) {
+  await sendReceipt(env, row, validUntil, now);
+  await countEvent(env, row.kind === 'entry' ? 'pix_paid' : 'renewal_paid', now).catch(() => {});
+  await sendPurchase(env, row.id, now);
+}
+
+/** Valida o contexto de rastreio enviado pelo cliente. Sem consentimento explícito: nada é guardado. */
+export function trackingFrom(body: any, req: Request, env: Env): Tracking | null {
+  if (body?.marketingConsent !== true) return null;
+  const origin = (() => { try { return new URL(env.APP_URL).origin; } catch { return ''; } })();
+  const src = typeof body.sourceUrl === 'string' && origin && body.sourceUrl.startsWith(origin) ? body.sourceUrl.slice(0, 300) : origin || null;
+  return {
+    fbp: validFbp(body.fbp) ? body.fbp : null, fbc: validFbc(body.fbc) ? body.fbc : null,
+    ip: req.headers.get('CF-Connecting-IP'), ua: (req.headers.get('User-Agent') ?? '').slice(0, 300) || null, sourceUrl: src
+  };
 }
 
 /** Reembolso/contestação (feito no painel do MP): retira o período concedido. Os dados continuam legíveis. */

@@ -5,7 +5,7 @@ import { applyChanges, changesSince, householdTz, rescheduleAll } from './record
 import { saveSubscription, removeSubscription, endpointAllowed, pushToHousehold, runDue } from './push';
 import { isValidTimeZone } from '../../../packages/shared/schedule.js';
 import { PLANS, ENTRY_PLANS, RENEWAL_PLANS } from './plans';
-import { createPix, paymentStatus, claimAccess, handleMpEvent, accountState, lastPayerEmail, requestRecovery, confirmRecovery } from './billing';
+import { trackingFrom, createPix, paymentStatus, claimAccess, handleMpEvent, accountState, lastPayerEmail, requestRecovery, confirmRecovery } from './billing';
 import { verifyMpSignature } from './mpsig';
 import { normEmail, normCpf } from './validate';
 import { exportHousehold, purgeHousehold } from './privacy';
@@ -116,7 +116,7 @@ export default {
         if (!cpf) return json({ error: 'invalid_cpf' }, 422, h);
         if (!(await hit(env.DB, `checkout:ip:${clientIp(req)}`, 8, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
         if (!(await hit(env.DB, `checkout:em:${await sha256Hex(email)}`, 5, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
-        const pix = await createPix(env, { kind: 'entry', plan: PLANS[body.plan], email, cpf, now });
+        const pix = await createPix(env, { kind: 'entry', plan: PLANS[body.plan], email, cpf, now, tracking: trackingFrom(body, req, env) });
         return pix ? json(pix, 201, h) : json({ error: 'provider_unavailable' }, 502, h);
       }
 
@@ -246,7 +246,7 @@ export default {
         const email = normEmail(body.email) ?? (await lastPayerEmail(env, auth.householdId));
         if (!email) return json({ error: 'invalid_email' }, 422, h);
         if (!(await hit(env.DB, `renew:${auth.householdId}`, 10, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
-        const pix = await createPix(env, { kind: 'renewal', plan: PLANS[body.plan], email, cpf, householdId: auth.householdId, now });
+        const pix = await createPix(env, { kind: 'renewal', plan: PLANS[body.plan], email, cpf, householdId: auth.householdId, now, tracking: trackingFrom(body, req, env) });
         return pix ? json(pix, 201, h) : json({ error: 'provider_unavailable' }, 502, h);
       }
 

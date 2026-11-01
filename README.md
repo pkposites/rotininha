@@ -7,7 +7,7 @@ Uma ajudinha na sua rotina de mãe. PWA + Cloudflare Worker + Pix. Veja `docs/PR
 - [x] Marco 1 — registro local (IndexedDB, 1 toque, editar/excluir, histórico)
 - [x] Marco 2 — API (Worker + D1), sessão e sincronização offline-first
 - [x] Marco 3 — lembretes e Web Push (RFC 8291 + VAPID), Cron, Feito/Adiar (**falta aparelho real:** `docs/TESTE-PUSH.md`)
-- [x] Marco 4 — Pix (Mercado Pago): **construído, mas desligado** (`PAYMENTS_ENABLED`) até validar no sandbox real (`docs/TESTE-PAGAMENTO.md`)
+- [x] Marco 4 — Pix (Mercado Pago) + API de Conversões: **construído, mas desligado** (`PAYMENTS_ENABLED`) até validar no sandbox real — `docs/TESTE-PAGAMENTO.md` e `docs/ATIVAR-PAGAMENTO.md`
 - [x] Marco 5 — onboarding, modelos editáveis, orientação de instalação e Guia de 7 dias (conteúdo **pendente de revisão profissional**)
 - [x] Marco 6 — landing page com demonstração animada, consentimento, minutas legais
 - [x] Marco 7 — caixa de sugestões e métricas agregadas

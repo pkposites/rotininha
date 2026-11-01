@@ -41,7 +41,7 @@ export async function purgeHousehold(env: Env, householdId: string) {
     env.DB.prepare('DELETE FROM sessions WHERE household_id = ?').bind(householdId),
     env.DB.prepare('DELETE FROM sent_notifications WHERE key LIKE ?').bind(householdId + ':%'),
     env.DB.prepare('DELETE FROM feedback_suggestions WHERE pseudo_id = ?').bind(pseudo),
-    env.DB.prepare("UPDATE payments SET email = 'apagado', household_id = NULL, qr_code = NULL, qr_base64 = NULL, delivery_sealed = NULL, poll_hash = 'apagado' WHERE household_id = ?").bind(householdId),
+    env.DB.prepare("UPDATE payments SET email = 'apagado', household_id = NULL, qr_code = NULL, qr_base64 = NULL, delivery_sealed = NULL, poll_hash = 'apagado', fbp = NULL, fbc = NULL, client_ip = NULL, client_ua = NULL WHERE household_id = ?").bind(householdId),
     env.DB.prepare('DELETE FROM households WHERE id = ?').bind(householdId)
   ]);
 }

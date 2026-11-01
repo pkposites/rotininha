@@ -28,3 +28,22 @@ test('aviso de vencimento: nada com folga, aviso perto, carência e vencido sem 
   assert.match(exp, /ainda pode ver seus registros/); assert.ok(!/erro|falha|atrasad/i.test(exp));
   assert.equal(daysLeft(now + day + 1, now), 2);
 });
+
+import { trackingContext } from '../src/lib/billing.js';
+test('medição de anúncios: sem consentimento nada é enviado; com consentimento só ids e URL', () => {
+  const set = (consent, cookie) => {
+    globalThis.localStorage = { getItem: () => consent };
+    globalThis.document = { cookie };
+    globalThis.location = { origin: 'https://rotininha.exemplo' };
+  };
+  set(null, '_fbp=fb.1.1700000000000.123');
+  assert.deepEqual(trackingContext(), {}, 'sem escolha: vazio');
+  set(JSON.stringify({ v: 1, marketing: false }), '_fbp=fb.1.1700000000000.123');
+  assert.deepEqual(trackingContext(), {}, 'recusou: vazio, mesmo com cookie presente');
+  set('lixo{', '_fbp=x');
+  assert.deepEqual(trackingContext(), {}, 'armazenamento corrompido: vazio');
+  set(JSON.stringify({ v: 1, marketing: true }), 'a=1; _fbp=fb.1.1700000000000.123; _fbc=fb.1.1700000000000.AbC');
+  assert.deepEqual(trackingContext(), { marketingConsent: true, sourceUrl: 'https://rotininha.exemplo/', fbp: 'fb.1.1700000000000.123', fbc: 'fb.1.1700000000000.AbC' });
+  set(JSON.stringify({ v: 1, marketing: true }), '');
+  assert.deepEqual(trackingContext(), { marketingConsent: true, sourceUrl: 'https://rotininha.exemplo/' }, 'aceitou mas sem cookies ainda');
+});

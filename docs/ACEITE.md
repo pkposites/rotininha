@@ -27,3 +27,5 @@ Legenda: ✅ verificado por teste automático · ⚠️ construído e testado, m
 - ✅ Acessibilidade (axe, WCAG 2.2 AA) em LP, páginas legais e **todas** as telas do app, inclusive modo madrugada; contraste de todos os pares de cores testado
 - ✅ Dependências de produção sem vulnerabilidades conhecidas (`npm audit --omit=dev`)
 - ✅ Logs sem tokens, CPF, e-mail ou dados do bebê
+- ✅ Pagamento **desligado por padrão** (`PAYMENTS_ENABLED`): 503 no checkout/renovação, LP "Vendas abrem em breve", app sem botões de compra — `apps/api/test/disabled.test.mjs`. Como ligar: `docs/ATIVAR-PAGAMENTO.md`
+- ✅ API de Conversões (Purchase) só com consentimento, uma vez por pagamento, sem dados do bebê, rastreio apagado após o envio — `apps/api/test/capi.test.mjs`

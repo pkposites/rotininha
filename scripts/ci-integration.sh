@@ -15,4 +15,12 @@ WPID=$!
 trap 'kill -- -$WPID 2>/dev/null || true' EXIT
 for i in $(seq 1 60); do curl -fsS localhost:8787/v1/plans >/dev/null 2>&1 && break; sleep 1; done
 curl -fsS localhost:8787/v1/plans >/dev/null || { echo "Worker não subiu"; cat "$STATE/wrangler.log"; exit 1; }
+# 2ª instância com o pagamento DESLIGADO (como em produção até validar o Pix) — testa a chave de segurança
+STATE2="$(mktemp -d)"
+npx wrangler d1 migrations apply rotininha --local --persist-to "$STATE2" >/dev/null
+setsid npx wrangler dev --local --persist-to "$STATE2" --port 8788 --var PAYMENTS_ENABLED:false >"$STATE2/wrangler.log" 2>&1 &
+WPID2=$!
+trap 'kill -- -$WPID 2>/dev/null || true; kill -- -$WPID2 2>/dev/null || true' EXIT
+for i in $(seq 1 60); do curl -fsS localhost:8788/v1/plans >/dev/null 2>&1 && break; sleep 1; done
+export API_OFF_URL=http://localhost:8788
 node --test --test-concurrency=1 test/*.test.mjs

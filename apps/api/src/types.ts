@@ -17,6 +17,10 @@ export interface Env {
   EMAIL_FROM?: string;
   RESEND_API_KEY?: string;
   SUPPORT_EMAIL?: string;
+  META_PIXEL_ID?: string;         // API de Conversões: só envia com consentimento do comprador
+  META_CAPI_TOKEN?: string;
+  META_API_BASE?: string;         // testes apontam para um simulador (padrão https://graph.facebook.com)
+  META_TEST_EVENT_CODE?: string;  // opcional: eventos de teste no Gerenciador de Eventos
   ADMIN_TOKEN?: string;           // protege /v1/admin/*; ausente = rotas administrativas desligadas
 }
 

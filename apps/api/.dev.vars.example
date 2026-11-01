@@ -16,3 +16,7 @@ EMAIL_PROVIDER=dev                    # produção: resend (+ RESEND_API_KEY, EM
 SUPPORT_EMAIL=suporte@exemplo.com.br
 PAYMENTS_ENABLED=true
 ADMIN_TOKEN=gere-um-token-longo-aleatorio   # >= 24 caracteres; ausente desliga /v1/admin
+# API de Conversões da Meta (opcional; só envia com consentimento do comprador)
+META_PIXEL_ID=
+META_CAPI_TOKEN=
+# META_TEST_EVENT_CODE=TEST12345   # para eventos de teste

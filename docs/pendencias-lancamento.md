@@ -19,3 +19,4 @@
 - [ ] Configurar `ADMIN_TOKEN` (≥ 24 caracteres) no Worker para exportar sugestões; sem ele as rotas `/v1/admin/*` ficam desligadas
 - [ ] Definir o prazo de retenção definitivo (hoje 12 meses após o vencimento: `RETENTION_DAYS_AFTER_EXPIRY` em `apps/api/src/privacy.ts`) e alinhar a Política
 - [ ] Gerar ícones definitivos do app (os atuais são provisórios)
+- [ ] **Ligar o pagamento** só depois de cumprir `docs/ATIVAR-PAGAMENTO.md` (chaves `PAYMENTS_ENABLED` / `VITE_PAYMENTS_ENABLED`, hoje desligadas)

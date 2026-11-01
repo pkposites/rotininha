@@ -23,5 +23,8 @@ APP_URL=http://localhost:4173
 EMAIL_PROVIDER=dev
 SUPPORT_EMAIL=suporte@exemplo.com.br
 ADMIN_TOKEN=admin-token-local-de-teste-1234567890
+META_PIXEL_ID=123456789012345
+META_CAPI_TOKEN=capi-token-local
+META_API_BASE=http://localhost:19879
 `);
 console.log('.dev.vars criado');
