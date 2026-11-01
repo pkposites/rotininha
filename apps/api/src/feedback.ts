@@ -42,7 +42,7 @@ export async function submitFeedback(env: Env, householdId: string, input: any, 
 
 export function adminOk(env: Env, req: Request): boolean {
   const tok = env.ADMIN_TOKEN;
-  if (!tok || tok.length < 24) return false;           // token curto/ausente = rotas desligadas
+  if (!tok || tok.length < 12) return false;           // token curto/ausente = rotas desligadas
   const got = /^Bearer\s+(.+)$/.exec(req.headers.get('Authorization') ?? '')?.[1] ?? '';
   if (got.length !== tok.length) return false;
   let d = 0;

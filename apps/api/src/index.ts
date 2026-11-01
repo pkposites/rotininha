@@ -205,7 +205,11 @@ export default {
       if (url.pathname.startsWith('/v1/admin/')) {
         if (!env.ADMIN_TOKEN) return json({ error: 'not_found' }, 404, h);
         if (!(await hit(env.DB, `admin:ip:${clientIp(req)}`, 300, 600_000, now))) return json({ error: 'rate_limited' }, 429, h);
-        if (!adminOk(env, req)) return json({ error: 'unauthorized' }, 401, h);
+        if (!adminOk(env, req)) {
+          // senha errada: no máximo 8 tentativas a cada 10 min por IP (a senha certa nunca passa por aqui)
+          if (!(await hit(env.DB, `adminfail:ip:${clientIp(req)}`, 8, 600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+          return json({ error: 'unauthorized' }, 401, h);
+        }
         if (req.method === 'GET' && url.pathname === '/v1/admin/feedback.csv') {
           return new Response(await feedbackCsv(env, url.searchParams.get('status')), { status: 200, headers: { ...h, 'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Disposition': 'attachment; filename="sugestoes.csv"' } });
         }

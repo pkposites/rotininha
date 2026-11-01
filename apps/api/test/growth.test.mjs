@@ -358,3 +358,11 @@ test('privacidade: apagar a família remove uso e envios; exportação inclui pl
   assert.equal(Number(sql(`SELECT COUNT(*) AS n FROM usage_daily WHERE hid='${hid}'`)[0].n), 0);
   assert.equal(Number(sql(`SELECT COUNT(*) AS n FROM households WHERE id='${f.id}'`)[0].n), 0);
 });
+
+test('painel: senha errada é limitada a 8 tentativas por IP; a certa continua funcionando', async () => {
+  const ip = { 'CF-Connecting-IP': `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.77` };
+  const bad = () => fetch(API + '/v1/admin/overview', { headers: { Authorization: 'Bearer errada-errada-errada', ...ip } });
+  for (let i = 0; i < 8; i++) assert.equal((await bad()).status, 401);
+  assert.equal((await bad()).status, 429, 'depois de 8 erros: bloqueia');
+  assert.equal((await fetch(API + '/v1/admin/overview', { headers: { Authorization: 'Bearer ' + ADMIN, ...ip } })).status, 200, 'senha certa não é afetada');
+});
