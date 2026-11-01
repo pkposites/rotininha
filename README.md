@@ -7,7 +7,8 @@ Uma ajudinha na sua rotina de mãe. PWA + Cloudflare Worker + Pix. Veja `docs/PR
 - [x] Marco 1 — registro local (IndexedDB, 1 toque, editar/excluir, histórico, resumo, sono com duração)
 - [x] Marco 2 — API (Worker + D1), sessão e sincronização offline-first
 - [x] Marco 3 — lembretes, Web Push (RFC 8291 + VAPID), Cron, "Feito/Adiar" cancelam alertas (**falta validar em aparelho real:** `docs/TESTE-PUSH.md`)
-- [ ] Marcos 4–8 — Pix, onboarding+guia, landing page, sugestões, endurecimento (PRD §12)
+- [x] Marco 4 — Pix (Mercado Pago), entrega única do código, renovação, reembolso e recuperação (**falta validar no sandbox real:** `docs/TESTE-PAGAMENTO.md`)
+- [ ] Marcos 5–8 — onboarding+guia, landing page, sugestões, endurecimento (PRD §12)
 
 ## Comandos
 ```bash

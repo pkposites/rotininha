@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { syncAvailable, subscribe, login, logout, syncNow } from './lib/sync.js';
+import { fmtDateTime } from './lib/billing.js';
 import { pushState, enablePush, disablePush, sendTestPush } from './lib/push.js';
 
 const LABEL = {
@@ -7,7 +8,7 @@ const LABEL = {
   expired: 'Acesso vencido — você ainda pode ver os registros', 'signed-out': 'Este aparelho não está conectado', off: ''
 };
 
-export function SettingsSheet({ onClose, night, setNight }) {
+export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRenew, onRecover }) {
   const [sync, setSync] = useState({ status: 'off' });
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
@@ -50,12 +51,23 @@ export function SettingsSheet({ onClose, night, setNight }) {
                 </label>
                 {err && <p class="err" role="alert">{err}</p>}
                 <button class="btn" disabled={busy}>{busy ? 'Conectando…' : 'Conectar'}</button>
+                <button type="button" class="link" onClick={onRecover}>Perdi meu código</button>
+                <button type="button" class="btn ghost" onClick={onBuy}>Ainda não tenho acesso — comprar</button>
               </form>
             ) : (
+              <>
               <div class="row">
                 <button class="btn" onClick={syncNow}>Sincronizar agora</button>
                 <button class="btn ghost" onClick={logout}>Sair deste aparelho</button>
               </div>
+              {account?.validUntil != null && (
+                <>
+                  <h3>Seu acesso</h3>
+                  <p class="muted">{account.state === 'expired' ? 'Venceu em' : 'Válido até'} {fmtDateTime(account.validUntil)}</p>
+                  <button class="btn ghost" onClick={onRenew}>Renovar acesso</button>
+                </>
+              )}
+              </>
             )}
           </>
         )}

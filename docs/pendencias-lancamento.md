@@ -7,3 +7,10 @@
 - [ ] CNPJ/identificação do fornecedor e canal de suporte
 - [ ] Lembrete "a cada X horas" (PRD §3.3) — não implementado no Marco 3; hoje há horário fixo (diário, dias da semana, uma vez)
 - [ ] Revisar com jurídico o texto das notificações e o modo privacidade
+- [ ] Validar o Pix no sandbox real do Mercado Pago — roteiro em `docs/TESTE-PAGAMENTO.md`
+- [ ] Escolher e configurar provedor de e-mail (comprovante e recuperação dependem disso); domínio com SPF/DKIM
+- [ ] Preencher identificação do fornecedor (razão social, CNPJ, e-mail de suporte): `VITE_SUPPLIER_NAME`, `VITE_SUPPLIER_CNPJ`, `VITE_SUPPORT_EMAIL`
+- [ ] Termos de Uso, Política de Privacidade e de reembolso publicados e linkados no checkout
+- [ ] Definir retenção do e-mail do pagador (tabela `payments`) e do histórico de pagamentos (LGPD)
+- [ ] Proteção anti-robô no checkout (ex.: Cloudflare Turnstile) — hoje só limite de tentativas por IP e por e-mail
+- [ ] Decidir se a carência de 24 h entra na divulgação comercial (hoje o app a aplica)

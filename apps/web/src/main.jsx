@@ -7,6 +7,9 @@ import {
 } from './lib/events.js';
 import { EditSheet } from './EditSheet.jsx';
 import { SettingsSheet } from './SettingsSheet.jsx';
+import { CheckoutSheet } from './CheckoutSheet.jsx';
+import { RecoverSheet } from './RecoverSheet.jsx';
+import { getAccount, accessNotice, pendingCheckout } from './lib/billing.js';
 import { TaskSheet } from './TaskSheet.jsx';
 import { ReminderSheet } from './ReminderSheet.jsx';
 import { RemindersCard } from './RemindersCard.jsx';
@@ -154,8 +157,20 @@ function App() {
   const rem = useReminders();
   const [openOcc, setOpenOcc] = useState(null);   // id da ocorrência aberta (sheet de ação)
   const [taskEdit, setTaskEdit] = useState(null); // { task, isNew }
-  const [settings, setSettings] = useState(false);
   const [syncStatus, setSyncStatus] = useState('off');
+  const [settings, setSettings] = useState(false);
+  const [checkout, setCheckout] = useState(null);   // { renewal, resume }
+  const [recover, setRecover] = useState(null);     // { token }
+  const [account, setAccount] = useState(null);
+  const refreshAccount = async () => setAccount(await getAccount());
+  // Link de recuperação: #recover=TOKEN (fragmento: não vai ao servidor). Pagamento em andamento: retoma.
+  useEffect(() => {
+    const m = /[#&]recover=([\w-]+)/.exec(location.hash);
+    if (m) { setRecover({ token: m[1] }); history.replaceState(null, '', location.pathname + location.search); }
+    pendingCheckout().then((c) => { if (c && !m) setCheckout({ renewal: c.renewal, resume: c }); });
+  }, []);
+  useEffect(() => { if (syncStatus === 'idle') refreshAccount(); if (syncStatus === 'signed-out') setAccount(null); }, [syncStatus]);
+  const notice = accessNotice(account);
   useEffect(() => { startSync(); return subSync((st) => setSyncStatus(st.status)); }, []);
   // Notificação → abre o lembrete para confirmar (nunca conclui sozinho).
   useEffect(() => {
@@ -185,6 +200,7 @@ function App() {
       </header>
       <main>
         {store.error && <p class="card err" role="alert">{store.error}</p>}
+        {notice && <section class={`card notice ${notice.tone}`} role="status"><p>{notice.text}</p><button class="btn" onClick={() => setCheckout({ renewal: true })}>Renovar</button></section>}
         {tab === 'hoje' && <Hoje store={store} rem={rem} now={now} onEdit={setEditing} onOpenItem={(i) => setOpenOcc(i.id)} onNewTask={() => setTaskEdit({ task: makeTask(), isNew: true })} />}
         {tab === 'historico' && <Historico events={store.events} onEdit={setEditing} />}
         {tab === 'guia' && <section class="card empty"><h2>Rotina e Sono em 7 Dias</h2><p class="muted">Conteúdo em preparação, com revisão profissional antes de publicar.</p></section>}
@@ -208,7 +224,12 @@ function App() {
           onSave={async (t) => { await rem.saveTask(t); setTaskEdit(null); }}
           onDelete={async (id) => { await rem.removeTask(id); setTaskEdit(null); }} />
       )}
-      {settings && <SettingsSheet onClose={() => setSettings(false)} night={night} setNight={setNight} />}
+      {settings && <SettingsSheet onClose={() => setSettings(false)} night={night} setNight={setNight} account={account}
+        onBuy={() => { setSettings(false); setCheckout({ renewal: false }); }}
+        onRenew={() => { setSettings(false); setCheckout({ renewal: true }); }}
+        onRecover={() => { setSettings(false); setRecover({ token: null }); }} />}
+      {checkout && <CheckoutSheet renewal={checkout.renewal} resume={checkout.resume} onClose={() => setCheckout(null)} onDone={refreshAccount} />}
+      {recover && <RecoverSheet token={recover.token} onClose={() => setRecover(null)} />}
       {editing && (
         <EditSheet event={editing} onClose={() => setEditing(null)}
           onSave={async (e) => { await store.save(e); setEditing(null); }}

@@ -29,6 +29,25 @@ async function deviceId() {
   return id;
 }
 
+/** Chamada pública (sem sessão): planos, checkout, recuperação. */
+export async function publicCall(path, body, method = 'POST') {
+  const res = await fetch(API + path, {
+    method, headers: { 'Content-Type': 'application/json' }, ...(method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {})
+  });
+  let data = null; try { data = await res.json(); } catch {}
+  return { status: res.status, data };
+}
+export const getDeviceId = deviceId;
+
+/** Adota uma sessão recém-criada (compra ou recuperação) neste aparelho e sincroniza. */
+export async function adoptSession(session) {
+  await setMeta('session', session);
+  await setMeta('cursor', 0);
+  await markAllDirty(); // registros feitos antes de conectar também sobem
+  emit({ status: 'syncing' });
+  await syncNow();
+}
+
 export async function login(code) {
   const { status, data } = await call('/v1/sessions', { code, deviceId: await deviceId() });
   if (status === 401) throw new Error('Código não encontrado. Confira e tente de novo.');

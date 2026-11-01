@@ -69,3 +69,10 @@ main { flex: 1; padding: var(--space-3); display: grid; gap: var(--space-3); ali
 .ok-mark { align-self: center; padding: 0 12px; color: var(--success-ink); font-weight: 700; }
 .note-quiet { align-items: flex-start !important; }
 .note-quiet input { margin-top: 4px; }
+
+.access-code { font: 800 22px/30px var(--font-head); letter-spacing: .04em; text-align: center; background: var(--brand-lilac-100); border-radius: var(--radius-btn); padding: var(--space-3); margin: 0; word-break: break-all; user-select: all; }
+.qr { justify-self: center; border-radius: 12px; background: #fff; padding: 8px; }
+.sheet textarea[readonly] { font: 400 13px/18px ui-monospace, monospace; }
+.notice.info { background: var(--brand-lilac-100); }
+.notice.warn { background: var(--warning-bg); color: var(--warning-ink); border-color: transparent; }
+.notice p { margin: 0 0 var(--space-2); }
