@@ -8,6 +8,7 @@ import { PLANS, ENTRY_PLANS, RENEWAL_PLANS } from './plans';
 import { createPix, paymentStatus, claimAccess, handleMpEvent, accountState, lastPayerEmail, requestRecovery, confirmRecovery } from './billing';
 import { verifyMpSignature } from './mpsig';
 import { normEmail, normCpf } from './validate';
+import { submitFeedback, countEvent, FUNNEL_EVENTS, adminOk, feedbackCsv, adminMetrics, STATUSES } from './feedback';
 import { hit } from './ratelimit';
 import { hashCode, issueSession } from './session';
 
@@ -145,6 +146,42 @@ export default {
         }
       }
 
+      // ===================== Analytics agregado (sem identificador) =====================
+      if (req.method === 'POST' && url.pathname === '/v1/analytics') {
+        const body = await readJson(req);
+        if (!body || typeof body.event !== 'string' || !FUNNEL_EVENTS.has(body.event)) return json({ error: 'bad_request' }, 400, h);
+        if (!(await hit(env.DB, `an:ip:${clientIp(req)}`, 300, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        await countEvent(env, body.event, now);
+        return new Response(null, { status: 204, headers: h });
+      }
+
+      // ===================== Administração mínima (token) =====================
+      if (url.pathname.startsWith('/v1/admin/')) {
+        if (!env.ADMIN_TOKEN) return json({ error: 'not_found' }, 404, h);
+        if (!(await hit(env.DB, `admin:ip:${clientIp(req)}`, 60, 600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        if (!adminOk(env, req)) return json({ error: 'unauthorized' }, 401, h);
+        if (req.method === 'GET' && url.pathname === '/v1/admin/feedback.csv') {
+          return new Response(await feedbackCsv(env, url.searchParams.get('status')), { status: 200, headers: { ...h, 'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Disposition': 'attachment; filename="sugestoes.csv"' } });
+        }
+        if (req.method === 'POST' && url.pathname === '/v1/admin/feedback/status') {
+          const b = await readJson(req);
+          if (!b || typeof b.id !== 'string' || !STATUSES.includes(b.status)) return json({ error: 'bad_request' }, 400, h);
+          const r = await env.DB.prepare('UPDATE feedback_suggestions SET status = ? WHERE id = ?').bind(b.status, b.id).run();
+          return json({ updated: r.meta.changes }, 200, h);
+        }
+        if (req.method === 'POST' && url.pathname === '/v1/admin/feedback/delete') {
+          const b = await readJson(req);
+          if (!b || typeof b.id !== 'string') return json({ error: 'bad_request' }, 400, h);
+          const r = await env.DB.prepare('DELETE FROM feedback_suggestions WHERE id = ?').bind(b.id).run();
+          return json({ deleted: r.meta.changes }, 200, h);
+        }
+        if (req.method === 'GET' && url.pathname === '/v1/admin/metrics') {
+          const from = url.searchParams.get('from') ?? '1970-01-01', to = url.searchParams.get('to') ?? '9999-12-31';
+          return json(await adminMetrics(env, from, to), 200, h);
+        }
+        return json({ error: 'not_found' }, 404, h);
+      }
+
       // ===================== Recuperação de acesso =====================
       if (req.method === 'POST' && url.pathname === '/v1/recovery/request') {
         const body = await readJson(req);
@@ -204,6 +241,12 @@ export default {
         if (!(await hit(env.DB, `renew:${auth.householdId}`, 10, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
         const pix = await createPix(env, { kind: 'renewal', plan: PLANS[body.plan], email, cpf, householdId: auth.householdId, now });
         return pix ? json(pix, 201, h) : json({ error: 'provider_unavailable' }, 502, h);
+      }
+
+      if (req.method === 'POST' && url.pathname === '/v1/feedback') {
+        const body = await readJson(req);
+        const r = await submitFeedback(env, auth.householdId, body, now);
+        return r === 'ok' ? json({ ok: true }, 201, h) : json({ error: r }, r === 'rate_limited' ? 429 : 422, h);
       }
 
       if (req.method === 'POST' && url.pathname === '/v1/sync') {

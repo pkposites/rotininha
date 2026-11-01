@@ -3,6 +3,7 @@ import { LESSONS, GUIDE_REVIEWED, unlockedLessons, guideAccessible, SAFE_SLEEP_I
 import { getPref, setPref } from './lib/prefs.js';
 import { localParts } from '../../../packages/shared/schedule.js';
 import { FLAGS } from './config.js';
+import { track } from './lib/analytics.js';
 
 const REMINDER_ID = 'guide-lesson-reminder';
 
@@ -97,7 +98,7 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
           </div>
         )}
         {a.type === 'finish' && (
-          <button class="btn" onClick={async () => { await markDone(7); await setPref('guideFinished', true); setFinished(true); setOpen('finish'); }}>{a.label}</button>
+          <button class="btn" onClick={async () => { await markDone(7); await setPref('guideFinished', true); track('guide_completed', { once: true }); setFinished(true); setOpen('finish'); }}>{a.label}</button>
         )}
 
         {a.type !== 'finish' && (

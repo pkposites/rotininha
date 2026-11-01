@@ -17,6 +17,7 @@ export interface Env {
   EMAIL_FROM?: string;
   RESEND_API_KEY?: string;
   SUPPORT_EMAIL?: string;
+  ADMIN_TOKEN?: string;           // protege /v1/admin/*; ausente = rotas administrativas desligadas
 }
 
 export type Kind = 'event' | 'task' | 'occ';

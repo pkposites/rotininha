@@ -91,3 +91,6 @@ main { flex: 1; padding: var(--space-3); display: grid; gap: var(--space-3); ali
 .lesson p { margin: 0; }
 .rit-row { display: flex; justify-content: space-between; align-items: center; }
 .row input { flex: 1; min-height: var(--touch); padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-base); color: var(--text-main); }
+
+.feedback-card { background: var(--brand-lilac-100); border-color: transparent; }
+.feedback-card p { margin: 0 0 var(--space-1); }

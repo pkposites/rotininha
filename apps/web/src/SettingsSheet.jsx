@@ -8,7 +8,7 @@ const LABEL = {
   expired: 'Acesso vencido — você ainda pode ver os registros', 'signed-out': 'Este aparelho não está conectado', off: ''
 };
 
-export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRenew, onRecover }) {
+export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRenew, onRecover, onSuggest }) {
   const [sync, setSync] = useState({ status: 'off' });
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
@@ -90,6 +90,8 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
             <p class="muted">Notificações dependem da instalação, da permissão e das configurações do aparelho, e podem atrasar ou não chegar. O Rotininha não garante entrega no minuto exato.</p>
           </>
         )}
+        <h3>Sugestões</h3>
+        <button class="btn ghost" onClick={onSuggest}>Enviar sugestão</button>
         <p class="muted">Seus registros não são usados para publicidade. O Rotininha não substitui a orientação do pediatra.</p>
         <button class="btn ghost" onClick={onClose}>Fechar</button>
       </div>

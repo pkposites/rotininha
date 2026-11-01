@@ -11,6 +11,9 @@ import { CheckoutSheet } from './CheckoutSheet.jsx';
 import { RecoverSheet } from './RecoverSheet.jsx';
 import { FLAGS } from './config.js';
 import { Onboarding } from './Onboarding.jsx';
+import { FeedbackSheet, FeedbackCard } from './FeedbackSheet.jsx';
+import { engagement, shouldShowCard, isEligible } from './lib/feedback.js';
+import { track } from './lib/analytics.js';
 import { GuideTab } from './GuideTab.jsx';
 import { getPref, setPref } from './lib/prefs.js';
 import { listEvents, listTasks } from './lib/db.js';
@@ -70,7 +73,7 @@ function LastCard({ type, events, now, onEdit }) {
   );
 }
 
-function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask }) {
+function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedbackNode }) {
   const { events, quickLog } = store;
   const [toast, setToast] = useState(null);
   const sleeping = openSleep(events);
@@ -78,6 +81,7 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask }) {
 
   const log = async (type) => {
     const r = await quickLog(type);
+    onLogged?.();
     const msg = r.woke ? `Acordou às ${hhmm(r.event.endedAt)}` : `${TYPES[type].label} registrada às ${hhmm(r.event.startedAt)}`;
     setToast({ msg, event: r.event });
   };
@@ -109,6 +113,7 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask }) {
       <section class="lasts" aria-label="Últimos cuidados">
         {['mamada', 'sono', 'fralda'].map((t) => <LastCard type={t} events={events} now={now} onEdit={onEdit} />)}
       </section>
+      {feedbackNode}
       <RemindersCard tasks={rem.tasks} occs={rem.occs} now={now} tz={rem.tz} onOpen={onOpenItem} onNew={onNewTask} onQuickDone={(i) => rem.saveOcc(markDone(i))} />
     </>
   );
@@ -165,6 +170,11 @@ function App() {
   const [syncStatus, setSyncStatus] = useState('off');
   const [settings, setSettings] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [loggedThisSession, setLoggedThisSession] = useState(false);
+  const [fbPrefs, setFbPrefs] = useState({ dismissedAt: null, submittedAt: null });
+  useEffect(() => { track('app_first_open', { once: true }); }, []);
+  useEffect(() => { (async () => setFbPrefs({ dismissedAt: await getPref('feedbackDismissedAt'), submittedAt: await getPref('feedbackSubmittedAt') }))(); }, [feedbackOpen]);
   // Primeira abertura: onboarding só para quem ainda não tem dados nem já o concluiu.
   useEffect(() => {
     (async () => {
@@ -186,6 +196,13 @@ function App() {
   }, []);
   useEffect(() => { if (syncStatus === 'idle') refreshAccount(); if (syncStatus === 'signed-out') setAccount(null); }, [syncStatus]);
   const notice = accessNotice(account);
+  const eng = engagement(store.events, rem.occs, rem.tz);
+  const showFeedbackCard = shouldShowCard({
+    eng, now, tab, night, loggedThisSession, busy: onboarding || !!checkout || !!recover || settings || !!editing || !!taskEdit || !!openOcc,
+    flag: FLAGS.feedbackCard, ...fbPrefs
+  });
+  useEffect(() => { if (isEligible(eng)) track('feedback_eligible', { once: true }); }, [isEligible(eng)]);
+  useEffect(() => { if (showFeedbackCard) track('feedback_card_shown'); }, [showFeedbackCard]);
   useEffect(() => { startSync(); return subSync((st) => setSyncStatus(st.status)); }, []);
   // Notificação → abre o lembrete para confirmar (nunca conclui sozinho).
   useEffect(() => {
@@ -216,11 +233,12 @@ function App() {
       <main>
         {store.error && <p class="card err" role="alert">{store.error}</p>}
         {notice && <section class={`card notice ${notice.tone}`} role="status"><p>{notice.text}</p>{FLAGS.payments && <button class="btn" onClick={() => setCheckout({ renewal: true })}>Renovar</button>}</section>}
-        {tab === 'hoje' && <Hoje store={store} rem={rem} now={now} onEdit={setEditing} onOpenItem={(i) => setOpenOcc(i.id)} onNewTask={() => setTaskEdit({ task: makeTask(), isNew: true })} />}
+        {tab === 'hoje' && <Hoje store={store} rem={rem} now={now} onLogged={() => { setLoggedThisSession(true); track('first_record', { once: true }); }}
+          feedbackNode={showFeedbackCard ? <FeedbackCard onOpen={() => setFeedbackOpen(true)} onDismiss={async () => { await setPref('feedbackDismissedAt', Date.now()); setFbPrefs((f) => ({ ...f, dismissedAt: Date.now() })); track('feedback_card_dismissed'); }} /> : null} onEdit={setEditing} onOpenItem={(i) => setOpenOcc(i.id)} onNewTask={() => setTaskEdit({ task: makeTask(), isNew: true })} />}
         {tab === 'historico' && <Historico events={store.events} onEdit={setEditing} />}
         {tab === 'guia' && <GuideTab rem={rem} account={account} now={now}
           onCreateTask={(p) => setTaskEdit({ task: makeTask(p), isNew: true })} onGoToday={() => setTab('hoje')}
-          onSuggest={() => setSettings(true)} onRenew={FLAGS.payments ? () => setCheckout({ renewal: true }) : null} />}
+          onSuggest={() => setFeedbackOpen(true)} onRenew={FLAGS.payments ? () => setCheckout({ renewal: true }) : null} />}
         <p class="muted disclaimer">O Rotininha ajuda a organizar os cuidados e não substitui a orientação do pediatra.</p>
       </main>
       <nav class="tabs" aria-label="Navegação principal">
@@ -242,7 +260,9 @@ function App() {
           onSave={async (t) => { await rem.saveTask(t); setTaskEdit(null); }}
           onDelete={async (id) => { await rem.removeTask(id); setTaskEdit(null); }} />
       )}
+      {feedbackOpen && <FeedbackSheet onClose={() => setFeedbackOpen(false)} />}
       {settings && <SettingsSheet onClose={() => setSettings(false)} night={night} setNight={setNight} account={account}
+        onSuggest={() => { setSettings(false); setFeedbackOpen(true); }}
         onBuy={!FLAGS.payments ? null : () => { setSettings(false); setCheckout({ renewal: false }); }}
         onRenew={!FLAGS.payments ? null : () => { setSettings(false); setCheckout({ renewal: true }); }}
         onRecover={() => { setSettings(false); setRecover({ token: null }); }} />}

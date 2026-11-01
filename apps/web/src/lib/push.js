@@ -1,5 +1,6 @@
 import { authedCall, syncAvailable } from './sync.js';
 import { getMeta, setMeta } from './db.js';
+import { track } from './analytics.js';
 
 const b64uToBytes = (str) => {
   const p = str.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (str.length % 4)) % 4);
@@ -48,6 +49,7 @@ export async function enablePush(privacy = false) {
   catch (e) { if (e.message === 'not-connected') throw new Error('Conecte este aparelho com o código de acesso primeiro.'); throw e; }
   if (r.status !== 201) throw new Error('Não foi possível ativar agora. Tente novamente em instantes.');
   await setMeta('pushPrivacy', !!privacy);
+  track('push_enabled', { once: true });
 }
 
 export async function disablePush() {

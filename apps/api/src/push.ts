@@ -2,6 +2,7 @@ import type { Env, WireRecord } from './types';
 import { sendWebPush, type VapidConfig } from './webpush';
 import { seal, unseal } from './seal';
 import { householdTz, DEFAULT_TZ } from './records';
+import { purgeOldFeedback } from './feedback';
 import { nextFire, inQuietHours, localParts, occId } from '../../../packages/shared/schedule.js';
 
 const STALE_MS = 30 * 60_000;      // não envia lembrete atrasado mais de 30 min (Cron parado, por exemplo)
@@ -149,8 +150,9 @@ export async function runDue(env: Env, now: number): Promise<TickResult> {
     if (n) res.sent += n; else skip('no_subscription');
   }
 
-  // limpeza leve da tabela de dedupe (mantém 3 dias)
+  // limpeza horária: dedupe (3 dias) e sugestões além da retenção
   if (Math.floor(now / 60000) % 60 === 0) {
+    await purgeOldFeedback(env, now);
     await env.DB.prepare('DELETE FROM sent_notifications WHERE sent_at < ?').bind(now - 3 * 86400000).run();
   }
   return res;
