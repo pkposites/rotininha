@@ -1,0 +1,15 @@
+name = "rotininha-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "rotininha"
+database_id = "00000000-0000-0000-0000-000000000000" # substituir após `wrangler d1 create rotininha`
+migrations_dir = "migrations"
+
+[vars]
+ALLOWED_ORIGIN = "http://localhost:5173"
+ALLOW_DEV_SIGNUP = "false"
+# Secrets (wrangler secret put): CODE_PEPPER
+# Local: crie .dev.vars (ignorado pelo git) — veja .dev.vars.example

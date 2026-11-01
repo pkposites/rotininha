@@ -55,3 +55,6 @@ main { flex: 1; padding: var(--space-3); display: grid; gap: var(--space-3); ali
 .chip:hover, .btn:hover { filter: brightness(.97); }
 .err { color: var(--warning-ink); background: var(--warning-bg); border-radius: 12px; padding: 8px 12px; margin: 0; }
 .day::first-letter { text-transform: uppercase; }
+.sheet .inline { display: flex; align-items: center; gap: var(--space-1); min-height: var(--touch); }
+.sheet .inline input { min-height: 24px; width: 24px; }
+.stack { display: grid; gap: var(--space-2); }

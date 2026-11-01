@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { listEvents, putEvent, deleteEvent } from './db.js';
 import { makeEvent, openSleep } from './events.js';
+import { requestSync, onRemoteChange } from './sync.js';
 
 export function useEvents() {
   const [events, setEvents] = useState([]);
@@ -12,10 +13,10 @@ export function useEvents() {
     catch { setError('Não foi possível acessar o armazenamento do aparelho.'); }
     setReady(true);
   }, []);
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { refresh(); return onRemoteChange(refresh); }, [refresh]);
 
-  const save = async (e) => { await putEvent(e); await refresh(); };
-  const remove = async (id) => { await deleteEvent(id); await refresh(); };
+  const save = async (e) => { await putEvent(e); await refresh(); requestSync(); };
+  const remove = async (id) => { await deleteEvent(id); await refresh(); requestSync(); };
 
   // Registro de 1 toque: salva agora, o horário pode ser corrigido depois.
   const quickLog = async (type) => {

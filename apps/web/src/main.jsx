@@ -6,6 +6,8 @@ import {
   TYPES, lastOf, openSleep, formatElapsed, formatDuration, groupByDay, summarize
 } from './lib/events.js';
 import { EditSheet } from './EditSheet.jsx';
+import { SettingsSheet } from './SettingsSheet.jsx';
+import { startSync, subscribe as subSync, syncAvailable } from './lib/sync.js';
 
 const TABS = [
   { id: 'hoje', label: 'Hoje' },
@@ -145,6 +147,9 @@ function App() {
   const [tab, setTab] = useState('hoje');
   const [night, setNight] = useState(() => { try { return localStorage.getItem('night') === '1'; } catch { return false; } });
   const [editing, setEditing] = useState(null);
+  const [settings, setSettings] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('off');
+  useEffect(() => { startSync(); return subSync((st) => setSyncStatus(st.status)); }, []);
   useEffect(() => {
     document.documentElement.dataset.theme = night ? 'night' : 'day';
     try { localStorage.setItem('night', night ? '1' : '0'); } catch {}
@@ -154,9 +159,13 @@ function App() {
     <div class="shell">
       <header class="topbar">
         <span class="brand">Rotininha</span>
-        <button class="icon-btn" aria-label={night ? 'Desativar modo madrugada' : 'Ativar modo madrugada'} onClick={() => setNight(!night)}>
-          {night ? '☀️' : '🌙'}
-        </button>
+        <div>
+          {syncAvailable && syncStatus === 'offline' && <span class="muted" role="status">sem conexão </span>}
+          <button class="icon-btn" aria-label={night ? 'Desativar modo madrugada' : 'Ativar modo madrugada'} onClick={() => setNight(!night)}>
+            {night ? '☀️' : '🌙'}
+          </button>
+          <button class="icon-btn" aria-label="Ajustes" onClick={() => setSettings(true)}>⚙️</button>
+        </div>
       </header>
       <main>
         {store.error && <p class="card err" role="alert">{store.error}</p>}
@@ -170,6 +179,7 @@ function App() {
           <button class="tab" aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>{t.label}</button>
         ))}
       </nav>
+      {settings && <SettingsSheet onClose={() => setSettings(false)} night={night} setNight={setNight} />}
       {editing && (
         <EditSheet event={editing} onClose={() => setEditing(null)}
           onSave={async (e) => { await store.save(e); setEditing(null); }}
