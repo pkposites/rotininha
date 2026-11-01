@@ -39,3 +39,8 @@
 - [ ] **Verificação do WhatsApp** (código por mensagem) para impedir cadastro com número de terceiros. Exige canal de envio.
 - [ ] **Decisão comercial:** a data 05/11/2026 (4 dias à frente) é menor que o aviso prévio de 7 dias prometido nos textos. Como ninguém usa ainda, não afeta ninguém, mas defina se o aviso muda para o prazo real ou se a data se move.
 - [ ] **Página pública a compartilhar:** hoje é a raiz do app (`/`). Se preferir a LP de captação, defina `VITE_SHARE_URL`.
+
+## ❓ Decisões em aberto do proprietário (registradas em 01/11/2026)
+1. **Data de cobrança 05/11 x aviso prévio de 7 dias.** A data (4 dias à frente) é menor que o aviso prometido nos textos. Ninguém usa ainda, então não prejudica ninguém. Definir qual muda: o aviso (para o prazo real) ou a data (para ≥ 7 dias à frente). Depois, alinhar `lib/ux.js → trialCopy`, `index.html`, `termos.html` e o painel (Teste e cobrança).
+2. **Uso sem conta depois da data de cobrança.** Hoje não é bloqueado (o servidor não mede o uso local; sem conta também não há lembretes por notificação nem sincronização). Definir se passa a exigir conta (3 dias de teste e depois pagar).
+3. **Página compartilhada.** Hoje é a raiz do app; definir se deve ser a LP de captação (`VITE_SHARE_URL`).
