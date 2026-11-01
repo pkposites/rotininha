@@ -114,6 +114,10 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedba
         <h1>{greeting()}! 💜</h1>
         <p class="muted">{data}</p>
       </section>
+      <div class="quick-intro">
+        <h2 class="h3s">O que o bebê acabou de fazer?</h2>
+        <p class="muted">Toque em um botão para registrar agora. Assim guardamos o horário e mostramos abaixo há quanto tempo foi, para você não precisar lembrar de cabeça.</p>
+      </div>
       <section class="actions" aria-label="Registro rápido">
         <button class="qa qa-mamada" onClick={() => log('mamada')}><span class="qa-ico" aria-hidden="true">🍼</span><span>Mamou</span></button>
         <button class="qa qa-sono" onClick={() => log('sono')}><span class="qa-ico" aria-hidden="true">{sleeping ? '☀️' : '😴'}</span><span>{sleeping ? 'Acordou' : 'Dormiu'}</span></button>
