@@ -269,3 +269,5 @@ main { padding: 8px 16px calc(104px + env(safe-area-inset-bottom)); display: gri
 .help-btn[aria-expanded=true] { background: var(--brand-primary); color: #fff; }
 .help-text { margin: 4px 0 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-subtle, rgba(0,0,0,.05)); }
 .quick-intro { display: grid; gap: 2px; margin-bottom: -6px; }
+.how-rem { margin: 4px 0 8px; }
+.how-steps { margin: 6px 0; padding-left: 20px; display: grid; gap: 8px; }

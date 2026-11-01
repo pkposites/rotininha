@@ -13,6 +13,17 @@ export function RemindersCard({ tasks, occs, now, tz, onOpen, onNew, onQuickDone
         <h2 class="h3s">Próximos lembretes</h2>
         <button class="pill" onClick={onNew}><PlusIcon width="16" height="16" /> Novo</button>
       </div>
+      <details class="fold how-rem">
+        <summary>Como funcionam os lembretes?</summary>
+        <ol class="how-steps">
+          <li><strong>Crie.</strong> Toque em “+ Novo”, escolha o nome (por exemplo, Banho), o horário e se repete: todos os dias, em dias da semana ou uma vez só.</li>
+          <li><strong>Receba o aviso.</strong> No horário, o Ninhora avisa por notificação e o lembrete aparece aqui, em “Próximos lembretes”.</li>
+          <li><strong>Responda.</strong> Toque no círculo para marcar como feito. Ou toque no lembrete para adiar (10, 15 ou 30 minutos, só por hoje) ou pular hoje. Errou? Tem “Desfazer”.</li>
+          <li><strong>Amanhã.</strong> Se o lembrete repete, ele volta sozinho no dia seguinte. Os resolvidos ficam em “Já resolvidos hoje”.</li>
+        </ol>
+        <p class="muted"><strong>Para as notificações chegarem:</strong> ative em Ajustes. No iPhone, só funciona depois de instalar o app na Tela de Início. Entre 22h e 6h não avisamos, a menos que você permita ao criar o lembrete. A entrega depende do aparelho e pode atrasar, mas o lembrete sempre aparece aqui no app.</p>
+        <p class="muted">Marcar um lembrete como feito não cria um registro de cuidado: para registrar mamada, sono ou fralda, use os botões da tela Hoje.</p>
+      </details>
       {tasks.length === 0 && (
         <p class="muted mt8">Você ainda não criou lembretes. Crie o primeiro quando quiser — banho, remédio conforme orientação, consulta…</p>
       )}
