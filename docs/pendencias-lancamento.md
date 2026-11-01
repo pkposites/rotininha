@@ -44,3 +44,6 @@
 1. **Data de cobrança 05/11 x aviso prévio de 7 dias.** A data (4 dias à frente) é menor que o aviso prometido nos textos. Ninguém usa ainda, então não prejudica ninguém. Definir qual muda: o aviso (para o prazo real) ou a data (para ≥ 7 dias à frente). Depois, alinhar `lib/ux.js → trialCopy`, `index.html`, `termos.html` e o painel (Teste e cobrança).
 2. **Uso sem conta depois da data de cobrança.** Hoje não é bloqueado (o servidor não mede o uso local; sem conta também não há lembretes por notificação nem sincronização). Definir se passa a exigir conta (3 dias de teste e depois pagar).
 3. **Página compartilhada.** Hoje é a raiz do app; definir se deve ser a LP de captação (`VITE_SHARE_URL`).
+
+## Preferência da proprietária: sem terminal (registrada em 01/11/2026)
+Ela prefere usar tudo pela conversa e pelos conectores (Netlify, Cloudflare), sem terminal. Hoje o terminal ainda é necessário só para: `wrangler deploy` (publicar a API) e `wrangler secret put` (guardar segredos). Já resolvido sem terminal: migrações e consultas no D1 (conector Cloudflare), variáveis do Netlify (conector Netlify). **Tarefa para depois:** "Publicar a API sem terminal" (deploy automático do Worker a cada envio ao GitHub, via Cloudflare Workers Builds, e segredos pelo painel da Cloudflare).
