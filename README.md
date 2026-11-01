@@ -5,6 +5,8 @@ Uma ajudinha na sua rotina de mãe. PWA + Cloudflare Worker + Pix. Veja `docs/PR
 ## Estado
 - [x] Marco 0 — fundação (tokens, shell PWA Hoje/Histórico/Guia, manifest, service worker)
 - [x] Marco 1 — registro local (IndexedDB, 1 toque, editar/excluir, histórico, resumo, sono com duração)
+- [x] Marco 2 — API (Worker + D1), sessão e sincronização offline-first
+- [ ] Marcos 3–8 — lembretes/push, Pix, onboarding+guia, landing page, sugestões, endurecimento (PRD §12)
 
 ## Comandos
 ```bash
