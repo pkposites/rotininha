@@ -150,3 +150,19 @@ track('lp_visit');
     }
   }));
 })();
+
+/* ---------- botão fixo: aparece depois do CTA do topo e some quando a oferta está na tela ---------- */
+(() => {
+  const bar = $('#sticky-cta'), hero = $('.hero-cta .btn'), offer = $('#oferta');
+  if (!bar || !hero || !offer || !('IntersectionObserver' in window)) return;
+  let heroOut = false, offerIn = false;
+  const sync = () => {
+    const show = heroOut && !offerIn;
+    bar.classList.toggle('show', show);
+    bar.setAttribute('aria-hidden', String(!show));
+    bar.querySelector('a').tabIndex = show ? 0 : -1;
+  };
+  document.body.classList.add('has-sticky');
+  new IntersectionObserver(([e]) => { heroOut = !e.isIntersecting && e.boundingClientRect.top < 0; sync(); }).observe(hero);
+  new IntersectionObserver(([e]) => { offerIn = e.isIntersecting; sync(); }, { threshold: 0.2 }).observe(offer);
+})();

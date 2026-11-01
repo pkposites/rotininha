@@ -26,6 +26,7 @@ const CSP = /Content-Security-Policy: (.*)/.exec(headersTxt)[1];
     return p;
   };
   const axe = async (p, label) => {
+    await p.waitForTimeout(500); // espera as animações de entrada (fade/slide) terminarem: avalia o estado final
     const res = await p.evaluate(() => axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa', 'best-practice'] }));
     const bad = res.violations.filter((v) => ['serious', 'critical', 'moderate'].includes(v.impact));
     ok(bad.length === 0, `axe ${label}: ${bad.map((v) => v.id + ' ×' + v.nodes.length).join(', ') || 'sem violações'}`);
@@ -47,7 +48,7 @@ const CSP = /Content-Security-Policy: (.*)/.exec(headersTxt)[1];
   await A.click('.actions >> text=Mamou'); await A.click('.actions >> text=Dormiu');
   await A.waitForTimeout(400);
   await axe(A, 'Hoje');
-  await A.click('text=+ Novo'); await A.fill('input[placeholder="Ex.: Hora do banho"]', 'Banho'); await A.fill('input[type=time]', '23:30');
+  await A.click('.pill'); await A.fill('input[placeholder="Ex.: Hora do banho"]', 'Banho'); await A.fill('input[type=time]', '23:30');
   await axe(A, 'novo lembrete (com confirmação de silêncio)');
   await A.click('.sheet >> text=Cancelar');
   await A.click('.last >> nth=0'); await axe(A, 'editar registro'); await A.click('.sheet >> text=Cancelar');

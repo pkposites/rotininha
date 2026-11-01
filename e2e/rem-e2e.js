@@ -21,7 +21,7 @@ const { chromium } = require('playwright');
   };
   const syncNow = async (p) => { await p.click('[aria-label="Ajustes"]'); await p.click('text=Sincronizar agora'); await p.waitForTimeout(1500); await p.click('.sheet >> text=Fechar'); };
   const newTask = async (p, { title, time, cat, quietConfirm }) => {
-    await p.click('text=+ Novo');
+    await p.click('.pill');
     await p.fill('input[placeholder="Ex.: Hora do banho"]', title);
     if (cat) await p.selectOption('select >> nth=0', cat);
     await p.fill('input[type=time]', time);
@@ -37,12 +37,12 @@ const { chromium } = require('playwright');
   ok(!(await A.locator('.err').count()), 'sem alerta vermelho de erro');
 
   // 2) validação
-  await A.click('text=+ Novo'); await A.click('button[type=submit]');
+  await A.click('.pill'); await A.click('button[type=submit]');
   ok(await A.locator('input:invalid').count() >= 1 || await A.locator('.err').count() === 1, 'nome vazio não salva');
   await A.click('.sheet >> text=Cancelar');
 
   // 3) confirmação de silêncio 22h–6h
-  await A.click('text=+ Novo');
+  await A.click('.pill');
   await A.fill('input[placeholder="Ex.: Hora do banho"]', 'Mamada da noite');
   await A.fill('input[type=time]', '23:30');
   ok(await A.locator('.note-quiet').count() === 1, 'horário no silêncio pede confirmação explícita');
@@ -52,7 +52,7 @@ const { chromium } = require('playwright');
   await A.click('.sheet >> text=Cancelar');
 
   // 4) lembrete de remédio mostra aviso e não pede dose
-  await A.click('text=+ Novo'); await A.selectOption('select >> nth=0', 'remedio');
+  await A.click('.pill'); await A.selectOption('select >> nth=0', 'remedio');
   ok((await A.locator('.sheet').innerText()).includes('orientação de profissional de saúde'), 'remédio: aviso de orientação profissional');
   ok(!(await A.locator('.sheet').innerText()).toLowerCase().includes('dose:'), 'remédio: sem campo de dose');
   await A.click('.sheet >> text=Cancelar');

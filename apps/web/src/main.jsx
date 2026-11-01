@@ -11,6 +11,7 @@ import { CheckoutSheet } from './CheckoutSheet.jsx';
 import { RecoverSheet } from './RecoverSheet.jsx';
 import { FLAGS } from './config.js';
 import { Onboarding } from './Onboarding.jsx';
+import { HomeIcon, ClockIcon, BookIcon, MoonIcon, SunIcon, GearIcon, BrandMark } from './icons.jsx';
 import { FeedbackSheet, FeedbackCard } from './FeedbackSheet.jsx';
 import { engagement, shouldShowCard, isEligible } from './lib/feedback.js';
 import { track } from './lib/analytics.js';
@@ -26,9 +27,9 @@ import { makeTask, dayItems, markDone, markSkipped, snooze, undo } from './lib/t
 import { startSync, subscribe as subSync, syncAvailable } from './lib/sync.js';
 
 const TABS = [
-  { id: 'hoje', label: 'Hoje' },
-  { id: 'historico', label: 'Histórico' },
-  { id: 'guia', label: 'Guia' }
+  { id: 'hoje', label: 'Hoje', Icon: HomeIcon },
+  { id: 'historico', label: 'Histórico', Icon: ClockIcon },
+  { id: 'guia', label: 'Guia', Icon: BookIcon }
 ];
 const hhmm = (ts) => new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
@@ -62,13 +63,14 @@ function LastCard({ type, events, now, onEdit }) {
     sub = `${type === 'sono' ? 'acordou ' : ''}${formatElapsed(now - ref)}`;
   }
   const target = open ?? last;
+  const empty = !target;
   return (
-    <button class="card last" disabled={!target} onClick={() => target && onEdit(target)}
+    <button class={`card last${open ? ' on' : ''}`} disabled={empty} onClick={() => target && onEdit(target)}
       aria-label={`${t.label}: ${main} ${sub}. ${target ? 'Toque para editar.' : ''}`}>
       <span class="ico" aria-hidden="true">{t.icon}</span>
-      <span class="lbl muted">{type === 'mamada' ? 'Última mamada' : type === 'sono' ? 'Sono' : 'Última fralda'}</span>
-      <strong class="time">{main}</strong>
-      <span class="muted">{sub}</span>
+      <span class="lbl muted">{type === 'mamada' ? 'Mamada' : type === 'sono' ? 'Sono' : 'Fralda'}</span>
+      <strong class="time">{empty ? '—' : main}</strong>
+      <span class="sub">{empty ? 'Ainda não registrado' : sub}</span>
     </button>
   );
 }
@@ -93,14 +95,14 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedba
 
   return (
     <>
-      <section>
+      <section class="greet">
         <h1>{greeting()}! 💜</h1>
         <p class="muted">{data}</p>
       </section>
       <section class="actions" aria-label="Registro rápido">
-        <button class="btn" onClick={() => log('mamada')}>🍼 Mamou</button>
-        <button class="btn" onClick={() => log('sono')}>{sleeping ? '☀️ Acordou' : '😴 Dormiu'}</button>
-        <button class="btn" onClick={() => log('fralda')}>👶 Fralda</button>
+        <button class="qa qa-mamada" onClick={() => log('mamada')}><span class="qa-ico" aria-hidden="true">🍼</span><span>Mamou</span></button>
+        <button class="qa qa-sono" onClick={() => log('sono')}><span class="qa-ico" aria-hidden="true">{sleeping ? '☀️' : '😴'}</span><span>{sleeping ? 'Acordou' : 'Dormiu'}</span></button>
+        <button class="qa qa-fralda" onClick={() => log('fralda')}><span class="qa-ico" aria-hidden="true">👶</span><span>Fralda</span></button>
       </section>
       <div class="toast-slot" role="status" aria-live="polite">
         {toast && (
@@ -216,19 +218,20 @@ function App() {
   const openItem = openOcc ? dayItems(rem.tasks, rem.occs, now, rem.tz).find((i) => i.id === openOcc) ?? dayItems(rem.tasks, rem.occs, now, rem.tz, dateOfOcc(openOcc)).find((i) => i.id === openOcc) : null;
   useEffect(() => {
     document.documentElement.dataset.theme = night ? 'night' : 'day';
+    document.querySelector('meta[name=theme-color]')?.setAttribute('content', night ? '#171A2A' : '#FBF9F7');
     try { localStorage.setItem('night', night ? '1' : '0'); } catch {}
   }, [night]);
 
   return (
     <div class="shell">
       <header class="topbar">
-        <span class="brand">Rotininha</span>
-        <div>
-          {syncAvailable && syncStatus === 'offline' && <span class="muted" role="status">sem conexão </span>}
+        <span class="brand"><BrandMark />Rotininha</span>
+        <div class="topbar-actions">
+          {syncAvailable && syncStatus === 'offline' && <span class="muted" role="status">sem conexão</span>}
           <button class="icon-btn" aria-label={night ? 'Desativar modo madrugada' : 'Ativar modo madrugada'} onClick={() => setNight(!night)}>
-            {night ? '☀️' : '🌙'}
+            {night ? <SunIcon /> : <MoonIcon />}
           </button>
-          <button class="icon-btn" aria-label="Ajustes" onClick={() => setSettings(true)}>⚙️</button>
+          <button class="icon-btn" aria-label="Ajustes" onClick={() => setSettings(true)}><GearIcon /></button>
         </div>
       </header>
       <main>
@@ -244,7 +247,9 @@ function App() {
       </main>
       <nav class="tabs" aria-label="Navegação principal">
         {TABS.map((t) => (
-          <button class="tab" aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>{t.label}</button>
+          <button class="tab" aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>
+            <span class="tab-ico"><t.Icon /></span><span>{t.label}</span>
+          </button>
         ))}
       </nav>
       {onboarding && <Onboarding store={store} rem={rem} connected={syncStatus !== 'signed-out' && syncStatus !== 'off'} onFinish={() => setOnboarding(false)} />}

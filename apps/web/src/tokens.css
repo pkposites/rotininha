@@ -9,6 +9,10 @@
   --night-bg: #171A2A; --night-card: #24283B;
   --night-text: #F5F2FB; --night-accent: #C2B5F0;
 
+  --header-bg: rgba(251,249,247,.88); --tabbar-bg: rgba(255,255,255,.92);
+  --toast-bg: #25334A; --toast-text: #FFFFFF; --toast-link: #C2B5F0;
+  --shadow-card: 0 1px 2px rgba(37,51,74,.05), 0 6px 18px rgba(37,51,74,.06);
+  --tile-mamada: #F8E5DC; --tile-sono: #E7E0F7; --tile-fralda: #E1F0E8; --tile-ico: rgba(255,255,255,.75);
   --text-muted-on-lilac: #4F5868; /* o cinza secundário padrão não atinge 4,5:1 sobre o lilás */
 
   --font-head: 'Nunito Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -20,6 +24,10 @@
 
 /* Modo madrugada */
 [data-theme='night'] {
+  --header-bg: rgba(23,26,42,.88); --tabbar-bg: rgba(36,40,59,.94);
+  --toast-bg: #3A3F5E; --toast-text: #F5F2FB; --toast-link: #C2B5F0;
+  --shadow-card: 0 1px 2px rgba(0,0,0,.25);
+  --tile-mamada: #3B3340; --tile-sono: #2F2D4D; --tile-fralda: #263A3A; --tile-ico: rgba(255,255,255,.12);
   --text-muted-on-lilac: #B8B3C9;
   --surface-base: var(--night-bg); --surface-card: var(--night-card);
   --text-main: var(--night-text); --text-muted: #B8B3C9;

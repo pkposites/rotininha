@@ -112,6 +112,10 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
     <>
       <h1 class="h2s">Rotina e Sono em 7 Dias</h1>
       <p class="muted">Uma lição curta por dia (1–2 minutos), sempre com uma ação opcional. Conteúdo educativo: não substitui a orientação do pediatra.</p>
+      <div class="card">
+        <div class="card-head"><strong>Seu progresso</strong><span class="muted">{done.length} de 7 lições</span></div>
+        <progress class="progress mt8" max="7" value={done.length} aria-label="Lições concluídas"></progress>
+      </div>
       {!GUIDE_REVIEWED && <p class="card notice info" role="note">Versão preliminar do conteúdo, ainda em revisão por profissional de saúde.</p>}
       {!accessible && <p class="card notice warn" role="status">Seu acesso venceu, então as lições ficam em pausa. Seus registros continuam disponíveis.</p>}
       <ul class="lessons">

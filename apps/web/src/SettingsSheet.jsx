@@ -40,9 +40,11 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
     <div class="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div class="sheet" role="dialog" aria-modal="true" aria-label="Ajustes">
         <h2>Ajustes</h2>
-        <label class="inline"><input type="checkbox" checked={night} onChange={(e) => setNight(e.target.checked)} /> Modo madrugada</label>
+        <h3 class="group-title">Aparência</h3>
+        <section class="group"><label class="inline"><input type="checkbox" checked={night} onChange={(e) => setNight(e.target.checked)} /> Modo madrugada</label></section>
 
-        <h3>Sincronização</h3>
+        <h3 class="group-title">Sincronização</h3>
+        <section class="group">
         {!syncAvailable && <p class="muted">A sincronização entre aparelhos ainda não está disponível nesta versão. Seus registros ficam salvos neste aparelho.</p>}
         {syncAvailable && (
           <>
@@ -65,7 +67,7 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
               </div>
               {account?.validUntil != null && (
                 <>
-                  <h3>Seu acesso</h3>
+                  <strong>Seu acesso</strong>
                   <p class="muted">{account.state === 'expired' ? 'Venceu em' : 'Válido até'} {fmtDateTime(account.validUntil)}</p>
                   {onRenew && <button class="btn ghost" onClick={onRenew}>Renovar acesso</button>}
                 </>
@@ -74,9 +76,11 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
             )}
           </>
         )}
+        </section>
         {syncAvailable && (
           <>
-            <h3>Lembretes no aparelho</h3>
+            <h3 class="group-title">Lembretes no aparelho</h3>
+            <section class="group">
             {push === 'active' && <p role="status" class="muted">Notificações ativadas neste aparelho.</p>}
             {push === 'ios-install' && <p class="muted">No iPhone, os lembretes só funcionam com o Rotininha instalado: toque em Compartilhar → Adicionar à Tela de Início, depois abra o app por lá e volte aqui.</p>}
             {push === 'unsupported' && <p class="muted">Este navegador não oferece notificações. Você ainda pode registrar e consultar tudo; os lembretes ficam visíveis no app.</p>}
@@ -91,9 +95,11 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
             </div>
             {pushMsg && <p role="status" class="muted">{pushMsg}</p>}
             <p class="muted">Notificações dependem da instalação, da permissão e das configurações do aparelho, e podem atrasar ou não chegar. O Rotininha não garante entrega no minuto exato.</p>
+            </section>
           </>
         )}
-        <h3>Seus dados</h3>
+        <h3 class="group-title">Seus dados</h3>
+        <section class="group">
         {sync.status !== 'signed-out' && sync.status !== 'off' && <button class="btn ghost" onClick={async () => { setDataMsg(''); try { await downloadMyData(); setDataMsg('Cópia baixada.'); } catch (x) { setDataMsg(x.message); } }}>Baixar meus dados</button>}
         {!confirmWipe
           ? <button class="link-danger" onClick={() => setConfirmWipe(true)}>Apagar meus dados</button>
@@ -107,8 +113,9 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
             </div>
           )}
         {dataMsg && <p role="status" class="muted">{dataMsg}</p>}
-        <h3>Sugestões</h3>
-        <button class="btn ghost" onClick={onSuggest}>Enviar sugestão</button>
+        </section>
+        <h3 class="group-title">Sugestões</h3>
+        <section class="group"><button class="btn ghost" onClick={onSuggest}>Enviar sugestão</button></section>
         <p class="muted">Seus registros não são usados para publicidade. O Rotininha não substitui a orientação do pediatra.</p>
         <button class="btn ghost" onClick={onClose}>Fechar</button>
       </div>
