@@ -26,6 +26,10 @@ function headersFile() {
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
 
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: no-cache
+
 /sw.js
   Cache-Control: no-cache
   Service-Worker-Allowed: /app/
