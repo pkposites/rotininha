@@ -82,7 +82,7 @@ const approve = async () => {
   ok(srv2 === srv + 1, 'o registro feito depois de pagar sincroniza com o servidor (' + srv + ' → ' + srv2 + ')');
   const acc = sql(`SELECT plan, valid_until FROM households WHERE id='${hh}'`)[0];
   ok(acc.plan === 'paid' && acc.valid_until > Date.now() + 3650 * 86400000, 'conta marcada como vitalícia no servidor');
-  await adm({ enforceFrom: null }).catch(() => {});
+  sql(`DELETE FROM settings WHERE key='trial_enforce_from'`); // volta ao pré-lançamento (a API recusa desfazer cobrança em vigor)
   ok(p.errs.length === 0, 'sem erros JS ' + p.errs.join('|'));
   await b.close();
 })();

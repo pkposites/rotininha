@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useRef } from 'preact/hooks';
 import './styles.css';
 import { useEvents } from './lib/useEvents.js';
 import {
@@ -30,6 +30,8 @@ import { MiniPlayer } from './MiniPlayer.jsx';
 import { isStandalone } from './lib/push.js';
 import { registeredMessage } from './lib/ux.js';
 import { isBlocked } from './lib/gate.js';
+import { nudgePlan, DAY } from './lib/nudge.js';
+import { NudgePopup } from './NudgePopup.jsx';
 import { PaywallSheet } from './PaywallSheet.jsx';
 import { RemindersCard } from './RemindersCard.jsx';
 import { useReminders } from './lib/useReminders.js';
@@ -223,6 +225,8 @@ function App() {
   const [trialOpen, setTrialOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
   const [paywall, setPaywall] = useState(false);
+  const [nudge, setNudge] = useState(null);       // { plan, dismissals }
+  const nudgeRan = useRef(false);
   const offerInstall = async () => { if (!isStandalone() && !(await getPref('installDismissed', false)) && Date.now() > (await getPref('installSnoozeUntil', 0))) setInstallOpen(true); };
   useEffect(() => { (async () => setFbPrefs({ dismissedAt: await getPref('feedbackDismissedAt'), submittedAt: await getPref('feedbackSubmittedAt') }))(); }, [feedbackOpen]);
   // Primeira abertura: onboarding só para quem ainda não tem dados nem já o concluiu.
@@ -257,6 +261,16 @@ function App() {
   useEffect(() => { if (isEligible(eng)) track('feedback_eligible', { once: true }); }, [isEligible(eng)]);
   useEffect(() => { if (showFeedbackCard) track('feedback_card_shown'); }, [showFeedbackCard]);
   useEffect(() => { startSync(); return subSync((st) => setSyncStatus(st.status)); }, []);
+  // Lembrete dentro do app para quem está sem conta e/ou sem o app instalado (uma vez por abertura)
+  useEffect(() => { (async () => {
+    if (nudgeRan.current || onboarding || !store.ready || (syncAvailable && syncStatus === 'off')) return;
+    if (checkout || recover || settings || trialOpen || installOpen || editing || taskEdit || openOcc || paywall) return;
+    nudgeRan.current = true;
+    let nextAt = await getPref('nudgeNextAt', null);
+    if (nextAt == null) { nextAt = Date.now() + DAY; await setPref('nudgeNextAt', nextAt); }
+    const plan = nudgePlan({ now: Date.now(), syncAvailable, signedOut: syncStatus === 'signed-out', standalone: isStandalone(), installDismissed: await getPref('installDismissed', false), optOut: await getPref('nudgeOptOut', false), hasData: store.events.length > 0 || rem.tasks.length > 0, nextAt });
+    if (plan.show) setNudge({ plan, dismissals: await getPref('nudgeDismissals', 0) });
+  })(); }, [onboarding, store.ready, syncStatus, checkout, recover, settings, trialOpen, installOpen, editing, taskEdit, openOcc, paywall]);
   // Notificação → abre o lembrete para confirmar (nunca conclui sozinho).
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -329,6 +343,9 @@ function App() {
           onSave={async (t) => { if (blocked) { setTaskEdit(null); return setPaywall(true); } await rem.saveTask(t); setTaskEdit(null); }}
           onDelete={async (id) => { await rem.removeTask(id); setTaskEdit(null); }} />
       )}
+      {nudge && !onboarding && <NudgePopup plan={nudge.plan} dismissals={nudge.dismissals} onClose={() => setNudge(null)}
+        onAccount={async () => { setNudge(null); await setPref('nudgeNextAt', Date.now() + DAY); setTrialOpen(true); }}
+        onInstall={async () => { setNudge(null); await setPref('nudgeNextAt', Date.now() + DAY); setInstallOpen(true); }} />}
       {paywall && <PaywallSheet account={account} onClose={() => setPaywall(false)} onPay={() => { setPaywall(false); setCheckout({ renewal: true }); }} />}
       {installOpen && !recover && !checkout && !trialOpen && <InstallPopup onClose={() => setInstallOpen(false)} />}
       {feedbackOpen && <FeedbackSheet onClose={() => setFeedbackOpen(false)} />}
