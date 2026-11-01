@@ -63,3 +63,6 @@ export function trialCopy(t, now = Date.now()) {
   }
   return { kind: 'launch', title: 'Acesso grátis no lançamento', lead: `Hoje o Ninhora é grátis e não tem data para acabar. Antes de começar a cobrar, avisamos com pelo menos ${notice} dias de antecedência, e você ainda terá ${days} dias de teste antes de qualquer pagamento. Previsão: ${price}. Sem cartão e sem cobrança automática.` };
 }
+
+/** Nome para personalização: sem controle/HTML, espaços normalizados, até 30 caracteres. Fica só no aparelho. */
+export const cleanName = (v) => String(v ?? '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 30);

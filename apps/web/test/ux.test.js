@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { registeredMessage, isDoubleTap, reminderView, nextLabel, trialCopy } from '../src/lib/ux.js';
+import { registeredMessage, isDoubleTap, reminderView, nextLabel, trialCopy, cleanName } from '../src/lib/ux.js';
 import { dayItems, makeTask, occId } from '../src/lib/tasks.js';
 
 const TZ = 'America/Sao_Paulo';
@@ -39,4 +39,11 @@ test('texto do acesso grátis acompanha a regra do servidor', () => {
   assert.equal(sch.kind, 'scheduled'); assert.match(sch.lead, /10\/12/); assert.match(sch.title, /13\/12/);
   assert.equal(trialCopy({ days: 3, active: true }).kind, 'active');
   assert.doesNotMatch(launch.lead, /Seu teste começou/);
+});
+
+test('nome de personalização: limpo, curto e sem HTML', () => {
+  assert.equal(cleanName('  Maria   Clara '), 'Maria Clara');
+  assert.equal(cleanName('<b>Theo</b>'), 'bTheo/b');
+  assert.equal(cleanName('x'.repeat(80)).length, 30);
+  assert.equal(cleanName(null), ''); assert.equal(cleanName('a\u0000b\nc'), 'abc');
 });

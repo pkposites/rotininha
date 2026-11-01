@@ -31,6 +31,7 @@ import { isStandalone } from './lib/push.js';
 import { registeredMessage } from './lib/ux.js';
 import { isBlocked } from './lib/gate.js';
 import { nudgePlan, DAY } from './lib/nudge.js';
+import { useProfile } from './lib/profile.js';
 import { NudgePopup } from './NudgePopup.jsx';
 import { PaywallSheet } from './PaywallSheet.jsx';
 import { RemindersCard } from './RemindersCard.jsx';
@@ -91,6 +92,7 @@ function LastCard({ type, events, now, onEdit }) {
 
 function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedbackNode, onHelp, syncStatus, onConnect, hideLocal, onInstall, blocked, onBlocked }) {
   const { events, quickLog } = store;
+  const profile = useProfile();
   const [toast, setToast] = useState(null);
   const sleeping = openSleep(events);
   const [showInstall, setShowInstall] = useState(false);
@@ -116,11 +118,11 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedba
   return (
     <>
       <section class="greet">
-        <h1>{greeting()}! 💜</h1>
+        <h1>{greeting()}{profile.mom ? `, ${profile.mom}` : ''}! 💜</h1>
         <p class="muted">{data}</p>
       </section>
       <div class="quick-intro">
-        <h2 class="h3s">O que o bebê acabou de fazer?</h2>
+        <h2 class="h3s">{profile.baby ? `Cuidados de ${profile.baby}` : 'O que o bebê acabou de fazer?'}</h2>
         <p class="muted">Toque em um botão para registrar agora. Assim guardamos o horário e mostramos abaixo há quanto tempo foi, para você não precisar lembrar de cabeça.</p>
       </div>
       <section class="actions" aria-label="Registro rápido">

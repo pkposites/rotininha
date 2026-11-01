@@ -3,6 +3,7 @@ import { syncAvailable, subscribe, login, loginPassword, logout, syncNow } from 
 import { fmtDateTime, maskPhone, validPhone } from './lib/billing.js';
 import { downloadMyData, deleteEverything } from './lib/privacy.js';
 import { setAccountPrefs, setPassword } from './lib/trial.js';
+import { getProfile, saveProfile } from './lib/profile.js';
 import { pushState, enablePush, disablePush, sendTestPush } from './lib/push.js';
 
 const LABEL = {
@@ -19,6 +20,9 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
   const [pw, setPw] = useState('');
   const [byCode, setByCode] = useState(false);
   const [pwMsg, setPwMsg] = useState('');
+  const [prof, setProf] = useState({ mom: '', baby: '' });
+  const [profMsg, setProfMsg] = useState('');
+  useEffect(() => { getProfile().then(setProf); }, []);
   useEffect(() => subscribe(setSync), []);
   const [push, setPush] = useState('idle');
   const [privacy, setPrivacy] = useState(false);
@@ -63,6 +67,16 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
         <h2>Ajustes</h2>
         <h3 class="group-title">Aparência</h3>
         <section class="group"><label class="inline"><input type="checkbox" checked={night} onChange={(e) => setNight(e.target.checked)} /> Modo madrugada</label></section>
+
+        <h3 class="group-title">Personalização</h3>
+        <section class="group">
+          <form class="stack" onSubmit={async (e) => { e.preventDefault(); await saveProfile(prof); setProfMsg('Salvo.'); }}>
+            <label>Seu nome<input value={prof.mom} maxLength={30} onInput={(e) => { setProfMsg(''); setProf({ ...prof, mom: e.target.value }); }} autocomplete="given-name" placeholder="como você gosta de ser chamada" /></label>
+            <label>Nome do bebê<input value={prof.baby} maxLength={30} onInput={(e) => { setProfMsg(''); setProf({ ...prof, baby: e.target.value }); }} autocomplete="off" placeholder="opcional" /></label>
+            <button class="btn ghost">Salvar nomes</button>
+            <p role="status" class="muted">{profMsg || 'Os nomes ficam só neste aparelho; não vão para o servidor.'}</p>
+          </form>
+        </section>
 
         <h3 class="group-title">Sincronização</h3>
         <section class="group">

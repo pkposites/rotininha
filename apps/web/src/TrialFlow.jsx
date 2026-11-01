@@ -2,6 +2,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { startTrial } from './lib/trial.js';
 import { getPlans, validEmail, fmtDateTime, maskPhone, validPhone } from './lib/billing.js';
 import { trialCopy } from './lib/ux.js';
+import { saveProfile } from './lib/profile.js';
 
 // Criar conta: diz com clareza o que é grátis e até quando, pede e-mail só se quiser e mostra o código UMA vez.
 export function TrialFlow({ onDone, onSkip, onHaveAccount, compact }) {
@@ -13,6 +14,8 @@ export function TrialFlow({ onDone, onSkip, onHaveAccount, compact }) {
   const [phone, setPhone] = useState('');
   const [pw, setPw] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [mom, setMom] = useState('');
+  const [baby, setBaby] = useState('');
   useEffect(() => { getPlans().then(setPlans).catch(() => {}); }, []);
 
   const copy = trialCopy(plans?.trial);
@@ -23,7 +26,7 @@ export function TrialFlow({ onDone, onSkip, onHaveAccount, compact }) {
     if (pw.length < 8) return setErr('A senha precisa ter pelo menos 8 caracteres.');
     if (email && !validEmail(email)) return setErr('Confira o e-mail ou deixe em branco.');
     setBusy(true);
-    try { setRes(await startTrial({ email, whatsapp: phone, password: pw })); setPw(''); } catch (x) { setErr(x.message); }
+    try { setRes(await startTrial({ email, whatsapp: phone, password: pw })); setPw(''); if (mom.trim() || baby.trim()) await saveProfile({ mom, baby }); } catch (x) { setErr(x.message); }
     setBusy(false);
   };
 
@@ -49,6 +52,13 @@ export function TrialFlow({ onDone, onSkip, onHaveAccount, compact }) {
       {compact && <p><strong>{copy.title}</strong></p>}
       <p>{copy.lead}</p>
       <ul class="bullets"><li>Todos os recursos liberados</li><li>Você pode usar o app agora, sem conta</li><li>A conta guarda seus registros e permite abri-los em outro aparelho</li></ul>
+      <label class="field">Seu nome (opcional)
+        <input value={mom} onInput={(e) => setMom(e.target.value)} maxLength={30} autocomplete="given-name" placeholder="como você gosta de ser chamada" />
+      </label>
+      <label class="field">Nome do bebê (opcional)
+        <input value={baby} onInput={(e) => setBaby(e.target.value)} maxLength={30} autocomplete="off" placeholder="para deixar o app com a cara dele(a)" />
+      </label>
+      <p class="muted">Os nomes servem só para personalizar o app e <strong>ficam apenas neste aparelho</strong>: não enviamos ao servidor.</p>
       <label class="field">WhatsApp
         <input type="tel" inputMode="tel" value={phone} onInput={(e) => setPhone(maskPhone(e.target.value))} autocomplete="tel" placeholder="(11) 91234-5678" required />
       </label>
