@@ -6,6 +6,7 @@ export const TEMPLATES = [
   {
     id: 'noite', title: 'Ritual da noite', icon: '🌙',
     desc: 'Um fim de dia tranquilo, do jeito da sua família.',
+    help: 'É o momento do dia em que você começa a levar o bebê para um estado de conforto, recolhimento e descanso: luz mais baixa, menos barulho e uma sequência calma que se repete, como banho, canção, história e colo. Repetir ajuda a deixar a rotina previsível, mas não garante que o bebê vá dormir. O lembrete só avisa você nos horários que escolher.',
     items: [
       { title: 'Banho', category: 'banho', time: '19:00' },
       { title: 'Ritual da noite (luz baixa, canção ou história)', category: 'outro', time: '19:30' }
@@ -14,11 +15,13 @@ export const TEMPLATES = [
   {
     id: 'sinais', title: 'Observar sinais de cansaço', icon: '👀',
     desc: 'Um lembrete para reparar nos sinais do seu bebê ao longo do dia.',
+    help: 'Os bebês dão sinais de que estão cansados, como bocejar, esfregar os olhos, desviar o olhar ou ficar irritados. Este lembrete chama sua atenção, uma vez por dia, para observar esses sinais. Eles variam de bebê para bebê, e quem conhece o seu é você.',
     items: [{ title: 'Observar sinais de cansaço', category: 'estimulo', time: '15:00' }]
   },
   {
     id: 'mae', title: 'Cuidado da mãe', icon: '💜',
     desc: 'Água e pausas para você. Pode ocultar quando quiser.',
+    help: 'Lembretes para beber água e fazer uma pausa. Cuidar de você também faz parte da rotina, principalmente durante a amamentação, quando é comum sentir mais sede. Siga sempre a orientação da sua equipe de saúde.',
     items: [
       { title: 'Beber água', category: 'mae', time: '10:00' },
       { title: 'Beber água', category: 'mae', time: '16:00' }

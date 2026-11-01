@@ -28,6 +28,7 @@ export function Onboarding({ store, rem, connected, onFinish }) {
   const [step, setStep] = useState('welcome');
   const [age, setAge] = useState(null);
   const [picked, setPicked] = useState(['noite']);
+  const [helpOpen, setHelpOpen] = useState(null);
   const [times, setTimes] = useState({});
   const [logged, setLogged] = useState(false);
   const [msg, setMsg] = useState('');
@@ -80,13 +81,17 @@ export function Onboarding({ store, rem, connected, onFinish }) {
         )}
 
         {step === 'templates' && (
-          <Shell step={step} emoji="🗓️" title="Escolha os modelos" lead="Os horários são só exemplos para você ajustar — cada bebê e cada família têm o seu ritmo."
+          <Shell step={step} emoji="🗓️" title="Escolha os modelos" lead="Modelos são lembretes prontos que se repetem todo dia, para você não precisar guardar tudo de cabeça. Marque os que fizerem sentido, ajuste o horário e toque em “Criar lembretes”. Depois dá para editar ou apagar quando quiser, na tela Hoje. Cada bebê e cada família têm o seu ritmo: os horários são só exemplos."
             actions={<button class="btn" disabled={busy} onClick={createFromTemplates}>{picked.length ? 'Criar lembretes' : 'Continuar sem modelos'}</button>}>
             <ul class="tpl">
               {TEMPLATES.map((t) => (
                 <li class="card">
-                  <label class="inline"><input type="checkbox" checked={picked.includes(t.id)} onChange={() => toggle(t.id)} /> <span>{t.icon} {t.title}</span></label>
+                  <div class="tpl-head">
+                    <label class="inline"><input type="checkbox" checked={picked.includes(t.id)} onChange={() => toggle(t.id)} /> <span>{t.icon} {t.title}</span></label>
+                    <button type="button" class="help-btn" aria-expanded={helpOpen === t.id} aria-controls={`help-${t.id}`} aria-label={`O que é ${t.title}?`} onClick={() => setHelpOpen(helpOpen === t.id ? null : t.id)}>?</button>
+                  </div>
                   <p class="muted">{t.desc}</p>
+                  {helpOpen === t.id && <p id={`help-${t.id}`} class="help-text" role="note">{t.help}</p>}
                   {picked.includes(t.id) && t.items.map((it, i) => (
                     <label class="tpl-row">{it.title}
                       <input type="time" value={times[`${t.id}:${i}`] ?? it.time} onInput={(e) => setTimes({ ...times, [`${t.id}:${i}`]: e.target.value })} />

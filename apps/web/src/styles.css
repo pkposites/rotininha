@@ -264,3 +264,7 @@ main { padding: 8px 16px calc(104px + env(safe-area-inset-bottom)); display: gri
 .how-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
 .how-list li { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; }
 .how-list li > span:first-child { font-size: 26px; line-height: 1; text-align: center; }
+.tpl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.help-btn { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--brand-primary); background: transparent; color: var(--brand-primary); font: 700 16px/1 var(--font-body); cursor: pointer; }
+.help-btn[aria-expanded=true] { background: var(--brand-primary); color: #fff; }
+.help-text { margin: 4px 0 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface-subtle, rgba(0,0,0,.05)); }
