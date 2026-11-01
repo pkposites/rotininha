@@ -26,7 +26,9 @@ import { getAccount, accessNotice, pendingCheckout } from './lib/billing.js';
 import { TaskSheet } from './TaskSheet.jsx';
 import { ReminderSheet } from './ReminderSheet.jsx';
 import { InstallGuide } from './InstallGuide.jsx';
+import { MiniPlayer } from './MiniPlayer.jsx';
 import { isStandalone } from './lib/push.js';
+import { registeredMessage } from './lib/ux.js';
 import { RemindersCard } from './RemindersCard.jsx';
 import { useReminders } from './lib/useReminders.js';
 import { makeTask, dayItems, markDone, markSkipped, snooze, undo } from './lib/tasks.js';
@@ -83,24 +85,26 @@ function LastCard({ type, events, now, onEdit }) {
   );
 }
 
-function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedbackNode, onHelp }) {
+function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedbackNode, onHelp, syncStatus, onConnect, hideLocal }) {
   const { events, quickLog } = store;
   const [toast, setToast] = useState(null);
   const sleeping = openSleep(events);
   const [showInstall, setShowInstall] = useState(false);
-  useEffect(() => { (async () => { if (!isStandalone() && !(await getPref('installDismissed', false))) setShowInstall(true); })(); }, []);
+  const [localDismissed, setLocalDismissed] = useState(true);
+  useEffect(() => { (async () => {
+    if (!isStandalone() && !(await getPref('installDismissed', false))) setShowInstall(true);
+    const until = await getPref('localCardUntil', 0); setLocalDismissed(Date.now() < until);
+  })(); }, []);
   const data = new Date(now).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const log = async (type) => {
     const r = await quickLog(type);
-    count('care_logged');
-    onLogged?.();
-    const msg = r.woke ? `Acordou às ${hhmm(r.event.endedAt)}` : `${TYPES[type].label} registrada às ${hhmm(r.event.startedAt)}`;
-    setToast({ msg, event: r.event });
+    if (!r.duplicate) { count('care_logged'); onLogged?.(); }
+    setToast({ msg: registeredMessage(type, r.event, r.woke), r, dup: !!r.duplicate });
   };
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 6000);
+    const t = setTimeout(() => setToast(null), 9000);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -118,29 +122,39 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedba
       <div class="toast-slot" role="status" aria-live="polite">
         {toast && (
           <div class="toast">
-            <span>{toast.msg}</span>
-            <button class="link" onClick={() => { onEdit(toast.event); setToast(null); }}>Ajustar horário</button>
+            <span>{toast.dup ? 'Você acabou de registrar. ' : ''}{toast.msg}</span>
+            <span class="toast-actions">
+              {!toast.undone && <button class="link" onClick={async () => { await store.undoLog(toast.r); setToast({ msg: 'Registro desfeito.', undone: true }); }}>Desfazer</button>}
+              {!toast.undone && <button class="link" onClick={() => { onEdit(toast.r.event); setToast(null); }}>Ajustar horário</button>}
+            </span>
           </div>
         )}
       </div>
       <section class="lasts" aria-label="Últimos cuidados">
         {['mamada', 'sono', 'fralda'].map((t) => <LastCard type={t} events={events} now={now} onEdit={onEdit} />)}
       </section>
+      <RemindersCard tasks={rem.tasks} occs={rem.occs} now={now} tz={rem.tz} onOpen={onOpenItem} onNew={onNewTask} onQuickDone={(i) => { count('reminder_done'); rem.saveOcc(markDone(i)); }} />
+      {feedbackNode}
+      {syncStatus === 'signed-out' && !localDismissed && !hideLocal && (
+        <section class="card local-card" aria-label="Seus registros estão só neste aparelho">
+          <strong>Seus registros estão só neste aparelho</strong>
+          <p class="muted">Crie uma conta grátis para guardar os registros nela e abri-los em outro aparelho, com o código de acesso. O que você já registrou aqui será enviado para a conta.</p>
+          <div class="row"><button class="btn" onClick={onConnect}>Criar conta</button><button class="link" onClick={async () => { setLocalDismissed(true); await setPref('localCardUntil', Date.now() + 7 * 86_400_000); }}>Depois</button></div>
+        </section>
+      )}
+      <section class="card help-card" aria-label="Ajuda rápida">
+        <strong>Precisa de uma ajuda agora?</strong>
+        <p class="muted">Dicas curtas sobre sono, bebê agitado e cuidados com você.</p>
+        <button class="btn ghost" onClick={onHelp}>Ver dicas práticas</button>
+      </section>
       {showInstall && (
-        <section class="card install-card" aria-label="Instalar o app">
-          <strong>Leve o Ninhora para a tela inicial</strong>
+        <details class="card install-card" aria-label="Instalar o app">
+          <summary>📲 Leve o Ninhora para a tela inicial</summary>
           <p class="muted">Abra pelo ícone, sem procurar o link toda vez. Instalar não ativa notificações automaticamente.</p>
           <InstallGuide />
           <button class="link" onClick={async () => { setShowInstall(false); await setPref('installDismissed', true); }}>Dispensar</button>
-        </section>
+        </details>
       )}
-      {feedbackNode}
-      <RemindersCard tasks={rem.tasks} occs={rem.occs} now={now} tz={rem.tz} onOpen={onOpenItem} onNew={onNewTask} onQuickDone={(i) => { count('reminder_done'); rem.saveOcc(markDone(i)); }} />
-    <section class="card help-card" aria-label="Ajuda rápida">
-        <strong>Precisa de uma ajuda agora?</strong>
-        <p class="muted">Água e pausas para você, sono e formas de acolher um bebê agitado: veja por que importam e o que tentar, passo a passo.</p>
-        <button class="btn ghost" onClick={onHelp}>Consultar dicas práticas</button>
-      </section>
     </>
   );
 }
@@ -273,7 +287,7 @@ function App() {
       <main>
         {store.error && <p class="card err" role="alert">{store.error}</p>}
         {notice && <section class={`card notice ${notice.tone}`} role="status"><p>{notice.text}</p>{FLAGS.payments && <button class="btn" onClick={() => setCheckout({ renewal: true })}>Garantir acesso</button>}</section>}
-        {tab === 'hoje' && <Hoje onHelp={() => { setTab('guia'); count('help_card_opened'); }} store={store} rem={rem} now={now} onLogged={() => { setLoggedThisSession(true); track('first_record', { once: true }); }}
+        {tab === 'hoje' && <Hoje hideLocal={onboarding} syncStatus={syncStatus} onConnect={() => setTrialOpen(true)} onHelp={() => { setTab('guia'); count('help_card_opened'); }} store={store} rem={rem} now={now} onLogged={() => { setLoggedThisSession(true); track('first_record', { once: true }); }}
           feedbackNode={showFeedbackCard ? <FeedbackCard onOpen={() => setFeedbackOpen(true)} onDismiss={async () => { await setPref('feedbackDismissedAt', Date.now()); setFbPrefs((f) => ({ ...f, dismissedAt: Date.now() })); track('feedback_card_dismissed'); }} /> : null} onEdit={setEditing} onOpenItem={(i) => setOpenOcc(i.id)} onNewTask={() => setTaskEdit({ task: makeTask(), isNew: true })} />}
         {tab === 'historico' && <Historico events={store.events} onEdit={setEditing} />}
         {tab === 'saltos' && <LeapsTab tz={rem.tz} />}
@@ -283,6 +297,7 @@ function App() {
           onSuggest={() => setFeedbackOpen(true)} onRenew={FLAGS.payments ? () => setCheckout({ renewal: true }) : null} />}
         <p class="muted disclaimer">O Ninhora ajuda a organizar os cuidados e não substitui a orientação do pediatra.</p>
       </main>
+      {tab !== 'sons' && <MiniPlayer onOpen={() => setTab('sons')} />}
       <nav class="tabs" aria-label="Navegação principal">
         {TABS.map((t) => (
           <button class="tab" aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>

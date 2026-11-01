@@ -79,7 +79,7 @@ const approve = async (status = 'approved') => {
   await A.click('[aria-label="Ajustes"]'); await A.click('text=Sair deste aparelho');
   await A.click('text=Perdi meu código');
   await A.fill('input[type=email]', email); await A.click('text=Enviar link');
-  ok(await A.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Se houver uma compra')), 'recuperação: mensagem neutra');
+  ok(await A.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Se houver uma conta')), 'recuperação: mensagem neutra');
   const mails = (await (await fetch(`${API}/v1/dev/outbox?to=${encodeURIComponent(email)}`)).json()).messages;
   const link = /(http:\/\/[^\s]+#recover=[\w-]+)/.exec(mails.find((m) => m.subject.includes('recuperar')).body)[1];
   const B = await mk(link);

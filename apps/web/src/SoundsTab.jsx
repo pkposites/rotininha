@@ -27,11 +27,12 @@ export function SoundsTab() {
   return (
     <>
       <h1 class="h2s">Sons para descansar</h1>
-      <p class="muted">Um apoio para um ambiente acolhedor. Cada bebê reage de um jeito: som não é tratamento nem garantia de sono.</p>
       <section class="card notice info" aria-label="Antes de dar o play">
         <strong>Antes de dar o play</strong>
-        <p>Comece com volume baixo e mantenha o celular longe do bebê e fora do berço. Não use fones no bebê. Observe a reação e pare se incomodar. Não aumente o volume para cobrir o choro; confira primeiro o que ele precisa.</p>
-        <p>Siga as orientações de sono seguro. O temporizador pode atrasar se o navegador for suspenso; não dependa dele para a segurança do bebê.</p>
+        <ul class="bullets"><li>Volume baixo, com o celular longe do bebê e fora do berço.</li><li>Sem fones no bebê. Pare se ele se incomodar.</li><li>Som não é tratamento nem garantia de sono.</li></ul>
+        <details class="fold"><summary>Mais orientações</summary>
+          <p>Não aumente o volume para cobrir o choro; confira primeiro o que ele precisa. Siga as orientações de sono seguro. O temporizador pode atrasar se o navegador for suspenso; não dependa dele para a segurança do bebê.</p>
+        </details>
       </section>
       <div class="chips" role="group" aria-label="Filtrar sons">
         <button class="chip" aria-pressed={!onlyFavs} onClick={() => setOnlyFavs(false)}>Todos os sons</button>

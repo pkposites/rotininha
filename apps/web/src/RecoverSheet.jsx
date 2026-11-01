@@ -1,5 +1,5 @@
-import { useState } from 'preact/hooks';
-import { requestRecovery, confirmRecovery, validEmail } from './lib/billing.js';
+import { useState, useEffect } from 'preact/hooks';
+import { requestRecovery, confirmRecovery, validEmail, getPlans } from './lib/billing.js';
 
 // token != null → confirma o link recebido por e-mail; senão, pede o link.
 export function RecoverSheet({ token, onClose }) {
@@ -9,6 +9,8 @@ export function RecoverSheet({ token, onClose }) {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [mailOk, setMailOk] = useState(null); // null = verificando
+  useEffect(() => { getPlans().then((p) => setMailOk(!!p?.emailRecovery)).catch(() => setMailOk(false)); }, []);
 
   const ask = async (e) => {
     e.preventDefault(); setErr('');
@@ -43,17 +45,25 @@ export function RecoverSheet({ token, onClose }) {
           </>
         ) : sent ? (
           <>
-            <p role="status">Se houver uma compra com <strong>{email}</strong>, enviamos um link (válido por 30 minutos). Confira também a caixa de spam.</p>
+            <p role="status">Se houver uma conta com <strong>{email}</strong>, enviamos um link (válido por 30 minutos). Confira também a caixa de spam.</p>
             <button class="btn ghost" onClick={onClose}>Fechar</button>
           </>
         ) : (
+          mailOk === false ? (
+            <div class="stack">
+              <p><strong>A recuperação por e-mail ainda não está ativa.</strong> Por enquanto, só dá para entrar de novo com o código de acesso que você guardou ao criar a conta.</p>
+              <p class="muted">Se você ainda está no aparelho onde criou a conta, seus registros continuam aqui. Não saia da conta antes de guardar o código.</p>
+              <button class="btn ghost" onClick={onClose}>Entendi</button>
+            </div>
+          ) : (
           <form class="stack" onSubmit={ask}>
-            <p class="muted">Informe o e-mail usado na compra. Enviaremos um link para gerar um novo código de acesso.</p>
-            <label>E-mail da compra<input type="email" value={email} onInput={(e) => setEmail(e.target.value)} autocomplete="email" required /></label>
+            <p class="muted">Informe o e-mail cadastrado na conta (ou usado na compra). Enviaremos um link para gerar um novo código de acesso.</p>
+            <label>E-mail<input type="email" value={email} onInput={(e) => setEmail(e.target.value)} autocomplete="email" required /></label>
             {err && <p class="err" role="alert">{err}</p>}
             <button class="btn" disabled={busy}>{busy ? 'Enviando…' : 'Enviar link'}</button>
             <button type="button" class="link" onClick={onClose}>Cancelar</button>
           </form>
+          )
         )}
       </div>
     </div>

@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'preact/hooks';
+import { useState, useEffect, useCallback, useRef } from 'preact/hooks';
 import { listEvents, putEvent, deleteEvent } from './db.js';
 import { makeEvent, openSleep } from './events.js';
 import { requestSync, onRemoteChange } from './sync.js';
+import { isDoubleTap } from './ux.js';
 
 export function useEvents() {
   const [events, setEvents] = useState([]);
@@ -19,8 +20,21 @@ export function useEvents() {
   const remove = async (id) => { await deleteEvent(id); await refresh(); requestSync(); };
 
   // Registro de 1 toque: salva agora, o horário pode ser corrigido depois.
+  const lastLog = useRef(null);   // { type, at, result }: evita dois registros por toque duplo
   const quickLog = async (type) => {
     const now = Date.now();
+    if (isDoubleTap(lastLog.current, type, now)) return { ...(await lastLog.current.result), duplicate: true };
+    const pending = doLog(type, now);
+    lastLog.current = { type, at: now, result: pending };   // já vale durante o salvamento (toque duplo muito rápido)
+    return pending;
+  };
+  // Desfaz o último registro rápido: apaga o cuidado criado (ou reabre o sono que o toque encerrou).
+  const undoLog = async (r) => {
+    if (r.woke) await save({ ...r.event, endedAt: null, updatedAt: Date.now() });
+    else await remove(r.event.id);
+    lastLog.current = null;
+  };
+  const doLog = async (type, now) => {
     if (type === 'sono') {
       const open = openSleep(events);
       if (open) { const e = { ...open, endedAt: now }; await save(e); return { event: e, woke: true }; }
@@ -30,5 +44,5 @@ export function useEvents() {
     return { event: e };
   };
 
-  return { events, ready, error, save, remove, quickLog };
+  return { events, ready, error, save, remove, quickLog, undoLog };
 }

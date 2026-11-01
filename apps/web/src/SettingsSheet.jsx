@@ -49,6 +49,7 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
 
         <h3 class="group-title">Sincronização</h3>
         <section class="group">
+        {syncAvailable && sync.status === 'signed-out' && <p class="notice-inline">Hoje seus registros estão <strong>só neste aparelho</strong>. Com uma conta, eles ficam guardados nela e você pode abri-los em outro aparelho com o código de acesso. O que já está aqui é enviado para a conta.</p>}
         {!syncAvailable && <p class="muted">A sincronização entre aparelhos ainda não está disponível nesta versão. Seus registros ficam salvos neste aparelho.</p>}
         {syncAvailable && (
           <>
@@ -61,7 +62,7 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
                 {err && <p class="err" role="alert">{err}</p>}
                 <button class="btn" disabled={busy}>{busy ? 'Conectando…' : 'Conectar'}</button>
                 <button type="button" class="link" onClick={onRecover}>Perdi meu código</button>
-                {onStartTrial && <button type="button" class="btn ghost" onClick={onStartTrial}>Ainda não tenho conta — começar teste grátis</button>}
+                {onStartTrial && <button type="button" class="btn ghost" onClick={onStartTrial}>Criar conta grátis</button>}
                 {onBuy && <button type="button" class="btn ghost" onClick={onBuy}>Ainda não tenho acesso — comprar</button>}
               </form>
             ) : (
@@ -70,6 +71,13 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
                 <button class="btn" onClick={syncNow}>Sincronizar agora</button>
                 <button class="btn ghost" onClick={logout}>Sair deste aparelho</button>
               </div>
+              <p class="muted">Para entrar de novo, ou em outro aparelho, você vai precisar do código de acesso que apareceu ao criar a conta.</p>
+              {account?.plan === 'trial' && account.validUntil == null && (
+                <>
+                  <strong>Seu acesso</strong>
+                  <p class="muted">Acesso grátis do lançamento, sem data para acabar. Avisamos com antecedência antes de qualquer cobrança.</p>
+                </>
+              )}
               {account?.validUntil != null && (
                 <>
                   <strong>Seu acesso</strong>

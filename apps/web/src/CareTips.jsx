@@ -30,7 +30,6 @@ export function CareTips({ onCreateTask, onGoSounds }) {
         <p>{WHEN_HELP}</p>
         <p>{WHEN_HELP_NOTE}</p>
       </section>
-      <h2 class="h3s">Sobre estas orientações</h2>
     </section>
   );
 }

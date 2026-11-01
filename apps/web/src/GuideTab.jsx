@@ -18,6 +18,8 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
   const [ritual, setRitual] = useState(RITUAL_DEFAULTS);
   const [newStep, setNewStep] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [view, setView] = useState('ajuda');   // ajuda agora | percurso de 7 dias
+  const [unlockAll, setUnlockAll] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -28,13 +30,14 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
       setFinished(await getPref('guideFinished', false));
       setChecks(await getPref('guideChecks', {}));
       setRitual(await getPref('guideRitual', RITUAL_DEFAULTS));
+      setUnlockAll(await getPref('guideUnlockAll', false));
       setLoaded(true);
     })();
   }, []);
 
   if (!loaded) return null;
   const accessible = guideAccessible(account);
-  const unlocked = unlockedLessons(start, now, rem.tz);
+  const unlocked = unlockAll ? 7 : unlockedLessons(start, now, rem.tz);
   const reminderOn = rem.tasks.some((t) => t.id === REMINDER_ID && !t.deleted);
 
   const toggleReminder = async () => {
@@ -110,11 +113,22 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
     );
   }
 
+  const lockText = (day) => { const n = day - unlocked; return n === 1 ? 'Libera amanhã' : `Libera em ${n} dias`; };
   return (
     <>
-      <CareTips onCreateTask={onCreateTask} onGoSounds={onGoSounds} />
-      <h2 class="h2s">Rotina e Sono em 7 Dias</h2>
-      <p class="muted">Uma lição curta por dia (1–2 minutos), sempre com uma ação opcional. Conteúdo educativo: não substitui a orientação do pediatra.</p>
+      <div class="segs" role="group" aria-label="Seção do guia">
+        <button class="chip" aria-pressed={view === 'ajuda'} onClick={() => setView('ajuda')}>Ajuda agora</button>
+        <button class="chip" aria-pressed={view === 'percurso'} onClick={() => setView('percurso')}>Percurso de 7 dias</button>
+      </div>
+      {view === 'ajuda' && (
+        <>
+          <CareTips onCreateTask={onCreateTask} onGoSounds={onGoSounds} />
+          {!GUIDE_REVIEWED && <p class="card notice info" role="note">Conteúdo educativo ainda em revisão por profissional de saúde. Não substitui a orientação do pediatra.</p>}
+        </>
+      )}
+      {view === 'percurso' && <>
+      <h1 class="h2s">Rotina e Sono em 7 Dias</h1>
+      <p class="muted">Uma lição curta por dia (1–2 minutos), com uma ação opcional. A próxima libera no dia seguinte, para ficar leve. Se pular um dia, nada se perde.</p>
       <div class="card">
         <div class="card-head"><strong>Seu progresso</strong><span class="muted">{done.length} de 7 lições</span></div>
         <progress class="progress mt8" max="7" value={done.length} aria-label="Lições concluídas"></progress>
@@ -128,7 +142,7 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
             <li key={l.day}>
               <button class="card lesson-item" disabled={locked} onClick={() => setOpen(l.day)} aria-label={`Dia ${l.day}: ${l.title}${locked ? (l.day > unlocked ? ' (libera em breve)' : ' (em pausa)') : ''}`}>
                 <span class="ico" aria-hidden="true">{done.includes(l.day) ? '✓' : locked ? '🔒' : l.day}</span>
-                <span><strong>{l.title}</strong><br /><small class="muted">{locked && l.day > unlocked ? `Libera no dia ${l.day}` : `${l.minutes} min`}</small></span>
+                <span><strong>{l.title}</strong><br /><small class="muted">{locked && l.day > unlocked ? lockText(l.day) : `${l.minutes} min`}</small></span>
               </button>
             </li>
           );
@@ -136,6 +150,8 @@ export function GuideTab({ rem, account, now, onCreateTask, onGoToday, onSuggest
       </ul>
       <label class="inline"><input type="checkbox" checked={reminderOn} onChange={toggleReminder} /> Lembrar-me da lição todo dia às 20h (opcional)</label>
       {finished && <button class="btn ghost" onClick={() => setOpen('finish')}>Ver conclusão</button>}
+      {unlocked < 7 && accessible && <button class="link" onClick={async () => { setUnlockAll(true); await setPref('guideUnlockAll', true); }}>Quero ver todas as lições agora</button>}
+      </>}
     </>
   );
 }

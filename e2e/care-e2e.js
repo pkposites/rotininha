@@ -14,6 +14,7 @@ const { chromium } = require('playwright');
   await p.click('.actions >> text=Dormiu');
   ok(await w(() => document.querySelector('.actions').innerText.includes('Acordou')), 'botão vira Acordou');
   ok(await w(() => document.querySelectorAll('.last')[1].innerText.includes('Dormindo')), 'cartão mostra Dormindo');
+  await p.waitForTimeout(1700); // fora da janela de toque duplo
   await p.click('.actions >> text=Acordou');
   ok(await w(() => document.querySelector('.actions').innerText.includes('Dormiu')), 'Acordou fecha o sono');
   await p.click('.actions >> text=Fralda');

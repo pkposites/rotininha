@@ -1,4 +1,5 @@
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
+import { pushState } from './lib/push.js';
 import { CATEGORIES, validateTask, needsQuietConfirm } from './lib/tasks.js';
 import { localParts } from '../../../packages/shared/schedule.js';
 
@@ -9,6 +10,8 @@ export function TaskSheet({ task, isNew, tz, onSave, onDelete, onClose }) {
   const [t, setT] = useState(task);
   const [err, setErr] = useState('');
   const [confirmDel, setConfirmDel] = useState(false);
+  const [pstate, setPstate] = useState('idle');
+  useEffect(() => { pushState().then(setPstate).catch(() => {}); }, []);
   const set = (patch) => setT((x) => ({ ...x, ...patch }));
   const quiet = t.notify && needsQuietConfirm(t.time);
 
@@ -57,6 +60,15 @@ export function TaskSheet({ task, isNew, tz, onSave, onDelete, onClose }) {
           </select>
         </label>
         <label class="inline"><input type="checkbox" checked={t.notify} onChange={(e) => set({ notify: e.target.checked })} /> Receber notificação</label>
+        {t.notify && (
+          <p class={pstate === 'active' ? 'muted' : 'notice-inline'} role="status">
+            {pstate === 'active' ? 'Notificações ativas neste aparelho. A entrega depende do aparelho e pode atrasar.'
+              : pstate === 'unavailable' ? 'Neste momento as notificações não estão disponíveis. O lembrete aparece aqui no app.'
+              : pstate === 'ios-install' ? 'Para receber notificação no iPhone, instale o app na Tela de Início e ative em Ajustes. Até lá, o lembrete só aparece aqui.'
+              : pstate === 'denied' ? 'As notificações estão bloqueadas neste aparelho. O lembrete aparece aqui no app.'
+              : 'Salvar cria o lembrete, mas ele só avisa por notificação depois que você ativar as notificações em Ajustes.'}
+          </p>
+        )}
         {quiet && (
           <label class="inline note-quiet">
             <input type="checkbox" checked={t.allowQuiet} onChange={(e) => set({ allowQuiet: e.target.checked })} />

@@ -106,7 +106,7 @@ export function Onboarding({ store, rem, connected, onFinish }) {
         )}
 
         {step === 'trial' && (
-          <Shell step={step} emoji="🎁" title="Teste grátis" actions={<></>}>
+          <Shell step={step} emoji="🎁" title="Guardar seus registros" actions={<></>}>
             <TrialFlow compact onDone={() => setStep('install')} onSkip={() => setStep('install')} />
           </Shell>
         )}

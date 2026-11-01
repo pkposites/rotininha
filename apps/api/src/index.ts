@@ -123,6 +123,7 @@ export default {
         const tc = await trialConfig(env);
         return json({
           paymentsEnabled: env.PAYMENTS_ENABLED === 'true',
+          emailRecovery: env.EMAIL_PROVIDER === 'dev' || (env.EMAIL_PROVIDER === 'resend' && !!env.RESEND_API_KEY && !!env.EMAIL_FROM), // recuperação por e-mail só funciona com provedor configurado
           trial: { days: tc.days, enforceFrom: tc.enforceFrom, active: enforcementActive(tc, now), noticeDays: tc.noticeDays },
           entry: ENTRY_PLANS.map((id) => PLANS[id]), renewal: RENEWAL_PLANS.map((id) => PLANS[id])
         }, 200, h);

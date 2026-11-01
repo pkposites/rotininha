@@ -245,3 +245,19 @@ main { padding: 8px 16px calc(104px + env(safe-area-inset-bottom)); display: gri
 .tip .tip-safe { background: var(--surface-subtle, rgba(0,0,0,.04)); border-radius: 12px; padding: 10px 12px; margin: 10px 0; }
 .help-card { display: grid; gap: 8px; }
 .install-card { display: grid; gap: 8px; }
+
+/* Usabilidade: miniplayer, lembretes, toast com desfazer, cartões compactos */
+.mini-spacer { height: 64px; }
+.miniplayer { position: fixed; left: 8px; right: 8px; bottom: calc(68px + env(safe-area-inset-bottom)); z-index: 6; max-width: 544px; margin: 0 auto; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; background: var(--surface-card, #fff); border: 1px solid var(--border-subtle); border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.14); }
+.mini-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.mini-txt { display: grid; min-width: 0; } .mini-txt small { color: var(--text-muted); }
+.toast { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.toast-actions { display: flex; gap: 14px; }
+.all-done { margin: 8px 0; font-weight: 600; }
+.handled-box { margin-top: 8px; } .handled-box > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--text-muted); }
+.local-card, .install-card { display: grid; gap: 8px; }
+.install-card > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.notice-inline { margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--surface-subtle, rgba(0,0,0,.05)); }
+.segs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 14px; background: var(--surface-subtle, rgba(0,0,0,.05)); }
+.segs .chip { justify-content: center; }
+.fold > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }

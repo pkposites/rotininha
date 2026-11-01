@@ -45,12 +45,12 @@ const account = async (code) => (await (await post('/v1/billing/account', {}, aw
   const A = await mk();
   await A.goto(APP + '/app/');
   await A.click('text=Vamos lá'); await A.click('text=Prefiro não informar'); await A.click('text=Começar do zero'); await A.getByRole('button', { name: 'Depois', exact: true }).click();
-  ok(await A.w(() => document.querySelector('.onb')?.innerText.includes('Teste grátis')), 'onboarding: passo do teste grátis');
+  ok(await A.w(() => document.querySelector('.onb')?.innerText.includes('Acesso grátis no lançamento')), 'onboarding: passo da conta grátis');
   const trialTxt = await A.locator('.onb').innerText();
-  ok(/Quando passarmos a cobrar, avisamos com antecedência/.test(trialTxt) && /3 dias de teste/.test(trialTxt), 'antes da cobrança: promete aviso com antecedência (nada é cobrado agora)');
+  ok(/avisamos com pelo menos 7 dias de antecedência/.test(trialTxt) && /3 dias de teste/.test(trialTxt), 'antes da cobrança: promete aviso com antecedência (nada é cobrado agora)');
   const email = `mae${Date.now()}@exemplo.com`;
   await A.fill('input[type=email]', email);
-  await A.click('text=Começar meu teste grátis');
+  await A.click('text=Criar minha conta grátis');
   ok(await A.w(() => document.querySelector('.access-code')?.innerText.length > 15), 'teste criado: código de acesso mostrado');
   const code = await A.locator('.access-code').innerText();
   ok(/^[2-9A-Z]{5}(-[2-9A-Z]{5}){3}$/.test(code), 'formato do código ' + code);
@@ -94,7 +94,7 @@ const account = async (code) => (await (await post('/v1/billing/account', {}, aw
   ok(await A.w(() => document.querySelectorAll('.card.sound').length === 8), '8 sons na lista (3 gravações + 5 sintetizados)');
   const names = await A.locator('.card.sound strong').allInnerTexts();
   ok(['Ruído branco', 'Chuva', 'Ondas do mar', 'Batimentos', 'Caixinha de música'].every((n) => names.includes(n)), 'nomes: ' + names.join(', '));
-  ok(/volume baixo/.test(await A.locator('main').innerText()) && /fora do berço/.test(await A.locator('main').innerText()) && /nem garantia de sono/.test(await A.locator('main').innerText()), 'aviso de segurança e sem promessa');
+  ok(/volume baixo/i.test(await A.locator('main').innerText()) && /fora do berço/.test(await A.locator('main').innerText()) && /nem garantia de sono/.test(await A.locator('main').innerText()), 'aviso de segurança e sem promessa');
   await A.click('.card.sound:has-text("Chuva")');
   ok(await A.w(() => document.querySelector('.player')?.innerText.includes('Chuva')), 'tocando: painel com nome, volume e temporizador');
   ok((await A.locator('.player .chip[aria-pressed=true]').innerText()) === '30 min', 'temporizador padrão: 30 min');

@@ -24,7 +24,7 @@ const { chromium } = require('playwright');
   await A.waitForSelector('.onb .actions'); await A.click('.onb .actions >> text=Fralda');
   ok(await A.w(() => document.querySelector('.onb .toast')), 'primeiro registro em 1 toque');
   await A.click('.onb >> text=Continuar');
-  ok(await A.w(() => document.querySelector('.onb')?.innerText.includes('Teste grátis')), 'passo do teste grátis (explica o que acontece depois)');
+  ok(await A.w(() => document.querySelector('.onb')?.innerText.includes('Acesso grátis no lançamento')), 'passo da conta grátis (explica o que é grátis e o aviso antes de cobrar)');
   ok(/Sem cartão|sem cartão/.test(await A.locator('.onb').innerText()) && /avisamos/i.test(await A.locator('.onb').innerText()), 'teste: sem cartão e com aviso antes');
   await A.click('text=Agora não');
   ok(await A.w(() => document.querySelector('.onb .install')), 'orientação de instalação');
@@ -59,7 +59,7 @@ const { chromium } = require('playwright');
 
   // ---------- guia ----------
   const G = await A; // reutiliza o contexto (dados locais)
-  await G.click('.tab:has-text("Guia")');
+  await G.click('.tab:has-text("Guia")'); await G.getByRole('button', { name: 'Percurso de 7 dias' }).click();
   ok(await G.w(() => document.querySelector('main')?.innerText.includes('Rotina e Sono em 7 Dias')), 'aba Guia');
   ok((await G.locator('main').innerText()).includes('Versão preliminar'), 'aviso de conteúdo em revisão');
   ok((await G.locator('.lesson-item:not([disabled])').count()) === 1, 'só a lição 1 liberada no dia 1');
@@ -78,13 +78,13 @@ const { chromium } = require('playwright');
   // avançar o relógio: dia 4 (sono seguro)
   await G.clock.install({ time: Date.now() + 3 * 86400000 }).catch(() => {});
   await G.reload(); await G.waitForTimeout(500);
-  await G.click('.tab:has-text("Guia")');
+  await G.click('.tab:has-text("Guia")'); await G.getByRole('button', { name: 'Percurso de 7 dias' }).click();
   ok(await G.w(() => document.querySelectorAll('.lesson-item:not([disabled])').length === 4, null, 4000), 'no 4º dia, 4 lições liberadas');
   await G.click('.lesson-item >> nth=3');
   const t4 = await G.locator('.lesson').innerText();
   ok(/barriga para cima/.test(t4) && /Sociedade Brasileira de Pediatria/.test(t4) && /objetos|travesseiros/.test(t4), 'sono seguro: SBP, barriga para cima, sem objetos soltos');
   await G.check('.lesson .inline input >> nth=0'); await G.waitForTimeout(600);
-  await G.reload(); await G.click('.tab:has-text("Guia")'); await G.click('.lesson-item >> nth=3');
+  await G.reload(); await G.click('.tab:has-text("Guia")'); await G.getByRole('button', { name: 'Percurso de 7 dias' }).click(); await G.click('.lesson-item >> nth=3');
   ok(await G.locator('.lesson .inline input >> nth=0').isChecked(), 'checklist persiste');
   await G.screenshot({ path: (process.argv[2] || '/tmp') + '/guia.png' });
   ok(!/dormirá|dorme a noite toda|garantid|cura/i.test(await G.locator('main').innerText()), 'sem promessas médicas');

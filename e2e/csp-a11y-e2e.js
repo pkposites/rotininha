@@ -53,7 +53,7 @@ const CSP = /Content-Security-Policy: (.*)/.exec(headersTxt)[1];
   await A.click('.sheet >> text=Cancelar');
   await A.click('.last >> nth=0'); await axe(A, 'editar registro'); await A.click('.sheet >> text=Cancelar');
   await A.click('.tab:has-text("Histórico")'); await A.waitForTimeout(300); await axe(A, 'Histórico');
-  await A.click('.tab:has-text("Guia")'); await A.waitForTimeout(500); await axe(A, 'Guia');
+  await A.click('.tab:has-text("Guia")'); await A.waitForTimeout(500); await axe(A, 'Guia (ajuda agora)'); await A.getByRole('button', { name: 'Percurso de 7 dias' }).click(); await axe(A, 'Guia (percurso)');
   await A.click('.lesson-item:not([disabled])'); await axe(A, 'lição do guia');
   await A.click('text=← Todas as lições');
   await A.click('.tab:has-text("Hoje")');

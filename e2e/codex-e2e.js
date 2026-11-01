@@ -9,12 +9,12 @@ const APP = 'http://localhost:4173';
   await p.goto(APP + '/app/'); await p.getByText('Pular tudo').click({ timeout: 4000 });
 
   // Hoje: instalação + ajuda rápida
-  ok(await p.getByText('Leve o Ninhora para a tela inicial').count() === 1, 'banner de instalação na tela Hoje');
-  await p.getByRole('button', { name: 'Dispensar', exact: true }).click(); await p.waitForTimeout(600);
+  ok(await p.locator('.install-card summary').count() === 1, 'convite de instalação (compacto) na tela Hoje');
+  await p.locator('.install-card summary').click(); await p.getByRole('button', { name: 'Dispensar', exact: true }).click(); await p.waitForTimeout(600);
   await p.reload(); await p.waitForSelector('.actions'); await p.waitForTimeout(600);
   ok(await p.getByText('Leve o Ninhora para a tela inicial').count() === 0, '"Dispensar" dispensa o banner (lembrado)');
   ok(await p.getByText('Precisa de uma ajuda agora?').count() === 1, 'cartão de ajuda rápida');
-  await p.getByRole('button', { name: 'Consultar dicas práticas' }).click();
+  await p.getByRole('button', { name: 'Ver dicas práticas' }).click();
 
   // Guia de cuidado
   await p.waitForSelector('text=Guia de cuidado');
@@ -32,7 +32,7 @@ const APP = 'http://localhost:4173';
   // Sons
   await p.locator('.tab:has-text("Sons")').click();
   const st = await p.locator('main').innerText();
-  ok(/Antes de dar o play/.test(st) && /fora do berço/.test(st) && /Não use fones no bebê/.test(st), 'aviso de segurança antes do play');
+  ok(/Antes de dar o play/.test(st) && /fora do berço/.test(st) && /Sem fones no bebê/.test(st), 'aviso de segurança antes do play');
   ok(await p.locator('.card.sound').count() === 8, '3 sons de natureza + 5 sintetizados');
   const r = await p.request.get(APP + '/audio/riacho.mp3'); ok(r.status() === 200 && /audio\/mpeg/.test(r.headers()['content-type']), 'arquivo de áudio servido (audio/mpeg)');
   await p.getByRole('button', { name: /Favoritar: Riacho/ }).click();

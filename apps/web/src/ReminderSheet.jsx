@@ -12,23 +12,24 @@ export function ReminderSheet({ item, now, onDone, onSkip, onSnooze, onUndo, onE
         <h2>{c.icon} {item.task.title}</h2>
         <p class="muted">
           {hhmm(item.at)}
-          {item.status === 'snoozed' && ` · adiado para ${hhmm(item.snoozeUntil)}`}
-          {item.status === 'done' && ' · feito'}
-          {item.status === 'skipped' && ' · pulado'}
+          {item.status === 'snoozed' && ` · adiado só por hoje, para ${hhmm(item.snoozeUntil)}`}
+          {item.status === 'done' && ' · feito hoje'}
+          {item.status === 'skipped' && ' · pulado hoje'}
         </p>
         {!handled ? (
           <>
             <button class="btn" onClick={onDone}>✓ Feito</button>
-            <div class="row" role="group" aria-label="Adiar">
+            <div class="row" role="group" aria-label="Adiar só hoje">
               {SNOOZE_OPTIONS.map((m) => <button class="btn ghost" onClick={() => onSnooze(m)}>Adiar {m} min</button>)}
             </div>
-            <button class="btn ghost" onClick={onSkip}>Pular hoje</button>
+            <p class="muted">Adiar vale só para hoje. O horário de sempre não muda.</p>
+            <button class="btn ghost" onClick={onSkip}>Pular só hoje</button>
           </>
         ) : (
-          <button class="btn ghost" onClick={onUndo}>Desfazer</button>
+          <button class="btn ghost" onClick={onUndo}>Desfazer — voltar para pendente</button>
         )}
         <div class="row">
-          <button class="link" onClick={onEdit}>Editar lembrete</button>
+          <button class="link" onClick={onEdit}>Mudar horário e repetição</button>
           <button class="link" onClick={onClose}>Fechar</button>
         </div>
       </div>
