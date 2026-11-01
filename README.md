@@ -4,7 +4,7 @@ Uma ajudinha na sua rotina de mãe. PWA + Cloudflare Worker + Pix. Veja `docs/PR
 
 ## Estado
 - [x] Marco 0 — fundação (tokens, shell PWA Hoje/Histórico/Guia, manifest, service worker)
-- [ ] Marco 1 — registro local (IndexedDB)
+- [x] Marco 1 — registro local (IndexedDB, 1 toque, editar/excluir, histórico, resumo, sono com duração)
 - [ ] Marcos 2–8 — ver plano no PRD §12
 
 ## Comandos

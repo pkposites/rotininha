@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "npm -w apps/web run dev",
     "build": "npm -w apps/web run build",
+    "test": "npm -w apps/web run test",
     "preview": "npm -w apps/web run preview"
   }
 }
