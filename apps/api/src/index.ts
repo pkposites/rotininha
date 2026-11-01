@@ -4,10 +4,13 @@ import { parseRecord, MAX_CHANGES } from './validate';
 import { applyChanges, changesSince, householdTz, rescheduleAll } from './records';
 import { saveSubscription, removeSubscription, endpointAllowed, pushToHousehold, runDue } from './push';
 import { isValidTimeZone } from '../../../packages/shared/schedule.js';
+import { PLANS, ENTRY_PLANS, RENEWAL_PLANS } from './plans';
+import { createPix, paymentStatus, claimAccess, handleMpEvent, accountState, lastPayerEmail, requestRecovery, confirmRecovery } from './billing';
+import { verifyMpSignature } from './mpsig';
+import { normEmail, normCpf } from './validate';
 import { hit } from './ratelimit';
+import { hashCode, issueSession } from './session';
 
-const ACCESS_TTL = 60 * 60 * 1000;            // 1 h
-const REFRESH_TTL = 30 * 24 * 60 * 60 * 1000; // 30 dias
 const CLOCK_SKEW = 60 * 1000;
 const PAGE = 500;
 
@@ -31,19 +34,6 @@ async function readJson(req: Request): Promise<any | null> {
     if (text.length > 200_000) return null;
     return JSON.parse(text);
   } catch { return null; }
-}
-
-async function hashCode(env: Env, code: string) {
-  return sha256Hex(env.CODE_PEPPER + ':' + normalizeCode(code));
-}
-
-async function issueSession(env: Env, householdId: string, deviceId: string, now: number) {
-  const access = randomToken(), refresh = randomToken(), id = crypto.randomUUID();
-  await env.DB.prepare(
-    `INSERT INTO sessions (id, household_id, device_id, access_hash, access_expires, refresh_hash, refresh_expires, created_at)
-     VALUES (?,?,?,?,?,?,?,?)`
-  ).bind(id, householdId, deviceId, await sha256Hex(access), now + ACCESS_TTL, await sha256Hex(refresh), now + REFRESH_TTL, now).run();
-  return { accessToken: access, refreshToken: refresh, accessExpiresAt: now + ACCESS_TTL };
 }
 
 async function authenticate(env: Env, req: Request, now: number): Promise<Auth | null> {
@@ -105,6 +95,80 @@ export default {
         return json(await issueSession(env, row.household_id, row.device_id, now), 201, h);
       }
 
+      // ===================== Planos e checkout (público) =====================
+      if (req.method === 'GET' && url.pathname === '/v1/plans')
+        return json({ entry: ENTRY_PLANS.map((id) => PLANS[id]), renewal: RENEWAL_PLANS.map((id) => PLANS[id]) }, 200, h);
+
+      if (req.method === 'POST' && url.pathname === '/v1/checkout') {
+        const body = await readJson(req);
+        const email = normEmail(body?.email), cpf = normCpf(body?.cpf);
+        if (!body || !ENTRY_PLANS.includes(body.plan)) return json({ error: 'invalid_plan' }, 400, h);
+        if (!email) return json({ error: 'invalid_email' }, 422, h);
+        if (!cpf) return json({ error: 'invalid_cpf' }, 422, h);
+        if (!(await hit(env.DB, `checkout:ip:${clientIp(req)}`, 8, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        if (!(await hit(env.DB, `checkout:em:${await sha256Hex(email)}`, 5, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        const pix = await createPix(env, { kind: 'entry', plan: PLANS[body.plan], email, cpf, now });
+        return pix ? json(pix, 201, h) : json({ error: 'provider_unavailable' }, 502, h);
+      }
+
+      if (req.method === 'POST' && url.pathname === '/v1/checkout/status') {
+        const body = await readJson(req);
+        if (!body || typeof body.paymentId !== 'string') return json({ error: 'bad_request' }, 400, h);
+        if (!(await hit(env.DB, `cstatus:${body.paymentId}`, 120, 600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        const st = await paymentStatus(env, body.paymentId, body.pollToken, now);
+        return st ? json(st, 200, h) : json({ error: 'not_found' }, 404, h);
+      }
+
+      if (req.method === 'POST' && url.pathname === '/v1/checkout/claim') {
+        const body = await readJson(req);
+        if (!body || typeof body.paymentId !== 'string' || !validDevice(body.deviceId)) return json({ error: 'bad_request' }, 400, h);
+        if (!(await hit(env.DB, `claim:ip:${clientIp(req)}`, 20, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        const r = await claimAccess(env, body.paymentId, body.pollToken, body.deviceId, now);
+        if ('error' in r) return json({ error: r.error }, r.error === 'not_found' ? 404 : r.error === 'not_paid' ? 409 : 410, h);
+        return json(r, 200, h);
+      }
+
+      // Webhook do Mercado Pago: só confia na assinatura + consulta à API (nunca no corpo).
+      if (req.method === 'POST' && url.pathname === '/v1/webhooks/mercadopago') {
+        const body = (await readJson(req)) ?? {};
+        const type = url.searchParams.get('type') ?? url.searchParams.get('topic') ?? body.type ?? body.topic;
+        const dataId = url.searchParams.get('data.id') ?? (body.data?.id != null ? String(body.data.id) : null);
+        if (!(await verifyMpSignature(env.MP_WEBHOOK_SECRET, req.headers.get('x-signature'), req.headers.get('x-request-id'), dataId)))
+          return json({ error: 'bad_signature' }, 401, h);
+        if (type !== 'payment' || !dataId) return json({ ok: true, ignored: true }, 200, h);
+        try {
+          return json({ ok: true, result: await handleMpEvent(env, dataId, now) }, 200, h);
+        } catch (e) {
+          console.error('webhook_fail', (e as Error).message);
+          return json({ error: 'try_again' }, 503, h); // o MP reenvia
+        }
+      }
+
+      // ===================== Recuperação de acesso =====================
+      if (req.method === 'POST' && url.pathname === '/v1/recovery/request') {
+        const body = await readJson(req);
+        const email = normEmail(body?.email);
+        if (!email) return json({ error: 'invalid_email' }, 422, h);
+        if (!(await hit(env.DB, `rec:ip:${clientIp(req)}`, 5, 3600_000, now)) || !(await hit(env.DB, `rec:em:${await sha256Hex(email)}`, 3, 86_400_000, now)))
+          return json({ error: 'rate_limited' }, 429, h);
+        await requestRecovery(env, email, now);
+        return json({ ok: true }, 200, h); // resposta idêntica exista ou não o e-mail
+      }
+      if (req.method === 'POST' && url.pathname === '/v1/recovery/confirm') {
+        const body = await readJson(req);
+        if (!body || !validDevice(body.deviceId)) return json({ error: 'bad_request' }, 400, h);
+        if (!(await hit(env.DB, `recc:ip:${clientIp(req)}`, 10, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        const r = await confirmRecovery(env, body.token, body.deviceId, now);
+        return r ? json(r, 200, h) : json({ error: 'invalid_or_expired' }, 410, h);
+      }
+
+      if (req.method === 'GET' && url.pathname === '/v1/dev/outbox') {
+        if (env.ALLOW_DEV_SIGNUP !== 'true') return json({ error: 'not_found' }, 404, h);
+        const to = url.searchParams.get('to') ?? '';
+        const rows = await env.DB.prepare('SELECT subject, body, created_at FROM email_outbox WHERE to_email = ? ORDER BY id').bind(to).all();
+        return json({ messages: rows.results }, 200, h);
+      }
+
       if (req.method === 'GET' && url.pathname === '/v1/push/key')
         return json({ publicKey: env.VAPID_PUBLIC_KEY }, 200, h);
 
@@ -122,6 +186,22 @@ export default {
       if (req.method === 'POST' && url.pathname === '/v1/sessions/logout') {
         await env.DB.prepare('UPDATE sessions SET revoked = 1 WHERE id = ?').bind(auth.sessionId).run();
         return json({ ok: true }, 200, h);
+      }
+
+      // ===================== Conta e renovação (autenticado) =====================
+      if (req.method === 'POST' && url.pathname === '/v1/billing/account') {
+        return json(await accountState(env, auth.householdId, now), 200, h);
+      }
+      if (req.method === 'POST' && url.pathname === '/v1/billing/renew') {
+        const body = await readJson(req);
+        const cpf = normCpf(body?.cpf);
+        if (!body || !RENEWAL_PLANS.includes(body.plan)) return json({ error: 'invalid_plan' }, 400, h);
+        if (!cpf) return json({ error: 'invalid_cpf' }, 422, h);
+        const email = normEmail(body.email) ?? (await lastPayerEmail(env, auth.householdId));
+        if (!email) return json({ error: 'invalid_email' }, 422, h);
+        if (!(await hit(env.DB, `renew:${auth.householdId}`, 10, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
+        const pix = await createPix(env, { kind: 'renewal', plan: PLANS[body.plan], email, cpf, householdId: auth.householdId, now });
+        return pix ? json(pix, 201, h) : json({ error: 'provider_unavailable' }, 502, h);
       }
 
       if (req.method === 'POST' && url.pathname === '/v1/sync') {

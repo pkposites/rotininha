@@ -52,3 +52,23 @@ export function parseRecord(x: any): WireRecord | null {
   }
   return null;
 }
+
+export const normEmail = (e: unknown): string | null => {
+  if (typeof e !== 'string') return null;
+  const v = e.trim().toLowerCase();
+  return v.length <= 120 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) ? v : null;
+};
+
+/** CPF com dígitos verificadores. Nunca é armazenado nem registrado em log. */
+export function normCpf(c: unknown): string | null {
+  if (typeof c !== 'string') return null;
+  const d = c.replace(/\D/g, '');
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return null;
+  const dv = (n: number) => {
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += Number(d[i]) * (n + 1 - i);
+    const r = (sum * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return dv(9) === Number(d[9]) && dv(10) === Number(d[10]) ? d : null;
+}

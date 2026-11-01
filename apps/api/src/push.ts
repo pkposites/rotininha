@@ -89,12 +89,20 @@ export async function runDue(env: Env, now: number): Promise<TickResult> {
   ).bind(now).all<{ household_id: string; kind: string; id: string; body: string; next_fire_at: number }>();
 
   const tzCache = new Map<string, string>();
+  const graceCache = new Map<string, number | null>();
   for (const row of due.results) {
     res.due++;
     const hh = row.household_id, fireAt = row.next_fire_at;
     let tz = tzCache.get(hh);
     if (!tz) { tz = await householdTz(env, hh).catch(() => DEFAULT_TZ); tzCache.set(hh, tz); }
     const rec: WireRecord = JSON.parse(row.body);
+    // Acesso vencido além da carência: sem push (o app continua legível).
+    let gu = graceCache.get(hh);
+    if (gu === undefined) {
+      gu = (await env.DB.prepare('SELECT grace_until FROM households WHERE id = ?').bind(hh).first<{ grace_until: number | null }>())?.grace_until ?? null;
+      graceCache.set(hh, gu);
+    }
+    const expired = gu != null && fireAt > gu;
 
     // 1) reivindica o disparo (dedupe): quem inserir primeiro envia
     const claim = await env.DB.prepare('INSERT OR IGNORE INTO sent_notifications (key, sent_at) VALUES (?, ?)')
@@ -109,6 +117,7 @@ export async function runDue(env: Env, now: number): Promise<TickResult> {
     if (!claim.meta.changes) { skip('duplicate'); continue; }
     if (!adv.meta.changes) { skip('changed'); continue; }
     if (now - fireAt > STALE_MS) { skip('stale'); continue; }
+    if (expired) { skip('expired'); continue; }
 
     // 3) descobre tarefa e ocorrência
     let task: WireRecord | null, date: string;

@@ -7,6 +7,15 @@ export interface Env {
   VAPID_PUBLIC_KEY: string;
   VAPID_PRIVATE_KEY: string;
   VAPID_SUBJECT: string;
+  MP_ACCESS_TOKEN: string;
+  MP_WEBHOOK_SECRET: string;
+  MP_API_BASE?: string;           // padrão https://api.mercadopago.com (testes apontam para um simulador)
+  PUBLIC_API_URL: string;         // URL pública do Worker (notification_url do Mercado Pago)
+  APP_URL: string;                // URL do app (link de recuperação)
+  EMAIL_PROVIDER?: string;        // 'dev' (caixa de saída local) | 'resend'
+  EMAIL_FROM?: string;
+  RESEND_API_KEY?: string;
+  SUPPORT_EMAIL?: string;
 }
 
 export type Kind = 'event' | 'task' | 'occ';

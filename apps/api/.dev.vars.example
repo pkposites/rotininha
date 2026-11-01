@@ -6,3 +6,11 @@ VAPID_PRIVATE_KEY=troque
 VAPID_SUBJECT=mailto:dev@example.com
 ALLOW_DEV_SIGNUP=true
 ALLOWED_ORIGIN=http://localhost:4173
+# Mercado Pago (credenciais de TESTE do painel de desenvolvedores) e e-mail
+MP_ACCESS_TOKEN=TEST-xxxxxxxx
+MP_WEBHOOK_SECRET=segredo-do-webhook-do-painel
+MP_API_BASE=http://localhost:19877   # produção: remova (usa https://api.mercadopago.com)
+PUBLIC_API_URL=http://localhost:8787
+APP_URL=http://localhost:4173
+EMAIL_PROVIDER=dev                    # produção: resend (+ RESEND_API_KEY, EMAIL_FROM)
+SUPPORT_EMAIL=suporte@exemplo.com.br

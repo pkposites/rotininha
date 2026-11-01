@@ -17,3 +17,13 @@ export async function unseal(secret: string, sealed: string): Promise<{ p256dh: 
   const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64u.dec(iv) }, await key(secret), b64u.dec(ct));
   return JSON.parse(new TextDecoder().decode(pt));
 }
+
+export async function sealText(secret: string, text: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await key(secret), new TextEncoder().encode(text)));
+  return b64u.enc(iv) + '.' + b64u.enc(ct);
+}
+export async function unsealText(secret: string, sealed: string): Promise<string> {
+  const [iv, ct] = sealed.split('.');
+  return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64u.dec(iv) }, await key(secret), b64u.dec(ct)));
+}
