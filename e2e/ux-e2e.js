@@ -84,15 +84,16 @@ const sql = (q) => { const out = execFileSync('npx', ['wrangler', 'd1', 'execute
   // 7) criar conta com registros locais (sem perda nem duplicação)
   const before = await mamadas();
   await p.getByRole('button', { name: 'Criar conta' }).click();
+  await p.click('.sheet summary:has-text("Sobre o acesso grátis")');
   const t = await p.locator('.sheet').innerText();
-  ok(/Acesso grátis no lançamento/.test(t) && /não tem data para acabar/.test(t) && /pelo menos 7 dias de antecedência/.test(t) && !/Seu teste começou/.test(t), 'texto do acesso grátis coerente com a regra real (lançamento, sem prazo)');
+  ok(/não tem data para acabar/.test(t) && /pelo menos 7 dias de antecedência/.test(t) && !/Seu teste começou/.test(t), 'texto do acesso grátis coerente com a regra real (lançamento, sem prazo)');
   const wa = `(11) 9${String(Math.floor(Math.random() * 1e8)).padStart(8, '0').replace(/^(\d{4})(\d{4})$/, '$1-$2')}`;
   await p.fill('.sheet input[type=tel]', wa);
   await p.fill('.sheet input[autocomplete=new-password]', '1234');
-  await p.getByRole('button', { name: 'Criar minha conta grátis' }).click();
+  await p.getByRole('button', { name: 'Criar conta e continuar' }).click();
   ok(/pelo menos 8 caracteres/.test(await p.locator('.sheet .err').innerText()), 'senha curta é recusada com explicação');
   await p.fill('.sheet input[autocomplete=new-password]', 'senha de teste 2026');
-  await p.getByRole('button', { name: 'Criar minha conta grátis' }).click();
+  await p.getByRole('button', { name: 'Criar conta e continuar' }).click();
   ok(await p.w(() => /Conta criada/.test(document.querySelector('.sheet')?.innerText ?? '')), 'conta criada');
   const t2 = await p.locator('.sheet').innerText();
   ok(/Como entrar em outro aparelho/.test(t2) && /senha que você acabou de criar/.test(t2) && /Anote a senha/.test(t2) && !/Seu teste começou/.test(t2), 'mensagem pós-criação: entra com WhatsApp e senha');

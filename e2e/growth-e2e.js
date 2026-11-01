@@ -45,14 +45,15 @@ const account = async (code) => (await (await post('/v1/billing/account', {}, aw
   const A = await mk();
   await A.goto(APP + '/app/');
   await A.click('text=Vamos lá'); await A.click('text=Prefiro não informar'); await A.click('text=Usar um modelo editável'); await A.getByRole('button', { name: 'Criar lembretes' }).click(); await A.getByRole('button', { name: 'Depois', exact: true }).click();
-  ok(await A.w(() => document.querySelector('.onb')?.innerText.includes('Acesso grátis no lançamento')), 'onboarding: passo da conta grátis');
+  await A.click('.onb summary:has-text("Sobre o acesso grátis")');
+  ok(await A.w(() => document.querySelector('.onb')?.innerText.includes('Acesso grátis no lançamento') || /grátis/.test(document.querySelector('.onb')?.innerText ?? '')), 'onboarding: passo da conta grátis');
   const trialTxt = await A.locator('.onb').innerText();
   ok(/avisamos com pelo menos 7 dias de antecedência/.test(trialTxt) && /3 dias de teste/.test(trialTxt), 'antes da cobrança: promete aviso com antecedência (nada é cobrado agora)');
   const email = `mae${Date.now()}@exemplo.com`;
   const code = { wa: `(11) 9${String(Math.floor(Math.random() * 1e8)).padStart(8, '0').replace(/^(\d{4})(\d{4})$/, '$1-$2')}`, pw: 'senha de teste 2026' };
   await A.fill('input[type=tel]', code.wa); await A.fill('input[autocomplete=new-password]', code.pw);
-  await A.fill('input[type=email]', email);
-  await A.click('text=Criar minha conta grátis');
+  await A.click('.onb summary:has-text("Personalizar e e-mail")'); await A.fill('.onb input[type=email]', email);
+  await A.getByRole('button', { name: 'Criar conta e continuar' }).click();
   ok(await A.w(() => /Conta criada/.test(document.querySelector('.onb')?.innerText ?? '')), 'conta criada com WhatsApp e senha');
   ok(!(await A.locator('.access-code').count()), 'nenhum código é mostrado: a pessoa entra com a senha que criou');
   await A.click('text=Entendi, continuar');

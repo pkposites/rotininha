@@ -331,7 +331,7 @@ function App() {
           </button>
         ))}
       </nav>
-      {onboarding && <Onboarding store={store} rem={rem} connected={syncStatus !== 'signed-out' && syncStatus !== 'off'} onFinish={() => { setOnboarding(false); offerInstall(); }} />}
+      {onboarding && <Onboarding store={store} rem={rem} onRecover={() => { setOnboarding(false); setRecover({ token: null }); }} connected={syncStatus !== 'signed-out' && syncStatus !== 'off'} onFinish={() => { setOnboarding(false); offerInstall(); }} />}
       {openItem && (
         <ReminderSheet item={openItem} now={now} onClose={() => setOpenOcc(null)}
           onDone={() => { if (blocked) { setOpenOcc(null); return setPaywall(true); } count('reminder_done'); rem.saveOcc(markDone(openItem)); setOpenOcc(null); }}
@@ -358,7 +358,7 @@ function App() {
         onRenew={!FLAGS.payments ? null : () => { setSettings(false); setCheckout({ renewal: true }); }}
         onRecover={() => { setSettings(false); setRecover({ token: null }); }} />}
       {checkout && <CheckoutSheet renewal={checkout.renewal} resume={checkout.resume} onClose={() => setCheckout(null)} onDone={refreshAccount} />}
-      {trialOpen && <div class="sheet-backdrop"><div class="sheet" role="dialog" aria-modal="true" aria-label="Teste grátis"><TrialFlow onDone={() => { setTrialOpen(false); refreshAccount(); }} onSkip={() => setTrialOpen(false)} /></div></div>}
+      {trialOpen && <div class="sheet-backdrop"><div class="sheet" role="dialog" aria-modal="true" aria-label="Teste grátis"><TrialFlow onDone={() => { setTrialOpen(false); refreshAccount(); }} onSkip={() => setTrialOpen(false)} onHaveAccount={() => { setTrialOpen(false); setSettings(true); }} /></div></div>}
       {recover && <RecoverSheet token={recover.token} onClose={() => setRecover(null)} />}
       {editing && (
         <EditSheet event={editing} onClose={() => setEditing(null)}

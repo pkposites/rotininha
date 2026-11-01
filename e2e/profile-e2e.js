@@ -12,12 +12,13 @@ const APP = 'http://localhost:4173';
 
   await p.click('[aria-label="Ajustes"]');
   await p.getByRole('button', { name: 'Criar conta grátis' }).click();
+  await p.click('[aria-label="Teste grátis"] summary:has-text("Personalizar")');
   await p.fill('[aria-label="Teste grátis"] input[autocomplete=given-name]', '  Ana   Paula ');
   await p.fill('[aria-label="Teste grátis"] input[autocomplete=off]', 'Theo');
   ok(/ficam apenas neste aparelho/.test(await p.locator('[aria-label="Teste grátis"]').innerText()), 'explica que os nomes ficam só no aparelho');
   await p.fill('[aria-label="Teste grátis"] input[type=tel]', `(11) 9${String(Math.floor(Math.random() * 1e8)).padStart(8, '0').replace(/^(\d{4})(\d{4})$/, '$1-$2')}`);
   await p.fill('[aria-label="Teste grátis"] input[autocomplete=new-password]', 'senha de teste 2026');
-  await p.getByRole('button', { name: 'Criar minha conta grátis' }).click();
+  await p.getByRole('button', { name: 'Criar conta e continuar' }).click();
   await p.waitForSelector('text=Conta criada'); await p.getByRole('button', { name: 'Entendi, continuar' }).click();
   await p.waitForTimeout(700);
   ok(/Ana Paula!/.test(await p.locator('.greet h1').innerText()), 'saudação com o nome: ' + (await p.locator('.greet h1').innerText()));
@@ -29,7 +30,7 @@ const APP = 'http://localhost:4173';
   await p.click('[aria-label="Ajustes"]');
   await p.fill('.sheet input[autocomplete=given-name]', 'Ana'); await p.fill('.sheet input[placeholder="opcional"]', 'Maria Clara');
   await p.getByRole('button', { name: 'Salvar nomes' }).click();
-  await p.locator('.sheet >> text=Fechar').click(); await p.waitForTimeout(300);
+  await p.locator('.sheet >> text=Fechar').click(); await p.waitForTimeout(900);
   ok(/Ana!/.test(await p.locator('.greet h1').innerText()) && /Cuidados de Maria Clara/.test(await p.locator('.quick-intro').innerText()), 'edição em Ajustes atualiza a tela na hora');
 
   // privacidade: nenhum nome foi enviado ao servidor

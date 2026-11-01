@@ -272,3 +272,4 @@ main { padding: 8px 16px calc(104px + env(safe-area-inset-bottom)); display: gri
 .how-rem { margin: 4px 0 8px; }
 .how-steps { margin: 6px 0; padding-left: 20px; display: grid; gap: 8px; }
 .pw-row { display: flex; align-items: center; gap: 8px; } .pw-row input { flex: 1; min-width: 0; }
+.lead-short { font-size: 17px; margin: 0; }

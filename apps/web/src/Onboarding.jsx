@@ -4,6 +4,7 @@ import { setPref } from './lib/prefs.js';
 import { enablePush } from './lib/push.js';
 import { TYPES } from './lib/events.js';
 import { TrialFlow } from './TrialFlow.jsx';
+import { LoginForm } from './LoginForm.jsx';
 import { syncAvailable } from './lib/sync.js';
 
 
@@ -23,7 +24,7 @@ function Shell({ step, emoji, title, lead, children, actions }) {
 
 // Tela cheia, um passo por vez, botão principal sempre ao alcance do polegar. Tudo é opcional.
 // A faixa etária fica só neste aparelho.
-export function Onboarding({ store, rem, connected, onFinish }) {
+export function Onboarding({ store, rem, connected, onFinish, onRecover }) {
   const [step, setStep] = useState('welcome');
   const [age, setAge] = useState(null);
   const [picked, setPicked] = useState(['noite']);
@@ -55,7 +56,13 @@ export function Onboarding({ store, rem, connected, onFinish }) {
 
         {step === 'welcome' && (
           <Shell step={step} emoji="💜" title="Oi! Uma ajudinha na sua rotina" lead="Vamos deixar tudo pronto em 1 minuto. Você pode pular qualquer passo e mudar tudo depois."
-            actions={<><button class="btn" onClick={() => setStep('age')}>Vamos lá</button><button class="link" onClick={finish}>Pular tudo</button></>} />
+            actions={<><button class="btn" onClick={() => setStep('age')}>Vamos lá</button>{syncAvailable && !connected && <button class="btn ghost" onClick={() => setStep('login')}>Já tenho cadastro</button>}<button class="link" onClick={finish}>Pular tudo</button></>} />
+        )}
+
+        {step === 'login' && (
+          <Shell step={step} emoji="👋" title="Entrar na sua conta" lead="Use o WhatsApp e a senha que você criou. Seus registros voltam para este aparelho." actions={<></>}>
+            <LoginForm onDone={finish} onBack={() => setStep('welcome')} onRecover={onRecover} />
+          </Shell>
         )}
 
         {step === 'age' && (
@@ -118,7 +125,7 @@ export function Onboarding({ store, rem, connected, onFinish }) {
 
         {step === 'trial' && (
           <Shell step={step} emoji="🎁" title="Guardar seus registros" actions={<></>}>
-            <TrialFlow compact onDone={finish} onSkip={finish} />
+            <TrialFlow compact onDone={finish} onSkip={finish} onHaveAccount={() => setStep('login')} />
           </Shell>
         )}
 

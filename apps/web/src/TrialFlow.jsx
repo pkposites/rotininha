@@ -48,34 +48,41 @@ export function TrialFlow({ onDone, onSkip, onHaveAccount, compact }) {
 
   return (
     <form class="stack" onSubmit={start} noValidate>
-      {!compact && <h2>{copy.title}</h2>}
-      {compact && <p><strong>{copy.title}</strong></p>}
-      <p>{copy.lead}</p>
-      <ul class="bullets"><li>Todos os recursos liberados</li><li>Você pode usar o app agora, sem conta</li><li>A conta guarda seus registros e permite abri-los em outro aparelho</li></ul>
-      <label class="field">Seu nome (opcional)
-        <input value={mom} onInput={(e) => setMom(e.target.value)} maxLength={30} autocomplete="given-name" placeholder="como você gosta de ser chamada" />
-      </label>
-      <label class="field">Nome do bebê (opcional)
-        <input value={baby} onInput={(e) => setBaby(e.target.value)} maxLength={30} autocomplete="off" placeholder="para deixar o app com a cara dele(a)" />
-      </label>
-      <p class="muted">Os nomes servem só para personalizar o app e <strong>ficam apenas neste aparelho</strong>: não enviamos ao servidor.</p>
+      {!compact && <h2>Criar conta grátis</h2>}
+      <p class="lead-short">Crie sua conta para <strong>guardar seus registros</strong> e abri-los em qualquer aparelho. É grátis.</p>
       <label class="field">WhatsApp
         <input type="tel" inputMode="tel" value={phone} onInput={(e) => setPhone(maskPhone(e.target.value))} autocomplete="tel" placeholder="(11) 91234-5678" required />
       </label>
-      <label class="field">Crie uma senha de acesso
+      <label class="field">Crie uma senha
         <span class="pw-row">
           <input type={showPw ? 'text' : 'password'} value={pw} onInput={(e) => setPw(e.target.value)} autocomplete="new-password" minLength={8} placeholder="mínimo 8 caracteres" required />
           <button type="button" class="link" onClick={() => setShowPw(!showPw)} aria-pressed={showPw}>{showPw ? 'Ocultar' : 'Mostrar'}</button>
         </span>
       </label>
-      <p class="muted">Com o WhatsApp e a senha você abre seus registros em qualquer aparelho e não perde seus dados. Não enviamos mensagens para o seu WhatsApp sem você pedir.</p>
-      <label class="field">E-mail (opcional)
-        <input type="email" value={email} onInput={(e) => setEmail(e.target.value)} autocomplete="email" placeholder="seu@email.com" />
-      </label>
-      <p class="muted">{mailOk ? 'Usamos o e-mail para avisar sobre o fim do acesso grátis e, quando a recuperação estiver ativa, ajudar se você esquecer a senha.' : 'Usamos o e-mail para avisar sobre o fim do acesso grátis. A recuperação por e-mail ainda não está ativa: anote bem a sua senha.'}</p>
+      <p class="muted"><strong>Para que usamos:</strong> o WhatsApp e a senha servem só para você entrar e para guardar os dados de uso do app (registros e lembretes). Não usamos para publicidade e não enviamos mensagens sem você pedir.</p>
       {err && <p class="err" role="alert">{err}</p>}
-      <button class="btn" disabled={busy}>{busy ? 'Criando…' : 'Criar minha conta grátis'}</button>
-      {onHaveAccount && <button type="button" class="link" onClick={onHaveAccount}>Já tenho conta</button>}
+      <button class="btn" disabled={busy}>{busy ? 'Criando…' : 'Criar conta e continuar'}</button>
+      <details class="fold">
+        <summary>Personalizar e e-mail (opcional)</summary>
+        <div class="stack">
+          <label class="field">Seu nome
+            <input value={mom} onInput={(e) => setMom(e.target.value)} maxLength={30} autocomplete="given-name" placeholder="como você gosta de ser chamada" />
+          </label>
+          <label class="field">Nome do bebê
+            <input value={baby} onInput={(e) => setBaby(e.target.value)} maxLength={30} autocomplete="off" placeholder="para deixar o app com a cara dele(a)" />
+          </label>
+          <p class="muted">Os nomes servem só para personalizar o app e <strong>ficam apenas neste aparelho</strong>: não enviamos ao servidor.</p>
+          <label class="field">E-mail
+            <input type="email" value={email} onInput={(e) => setEmail(e.target.value)} autocomplete="email" placeholder="seu@email.com" />
+          </label>
+          <p class="muted">{mailOk ? 'Usamos o e-mail para avisar sobre o fim do acesso grátis e, quando a recuperação estiver ativa, ajudar se você esquecer a senha.' : 'Usamos o e-mail para avisar sobre o fim do acesso grátis. A recuperação por e-mail ainda não está ativa: anote bem a sua senha.'}</p>
+        </div>
+      </details>
+      <details class="fold">
+        <summary>Sobre o acesso grátis</summary>
+        <p>{copy.lead}</p>
+      </details>
+      {onHaveAccount && <button type="button" class="btn ghost" onClick={onHaveAccount}>Já tenho cadastro</button>}
       {onSkip && <button type="button" class="link" onClick={onSkip}>Agora não — usar sem conta</button>}
     </form>
   );
