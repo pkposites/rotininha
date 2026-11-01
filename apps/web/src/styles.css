@@ -76,3 +76,18 @@ main { flex: 1; padding: var(--space-3); display: grid; gap: var(--space-3); ali
 .notice.info { background: var(--brand-lilac-100); }
 .notice.warn { background: var(--warning-bg); color: var(--warning-ink); border-color: transparent; }
 .notice p { margin: 0 0 var(--space-2); }
+
+.onb { position: fixed; inset: 0; z-index: 20; background: var(--surface-base); overflow: auto; display: flex; justify-content: center; }
+.onb-card { width: 100%; max-width: 560px; padding: calc(var(--space-5) + env(safe-area-inset-top)) var(--space-3) var(--space-5); display: grid; gap: var(--space-3); align-content: start; }
+.tpl { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.tpl-row { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); font-size: 14px; min-height: var(--touch); }
+.tpl-row input[type=time], .rit-row, .row input { font: 400 16px var(--font-body); }
+.install ol { margin: 0 0 var(--space-2); padding-left: 20px; display: grid; gap: 6px; }
+.lessons { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.lesson-item { display: grid; grid-template-columns: 40px 1fr; align-items: center; gap: var(--space-2); text-align: left; width: 100%; font: inherit; color: inherit; cursor: pointer; min-height: 64px; }
+.lesson-item:disabled { opacity: .55; cursor: default; }
+.lesson-item .ico { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--brand-lilac-100); color: var(--brand-primary); font-weight: 800; }
+.lesson { display: grid; gap: var(--space-2); }
+.lesson p { margin: 0; }
+.rit-row { display: flex; justify-content: space-between; align-items: center; }
+.row input { flex: 1; min-height: var(--touch); padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--surface-base); color: var(--text-main); }

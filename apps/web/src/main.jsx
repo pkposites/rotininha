@@ -9,6 +9,11 @@ import { EditSheet } from './EditSheet.jsx';
 import { SettingsSheet } from './SettingsSheet.jsx';
 import { CheckoutSheet } from './CheckoutSheet.jsx';
 import { RecoverSheet } from './RecoverSheet.jsx';
+import { FLAGS } from './config.js';
+import { Onboarding } from './Onboarding.jsx';
+import { GuideTab } from './GuideTab.jsx';
+import { getPref, setPref } from './lib/prefs.js';
+import { listEvents, listTasks } from './lib/db.js';
 import { getAccount, accessNotice, pendingCheckout } from './lib/billing.js';
 import { TaskSheet } from './TaskSheet.jsx';
 import { ReminderSheet } from './ReminderSheet.jsx';
@@ -159,6 +164,16 @@ function App() {
   const [taskEdit, setTaskEdit] = useState(null); // { task, isNew }
   const [syncStatus, setSyncStatus] = useState('off');
   const [settings, setSettings] = useState(false);
+  const [onboarding, setOnboarding] = useState(false);
+  // Primeira abertura: onboarding só para quem ainda não tem dados nem já o concluiu.
+  useEffect(() => {
+    (async () => {
+      if (await getPref('onboardingDone', false)) return;
+      const has = (await listEvents()).length + (await listTasks()).length > 0;
+      if (has) return setPref('onboardingDone', true);
+      setOnboarding(true);
+    })();
+  }, []);
   const [checkout, setCheckout] = useState(null);   // { renewal, resume }
   const [recover, setRecover] = useState(null);     // { token }
   const [account, setAccount] = useState(null);
@@ -200,10 +215,12 @@ function App() {
       </header>
       <main>
         {store.error && <p class="card err" role="alert">{store.error}</p>}
-        {notice && <section class={`card notice ${notice.tone}`} role="status"><p>{notice.text}</p><button class="btn" onClick={() => setCheckout({ renewal: true })}>Renovar</button></section>}
+        {notice && <section class={`card notice ${notice.tone}`} role="status"><p>{notice.text}</p>{FLAGS.payments && <button class="btn" onClick={() => setCheckout({ renewal: true })}>Renovar</button>}</section>}
         {tab === 'hoje' && <Hoje store={store} rem={rem} now={now} onEdit={setEditing} onOpenItem={(i) => setOpenOcc(i.id)} onNewTask={() => setTaskEdit({ task: makeTask(), isNew: true })} />}
         {tab === 'historico' && <Historico events={store.events} onEdit={setEditing} />}
-        {tab === 'guia' && <section class="card empty"><h2>Rotina e Sono em 7 Dias</h2><p class="muted">Conteúdo em preparação, com revisão profissional antes de publicar.</p></section>}
+        {tab === 'guia' && <GuideTab rem={rem} account={account} now={now}
+          onCreateTask={(p) => setTaskEdit({ task: makeTask(p), isNew: true })} onGoToday={() => setTab('hoje')}
+          onSuggest={() => setSettings(true)} onRenew={FLAGS.payments ? () => setCheckout({ renewal: true }) : null} />}
         <p class="muted disclaimer">O Rotininha ajuda a organizar os cuidados e não substitui a orientação do pediatra.</p>
       </main>
       <nav class="tabs" aria-label="Navegação principal">
@@ -211,6 +228,7 @@ function App() {
           <button class="tab" aria-current={tab === t.id ? 'page' : undefined} onClick={() => setTab(t.id)}>{t.label}</button>
         ))}
       </nav>
+      {onboarding && <Onboarding store={store} rem={rem} connected={syncStatus !== 'signed-out' && syncStatus !== 'off'} onFinish={() => setOnboarding(false)} />}
       {openItem && (
         <ReminderSheet item={openItem} now={now} onClose={() => setOpenOcc(null)}
           onDone={() => { rem.saveOcc(markDone(openItem)); setOpenOcc(null); }}
@@ -225,8 +243,8 @@ function App() {
           onDelete={async (id) => { await rem.removeTask(id); setTaskEdit(null); }} />
       )}
       {settings && <SettingsSheet onClose={() => setSettings(false)} night={night} setNight={setNight} account={account}
-        onBuy={() => { setSettings(false); setCheckout({ renewal: false }); }}
-        onRenew={() => { setSettings(false); setCheckout({ renewal: true }); }}
+        onBuy={!FLAGS.payments ? null : () => { setSettings(false); setCheckout({ renewal: false }); }}
+        onRenew={!FLAGS.payments ? null : () => { setSettings(false); setCheckout({ renewal: true }); }}
         onRecover={() => { setSettings(false); setRecover({ token: null }); }} />}
       {checkout && <CheckoutSheet renewal={checkout.renewal} resume={checkout.resume} onClose={() => setCheckout(null)} onDone={refreshAccount} />}
       {recover && <RecoverSheet token={recover.token} onClose={() => setRecover(null)} />}

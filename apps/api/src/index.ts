@@ -97,9 +97,10 @@ export default {
 
       // ===================== Planos e checkout (público) =====================
       if (req.method === 'GET' && url.pathname === '/v1/plans')
-        return json({ entry: ENTRY_PLANS.map((id) => PLANS[id]), renewal: RENEWAL_PLANS.map((id) => PLANS[id]) }, 200, h);
+        return json({ paymentsEnabled: env.PAYMENTS_ENABLED === 'true', entry: ENTRY_PLANS.map((id) => PLANS[id]), renewal: RENEWAL_PLANS.map((id) => PLANS[id]) }, 200, h);
 
       if (req.method === 'POST' && url.pathname === '/v1/checkout') {
+        if (env.PAYMENTS_ENABLED !== 'true') return json({ error: 'payments_disabled' }, 503, h);
         const body = await readJson(req);
         const email = normEmail(body?.email), cpf = normCpf(body?.cpf);
         if (!body || !ENTRY_PLANS.includes(body.plan)) return json({ error: 'invalid_plan' }, 400, h);
@@ -193,6 +194,7 @@ export default {
         return json(await accountState(env, auth.householdId, now), 200, h);
       }
       if (req.method === 'POST' && url.pathname === '/v1/billing/renew') {
+        if (env.PAYMENTS_ENABLED !== 'true') return json({ error: 'payments_disabled' }, 503, h);
         const body = await readJson(req);
         const cpf = normCpf(body?.cpf);
         if (!body || !RENEWAL_PLANS.includes(body.plan)) return json({ error: 'invalid_plan' }, 400, h);

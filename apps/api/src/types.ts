@@ -7,6 +7,7 @@ export interface Env {
   VAPID_PUBLIC_KEY: string;
   VAPID_PRIVATE_KEY: string;
   VAPID_SUBJECT: string;
+  PAYMENTS_ENABLED?: string;      // 'true' liga checkout/renovação. Padrão: desligado até o pagamento estar validado
   MP_ACCESS_TOKEN: string;
   MP_WEBHOOK_SECRET: string;
   MP_API_BASE?: string;           // padrão https://api.mercadopago.com (testes apontam para um simulador)

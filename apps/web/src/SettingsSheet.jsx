@@ -52,7 +52,7 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
                 {err && <p class="err" role="alert">{err}</p>}
                 <button class="btn" disabled={busy}>{busy ? 'Conectando…' : 'Conectar'}</button>
                 <button type="button" class="link" onClick={onRecover}>Perdi meu código</button>
-                <button type="button" class="btn ghost" onClick={onBuy}>Ainda não tenho acesso — comprar</button>
+                {onBuy && <button type="button" class="btn ghost" onClick={onBuy}>Ainda não tenho acesso — comprar</button>}
               </form>
             ) : (
               <>
@@ -64,7 +64,7 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
                 <>
                   <h3>Seu acesso</h3>
                   <p class="muted">{account.state === 'expired' ? 'Venceu em' : 'Válido até'} {fmtDateTime(account.validUntil)}</p>
-                  <button class="btn ghost" onClick={onRenew}>Renovar acesso</button>
+                  {onRenew && <button class="btn ghost" onClick={onRenew}>Renovar acesso</button>}
                 </>
               )}
               </>
