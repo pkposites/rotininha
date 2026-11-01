@@ -1,0 +1,27 @@
+/* Design tokens — PRD §6 */
+:root {
+  --brand-primary: #6D56A6; --brand-lilac-100: #F1ECFA;
+  --surface-base: #FBF9F7; --surface-card: #FFFFFF;
+  --text-main: #25334A; --text-muted: #6B7380;
+  --success-ink: #2E716B; --success-bg: #E9F5F0;
+  --warning-ink: #8A5B00; --warning-bg: #FFF2D6;
+  --peach-soft: #F8E5DC; --border-subtle: #E8E4EB;
+  --night-bg: #171A2A; --night-card: #24283B;
+  --night-text: #F5F2FB; --night-accent: #C2B5F0;
+
+  --font-head: 'Nunito Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --radius-btn: 16px; --radius-card: 20px;
+  --space-1: 8px; --space-2: 12px; --space-3: 16px; --space-4: 24px; --space-5: 32px;
+  --touch: 44px;
+}
+
+/* Modo madrugada */
+[data-theme='night'] {
+  --surface-base: var(--night-bg); --surface-card: var(--night-card);
+  --text-main: var(--night-text); --text-muted: #B8B3C9;
+  --brand-primary: var(--night-accent); --brand-lilac-100: #2E3250;
+  --border-subtle: #353A57;
+  --success-bg: #1F3A38; --success-ink: #8FD3C9;
+  --warning-bg: #3A3220; --warning-ink: #F0CF8A;
+}

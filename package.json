@@ -1,0 +1,10 @@
+{
+  "name": "rotininha",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "npm -w apps/web run dev",
+    "build": "npm -w apps/web run build",
+    "preview": "npm -w apps/web run preview"
+  }
+}
