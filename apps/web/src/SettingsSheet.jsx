@@ -74,7 +74,7 @@ export function SettingsSheet({ onClose, night, setNight, account, onBuy, onRene
             <label>Seu nome<input value={prof.mom} maxLength={30} onInput={(e) => { setProfMsg(''); setProf({ ...prof, mom: e.target.value }); }} autocomplete="given-name" placeholder="como você gosta de ser chamada" /></label>
             <label>Nome do bebê<input value={prof.baby} maxLength={30} onInput={(e) => { setProfMsg(''); setProf({ ...prof, baby: e.target.value }); }} autocomplete="off" placeholder="opcional" /></label>
             <button class="btn ghost">Salvar nomes</button>
-            <p role="status" class="muted">{profMsg || 'Os nomes ficam só neste aparelho; não vão para o servidor.'}</p>
+            <p role={profMsg ? 'status' : undefined} class="muted">{profMsg || 'Os nomes ficam só neste aparelho; não vão para o servidor.'}</p>
           </form>
         </section>
 
