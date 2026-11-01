@@ -1,3 +1,4 @@
+@import './fonts.css';
 @import './tokens.css';
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -94,3 +95,6 @@ main { flex: 1; padding: var(--space-3); display: grid; gap: var(--space-3); ali
 
 .feedback-card { background: var(--brand-lilac-100); border-color: transparent; }
 .feedback-card p { margin: 0 0 var(--space-1); }
+
+[hidden]{display:none!important}
+.card.empty .muted,.feedback-card .muted,.notice.info .muted,.onb .tpl .muted{color:var(--text-muted-on-lilac)}

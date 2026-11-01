@@ -9,6 +9,8 @@
   --night-bg: #171A2A; --night-card: #24283B;
   --night-text: #F5F2FB; --night-accent: #C2B5F0;
 
+  --text-muted-on-lilac: #4F5868; /* o cinza secundário padrão não atinge 4,5:1 sobre o lilás */
+
   --font-head: 'Nunito Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --radius-btn: 16px; --radius-card: 20px;
@@ -18,6 +20,7 @@
 
 /* Modo madrugada */
 [data-theme='night'] {
+  --text-muted-on-lilac: #B8B3C9;
   --surface-base: var(--night-bg); --surface-card: var(--night-card);
   --text-main: var(--night-text); --text-muted: #B8B3C9;
   --brand-primary: var(--night-accent); --brand-lilac-100: #2E3250;

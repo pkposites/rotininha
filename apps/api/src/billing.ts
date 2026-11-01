@@ -239,7 +239,7 @@ export async function requestRecovery(env: Env, email: string, now: number) {
     // O token vai no fragmento (#), que o navegador não envia ao servidor nem aparece em logs de acesso.
     await sendEmail(env, {
       to: email, subject: 'Rotininha — recuperar acesso',
-      text: `Você pediu para recuperar o acesso ao Rotininha.\n\nAbra este link em até 30 minutos (uso único):\n${env.APP_URL.replace(/\/$/, '')}/#recover=${token}\n\nAo confirmar, geramos um NOVO código de acesso e os aparelhos conectados antes serão desconectados. Seus registros continuam salvos.\n\nSe não foi você, ignore este e-mail: nada será alterado.`
+      text: `Você pediu para recuperar o acesso ao Rotininha.\n\nAbra este link em até 30 minutos (uso único):\n${env.APP_URL.replace(/\/$/, "")}/app/#recover=${token}\n\nAo confirmar, geramos um NOVO código de acesso e os aparelhos conectados antes serão desconectados. Seus registros continuam salvos.\n\nSe não foi você, ignore este e-mail: nada será alterado.`
     }, now);
   }
 }

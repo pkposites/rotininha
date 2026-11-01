@@ -2,15 +2,192 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#6D56A6" />
+  <meta name="robots" content="__ROBOTS__" />
+  <title>Rotininha — uma ajudinha na sua rotina de mãe</title>
+  <meta name="description" content="Registre os cuidados do bebê em segundos, organize os próximos lembretes e acompanhe a rotina em um só lugar. Acesso por 7 dias no Pix, sem assinatura." />
+  <meta property="og:title" content="Rotininha — uma ajudinha na sua rotina de mãe" />
+  <meta property="og:description" content="Registre mamadas, sono e fraldas em segundos e receba lembretes no horário que você escolher." />
+  <meta property="og:type" content="website" />
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>Rotininha</title>
+  <script type="module" src="/src/lp/lp.js"></script>
 </head>
 <body>
-  <div id="app"></div>
-  <script type="module" src="/src/main.jsx"></script>
+<a class="skip" href="#conteudo">Ir para o conteúdo</a>
+
+<header class="wrap top">
+  <a class="brand" href="/" aria-label="Rotininha — início">Rotininha</a>
+  <a class="btn ghost" href="/app/">Já tenho acesso</a>
+</header>
+
+<main id="conteudo">
+  <!-- 1. HERO -->
+  <div class="wrap hero">
+    <div>
+      <h1>Que tal ter uma ajudinha na sua rotina de mãe?</h1>
+      <p class="lead mt12">Registre os cuidados do bebê em segundos, organize os próximos lembretes e acompanhe a rotina em um só lugar.</p>
+      <div class="hero-cta mt20">
+        <a class="btn" href="#oferta" data-cta="hero">Quero organizar minha rotina</a>
+        <p class="muted price">Acesso por 7 dias · R$ 11,90 no Pix · não é assinatura</p>
+        <p class="slogan">Uma ajudinha na sua rotina de mãe.</p>
+      </div>
+    </div>
+
+    <!-- 2. DEMONSTRAÇÃO ANIMADA (HTML/CSS/JS, sem vídeo) -->
+    <figure class="demo" id="demo" aria-labelledby="demo-title">
+      <h2 id="demo-title">Veja como funciona em poucos segundos</h2>
+      <div class="demo-ctl"><button class="btn ghost" id="demo-pause" type="button" aria-pressed="false" hidden>Pausar demonstração</button></div>
+      <div class="phone" id="phone" data-scene="static" role="group" aria-label="Demonstração ilustrativa do aplicativo">
+        <span class="badge">Demonstração ilustrativa</span>
+        <div class="screen">
+          <div class="hello">Boa tarde! 💜</div>
+          <div class="mini" aria-hidden="true">
+            <div><span>🍼 Última mamada</span><b>16:40</b></div>
+            <div><span>😴 Sono</span><b>acordou 15:10</b></div>
+            <div><span>👶 Última fralda</span><b>17:55</b></div>
+          </div>
+          <div class="rems">
+            <div class="rems-h">Próximos lembretes</div>
+            <div class="rem-row target"><span>🛁 Banho</span><span><b>18:30</b> <span class="tick">✓</span></span></div>
+            <div class="rem-row"><span>💜 Beber água</span><b>19:00</b></div>
+          </div>
+          <div class="notif" role="img" aria-label="Notificação ilustrativa: Hora do banho">🛁 <strong>Hora do banho</strong><small>Rotininha · agora</small></div>
+          <div class="tap" aria-hidden="true"></div>
+          <div class="toast-demo">Banho registrado às 18h30</div>
+          <div class="end" aria-hidden="true"><b>Rotininha</b><span>Uma ajudinha na sua rotina de mãe</span></div>
+        </div>
+      </div>
+      <figcaption class="cap" id="demo-cap" aria-live="off">Lembretes no momento escolhido, registro em segundos e a rotina sempre organizada.</figcaption>
+      <p class="muted cap-note">Notificações dependem da instalação, permissão e configurações do dispositivo.</p>
+    </figure>
+  </div>
+
+  <!-- 3. BENEFÍCIOS -->
+  <section aria-labelledby="benef"><div class="wrap">
+    <h2 id="benef">O essencial, sem complicar</h2>
+    <div class="benefits">
+      <div class="card"><div class="ico" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6D56A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+        <h3>Registre com facilidade</h3><p>Mamadas, sono, fraldas e outros cuidados em 1 ou 2 toques, sem formulários longos.</p></div>
+      <div class="card"><div class="ico" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6D56A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+        <h3>Organize e lembre</h3><p>Lembretes que você mesma edita, com notificação quando o aparelho permitir. Concluir, adiar ou pular, sem julgamento.</p></div>
+      <div class="card"><div class="ico" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6D56A6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg></div>
+        <h3>Aprenda no seu tempo</h3><p>Um guia curto de rotina e sono seguro, com uma ação prática por dia. Conteúdo educativo, sem promessas.</p></div>
+    </div>
+  </div></section>
+
+  <!-- 4. PRÉVIA INTERATIVA -->
+  <section aria-labelledby="prev"><div class="wrap">
+    <h2 id="prev">Escolha um cuidado e veja onde ele aparece</h2>
+    <div class="preview">
+      <div>
+        <div class="chips" role="group" aria-label="Exemplos de cuidado" id="pv-chips">
+          <button class="chip" type="button" data-pv="banho" aria-pressed="false">🛁 Banho</button>
+          <button class="chip" type="button" data-pv="agua" aria-pressed="false">💧 Beber água</button>
+          <button class="chip" type="button" data-pv="remedio" aria-pressed="false">💊 Remédio</button>
+          <button class="chip" type="button" data-pv="mamada" aria-pressed="false">🍼 Mamada</button>
+        </div>
+        <p class="muted mt12" id="pv-text" aria-live="polite">Toque em um exemplo. É só uma demonstração: nada é salvo.</p>
+      </div>
+      <div class="pv-screen" aria-hidden="true">
+        <div class="mini"><div><span>🍼 Última mamada</span><b id="pv-mamada">Ainda não registrado</b></div></div>
+        <div class="pv-h">Próximos lembretes</div>
+        <div class="rem-row" id="pv-row"><span id="pv-title">Seus lembretes aparecem aqui</span><b id="pv-time"></b></div>
+      </div>
+    </div>
+  </div></section>
+
+  <!-- 5. COMO FUNCIONA -->
+  <section aria-labelledby="como"><div class="wrap">
+    <h2 id="como">Como funciona</h2>
+    <ol class="steps">
+      <li><div><strong>Pague via Pix</strong><br /><span class="muted">Acesso por 7 dias, sem assinatura.</span></div></li>
+      <li><div><strong>Instale no celular</strong><br /><span class="muted">Em poucos toques, direto do navegador. No iPhone, pela Tela de Início.</span></div></li>
+      <li><div><strong>Personalize</strong><br /><span class="muted">Use um modelo editável ou comece do zero.</span></div></li>
+      <li><div><strong>Use no dia a dia</strong><br /><span class="muted">Registre, receba lembretes e acompanhe o histórico.</span></div></li>
+    </ol>
+  </div></section>
+
+  <!-- 6. QUIZ OPCIONAL -->
+  <section aria-labelledby="quiz-t"><div class="wrap">
+    <h2 id="quiz-t">Quer ver se combina com você? <span class="muted">(opcional)</span></h2>
+    <p class="muted">Três perguntas rápidas. As respostas ficam só na sua tela: não coletamos nem enviamos nada sobre você ou seu bebê.</p>
+    <form class="quiz card" id="quiz">
+      <fieldset><legend>1. Qual a idade do bebê?</legend>
+        <div class="chips" data-q="age">
+          <button class="chip" type="button" aria-pressed="false">0 a 3 meses</button><button class="chip" type="button" aria-pressed="false">4 a 6 meses</button>
+          <button class="chip" type="button" aria-pressed="false">7 a 12 meses</button><button class="chip" type="button" aria-pressed="false">1 a 2 anos</button>
+          <button class="chip" type="button" aria-pressed="false">Prefiro não dizer</button></div></fieldset>
+      <fieldset><legend>2. O que mais pesa na sua rotina?</legend>
+        <div class="chips" data-q="pain">
+          <button class="chip" type="button" aria-pressed="false" data-v="lembrar">Lembrar das coisas</button><button class="chip" type="button" aria-pressed="false" data-v="registrar">Registrar sem perder tempo</button>
+          <button class="chip" type="button" aria-pressed="false" data-v="organizar">Organizar o dia</button><button class="chip" type="button" aria-pressed="false" data-v="dividir">Dividir com outra pessoa</button></div></fieldset>
+      <fieldset><legend>3. Outra pessoa também cuida do bebê?</legend>
+        <div class="chips" data-q="other">
+          <button class="chip" type="button" aria-pressed="false">Sim</button><button class="chip" type="button" aria-pressed="false">Não</button></div></fieldset>
+      <p id="quiz-out" role="status" class="notice-box" hidden></p>
+    </form>
+  </div></section>
+
+  <!-- 7. GUIA -->
+  <section aria-labelledby="guia"><div class="wrap">
+    <h2 id="guia">Guia “Rotina e Sono em 7 Dias”</h2>
+    <p class="mt8">Uma lição de 1 a 2 minutos por dia, cada uma com uma ação opcional: observar sinais de cansaço, montar um ritual de noite, conferir o ambiente de sono seguro e rever o que funcionou.</p>
+    <p class="muted mt8">Conteúdo educativo. O Rotininha não faz diagnóstico, não promete resultados de sono e não substitui a orientação do pediatra.</p>
+  </div></section>
+
+  <!-- 8. OFERTA + FAQ -->
+  <section aria-labelledby="oferta"><div class="wrap">
+    <div class="offer" id="oferta">
+      <h2>Acesso por 7 dias</h2>
+      <p class="big">R$ 11,90</p>
+      <p><strong>Acesso por 7 dias. Renovação opcional, feita manualmente por Pix. Não é assinatura.</strong></p>
+      <p class="muted">Depois, você renova quando quiser: 30 dias por R$ 19,90 ou 90 dias por R$ 39,90. Sem cobrança automática.</p>
+      <a class="btn" id="buy" href="#oferta" role="button" aria-disabled="true" data-cta="offer">Vendas abrem em breve</a>
+      <p class="muted" id="buy-note">Ainda estamos finalizando os últimos detalhes. Em breve o botão acima libera a compra.</p>
+    </div>
+
+    <h2 id="faq" class="mt32">Perguntas frequentes</h2>
+    <details><summary>Como funciona o pagamento?</summary><p>Você paga via Pix (Mercado Pago) e o acesso é liberado assim que o banco confirma. Não é assinatura e não há cobrança automática: para renovar, você paga um novo Pix.</p></details>
+    <details><summary>Posso pedir reembolso?</summary><p>Sim. Você pode desistir em até 7 dias corridos da compra (direito de arrependimento, art. 49 do CDC), sem justificar. Veja a <a href="/reembolso.html">política de reembolso</a>.</p></details>
+    <details><summary>Funciona no iPhone?</summary><p>Sim. Para receber lembretes no iPhone, instale o Rotininha na Tela de Início (iOS 16.4 ou mais novo) e ative as notificações. Notificações dependem da instalação, da permissão e das configurações do aparelho, e podem atrasar ou não chegar. Registrar e consultar sempre funcionam.</p></details>
+    <details><summary>O que acontece quando o acesso termina?</summary><p>Você ganha 24 horas de carência. Depois disso, deixa de editar e de receber lembretes, mas continua vendo seus registros. Renovando, tudo volta.</p></details>
+    <details><summary>E os dados do meu bebê?</summary><p>Pedimos o mínimo: sem nome do bebê, sem data de nascimento e sem fotos. Seus registros não são usados para anúncios. Leia a <a href="/privacidade.html">política de privacidade</a>. Você pode pedir a exclusão a qualquer momento.</p></details>
+    <details><summary>Perdi meu código de acesso.</summary><p>No app, toque em “Perdi meu código” e informe o e-mail usado na compra: enviamos um link para gerar um novo código.</p></details>
+    <details><summary>O Rotininha substitui o pediatra?</summary><p>Não. O Rotininha ajuda a organizar os cuidados e não substitui a orientação do pediatra. Ele não sugere horários de mamada, doses ou medicamentos.</p></details>
+    <details><summary>Como falo com o suporte?</summary><p>Pelo e-mail <span data-supplier="email">do suporte (em breve)</span>.</p></details>
+  </div></section>
+</main>
+
+<!-- 9. RODAPÉ -->
+<footer>
+  <div class="wrap">
+    <p><strong>Rotininha</strong> — uma ajudinha na sua rotina de mãe.</p>
+    <p class="muted mt8"><span data-supplier="name"></span> <span data-supplier="cnpj"></span> <span data-supplier="email"></span></p>
+    <ul>
+      <li><a href="/termos.html">Termos de Uso</a></li>
+      <li><a href="/privacidade.html">Política de Privacidade</a></li>
+      <li><a href="/reembolso.html">Reembolso e arrependimento</a></li>
+      <li><button type="button" class="linklike" id="open-consent">Preferências de cookies</button></li>
+    </ul>
+    <p class="muted">O Rotininha ajuda a organizar os cuidados e não substitui a orientação do pediatra. Direitos do consumidor garantidos pelo Código de Defesa do Consumidor.</p>
+  </div>
+</footer>
+
+<!-- Preferências de privacidade/cookies: nunca bloqueia o uso nem a compra -->
+<div class="consent" id="consent" role="dialog" aria-labelledby="consent-t" aria-modal="false" hidden>
+  <h2 id="consent-t">Sua privacidade</h2>
+  <p class="muted">Usamos o essencial para o site funcionar. Com a sua permissão, usamos também cookies de medição de anúncios (Meta). Você pode mudar isso quando quiser e continuar normalmente em qualquer caso.</p>
+  <div id="consent-prefs" hidden>
+    <label class="mt8"><input type="checkbox" checked disabled /> Essenciais (sempre ativos)</label>
+    <label><input type="checkbox" id="consent-mkt" /> Medição de anúncios (Meta)</label>
+    <button class="btn" type="button" id="consent-save">Salvar escolha</button>
+  </div>
+  <div class="row">
+    <button class="btn" type="button" id="consent-all">Aceitar tudo</button>
+    <button class="btn ghost" type="button" id="consent-ess">Só o essencial</button>
+    <button class="btn ghost" type="button" id="consent-more" aria-expanded="false" aria-controls="consent-prefs">Preferências</button>
+  </div>
+</div>
 </body>
 </html>

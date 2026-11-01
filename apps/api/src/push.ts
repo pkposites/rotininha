@@ -84,13 +84,18 @@ export async function runDue(env: Env, now: number): Promise<TickResult> {
   const res: TickResult = { due: 0, sent: 0, skipped: {} };
   const skip = (why: string) => { res.skipped[why] = (res.skipped[why] ?? 0) + 1; };
 
+  const tzCache = new Map<string, string>();
+  const graceCache = new Map<string, number | null>();
+
+  // Em lotes de 200 até esvaziar (teto de 10 lotes). Cada registro AVANÇA o próprio relógio antes do envio,
+  // então sai do conjunto "vencido"; se o Worker cair no meio, o que sobrou continua vencido e é retomado.
+  for (let batch = 0; batch < 10; batch++) {
   const due = await env.DB.prepare(
     `SELECT household_id, kind, id, body, next_fire_at FROM records
       WHERE next_fire_at IS NOT NULL AND next_fire_at <= ? AND deleted = 0 ORDER BY next_fire_at LIMIT 200`
   ).bind(now).all<{ household_id: string; kind: string; id: string; body: string; next_fire_at: number }>();
+  if (!due.results.length) break;
 
-  const tzCache = new Map<string, string>();
-  const graceCache = new Map<string, number | null>();
   for (const row of due.results) {
     res.due++;
     const hh = row.household_id, fireAt = row.next_fire_at;
@@ -148,6 +153,7 @@ export async function runDue(env: Env, now: number): Promise<TickResult> {
       sensitive: task.category === 'remedio'
     }, now);
     if (n) res.sent += n; else skip('no_subscription');
+  }
   }
 
   // limpeza horária: dedupe (3 dias) e sugestões além da retenção

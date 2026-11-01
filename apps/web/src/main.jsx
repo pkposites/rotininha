@@ -191,6 +191,7 @@ function App() {
   // Link de recuperação: #recover=TOKEN (fragmento: não vai ao servidor). Pagamento em andamento: retoma.
   useEffect(() => {
     const m = /[#&]recover=([\w-]+)/.exec(location.hash);
+    if (/[#&]comprar\b/.test(location.hash) && FLAGS.payments) { setCheckout({ renewal: false }); history.replaceState(null, '', location.pathname + location.search); }
     if (m) { setRecover({ token: m[1] }); history.replaceState(null, '', location.pathname + location.search); }
     pendingCheckout().then((c) => { if (c && !m) setCheckout({ renewal: c.renewal, resume: c }); });
   }, []);
@@ -278,3 +279,7 @@ function App() {
 }
 
 render(<App />, document.getElementById('app'));
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  addEventListener('load', () => navigator.serviceWorker.register('/sw.js', { scope: '/app/' }).catch(() => {}));
+}

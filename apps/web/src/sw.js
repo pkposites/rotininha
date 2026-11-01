@@ -4,8 +4,9 @@ import { registerRoute, NavigationRoute } from 'workbox-routing';
 
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
-registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html')));
+registerRoute(new NavigationRoute(createHandlerBoundToURL('/app/index.html'), { allowlist: [/^\/app\//] }));
 
+self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('message', (e) => { if (e.data?.type === 'SKIP_WAITING') self.skipWaiting(); });
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
@@ -28,7 +29,7 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const occId = event.notification.data?.occId;
-  const url = occId ? `/?occ=${encodeURIComponent(occId)}` : '/';
+  const url = occId ? `/app/?occ=${encodeURIComponent(occId)}` : '/app/';
   event.waitUntil((async () => {
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of wins) {
