@@ -21,7 +21,7 @@ import { engagement, shouldShowCard, isEligible } from './lib/feedback.js';
 import { track } from './lib/analytics.js';
 import { GuideTab } from './GuideTab.jsx';
 import { getPref, setPref } from './lib/prefs.js';
-import { listEvents, listTasks } from './lib/db.js';
+import { getMeta, listEvents, listTasks } from './lib/db.js';
 import { getAccount, accessNotice, pendingCheckout } from './lib/billing.js';
 import { TaskSheet } from './TaskSheet.jsx';
 import { ReminderSheet } from './ReminderSheet.jsx';
@@ -252,7 +252,8 @@ function App() {
   // Link de recuperação: #recover=TOKEN (fragmento: não vai ao servidor). Pagamento em andamento: retoma.
   useEffect(() => {
     const m = /[#&]recover=([\w-]+)/.exec(location.hash);
-    if (/[#&]comprar\b/.test(location.hash) && FLAGS.payments) { setCheckout({ renewal: false }); history.replaceState(null, '', location.pathname + location.search); }
+    // Compra só com conta: quem já está conectada vai ao pagamento; quem não está cria a conta primeiro (WhatsApp + senha)
+    if (/[#&]comprar\b/.test(location.hash) && FLAGS.payments) { getMeta('session').then((ss) => (ss ? setCheckout({ renewal: true }) : setTrialOpen(true))); history.replaceState(null, '', location.pathname + location.search); }
     if (m) { setRecover({ token: m[1] }); history.replaceState(null, '', location.pathname + location.search); }
     pendingCheckout().then((c) => { if (c && !m) setCheckout({ renewal: c.renewal, resume: c }); });
   }, []);
@@ -358,7 +359,7 @@ function App() {
       {settings && <SettingsSheet onClose={() => setSettings(false)} night={night} setNight={setNight} account={account}
         onSuggest={() => { setSettings(false); setFeedbackOpen(true); }}
         onStartTrial={() => { setSettings(false); setTrialOpen(true); }} refreshAccount={refreshAccount}
-        onBuy={!FLAGS.payments ? null : () => { setSettings(false); setCheckout({ renewal: false }); }}
+        onBuy={null}
         onRenew={!FLAGS.payments ? null : () => { setSettings(false); setCheckout({ renewal: true }); }}
         onRecover={() => { setSettings(false); setRecover({ token: null }); }} />}
       {checkout && <CheckoutSheet renewal={checkout.renewal} resume={checkout.resume} onClose={() => setCheckout(null)} onDone={refreshAccount} />}

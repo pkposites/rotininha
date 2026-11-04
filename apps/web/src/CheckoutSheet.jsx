@@ -95,7 +95,7 @@ export function CheckoutSheet({ renewal, resume, onClose, onDone }) {
             <label>CPF do pagador
               <input inputMode="numeric" value={cpf} onInput={(e) => setCpf(maskCpf(e.target.value))} placeholder="000.000.000-00" autocomplete="off" required />
             </label>
-            <p class="muted">O Pix exige e-mail e CPF de quem paga. Usamos o e-mail para o comprovante e para recuperar seu acesso; o CPF é enviado ao Mercado Pago e <strong>não fica guardado</strong> no Ninhora.</p>
+            <p class="muted">O Pix exige e-mail e CPF de quem paga. O e-mail é usado para o comprovante e para recuperar a senha, <strong>quando o envio de e-mails estiver ativo</strong> (hoje o comprovante também aparece na tela de confirmação do Mercado Pago). O CPF é enviado ao Mercado Pago e <strong>não fica guardado</strong> no Ninhora.</p>
             {err && <p class="err" role="alert">{err}</p>}
             <button class="btn" disabled={busy || !plans}>{busy ? 'Gerando Pix…' : `Gerar Pix${chosen ? ' de ' + brl(chosen.cents) : ''}`}</button>
             <p class="muted">Direito de arrependimento: em até 7 dias da compra você pode pedir reembolso, sem justificativa{SUPPLIER.email ? ` (${SUPPLIER.email})` : ''}.</p>

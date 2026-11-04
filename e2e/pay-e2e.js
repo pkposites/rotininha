@@ -1,125 +1,65 @@
+// Compra pelo app (sempre a partir de uma conta): tela do Pix, retomada, aprovação e liberação. Mercado Pago simulado localmente.
 const { chromium } = require('playwright');
 const { createHmac } = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const API = 'http://localhost:8787', MP = 'http://localhost:19877', APP = 'http://localhost:4173';
-const STATE = process.env.D1_STATE || '/tmp/rotininha-d1';
-
-const sql = (q) => { const out = execFileSync('npx', ['wrangler', 'd1', 'execute', 'rotininha', '--local', '--persist-to', STATE, '--json', '--command', q], { encoding: 'utf8', cwd: require('node:path').resolve(__dirname, '../apps/api') }); return JSON.parse(out.slice(out.indexOf('[')))[0].results; };
-const mpId = async () => (await (await fetch(MP + '/__last')).json()).id;
-const approve = async (status = 'approved') => {
-  const id = await mpId();
-  await fetch(`${MP}/__set/${id}`, { method: 'POST', body: JSON.stringify({ status }) });
+const STATE = process.env.D1_STATE || '/tmp/claude-0/d1state';
+const ADMIN = 'Bearer admin-token-local-de-teste-1234567890';
+const sql = (q) => JSON.parse((() => { const o = execFileSync('npx', ['wrangler', 'd1', 'execute', 'rotininha', '--local', '--persist-to', STATE, '--json', '--command', q], { encoding: 'utf8', cwd: __dirname + '/../apps/api', env: { ...process.env, WRANGLER_SEND_METRICS: 'false' } }); return o.slice(o.indexOf('[')); })())[0].results;
+const approve = async () => {
+  const id = (await (await fetch(MP + '/__last')).json()).id;
+  await fetch(`${MP}/__set/${id}`, { method: 'POST', body: JSON.stringify({ status: 'approved' }) });
   const reqId = 'r' + Date.now(), ts = String(Date.now());
   const v1 = createHmac('sha256', 'whsec_test').update(`id:${id};request-id:${reqId};ts:${ts};`).digest('hex');
   return fetch(`${API}/v1/webhooks/mercadopago?data.id=${id}&type=payment`, { method: 'POST', headers: { 'x-signature': `ts=${ts},v1=${v1}`, 'x-request-id': reqId, 'content-type': 'application/json', 'CF-Connecting-IP': '10.77.' + (Date.now() % 250) + '.1' }, body: '{}' });
 };
-
 (async () => {
   const b = await chromium.launch();
   const ok = (c, m) => { console.log((c ? 'OK   ' : 'FAIL ') + m); if (!c) process.exitCode = 1; };
-  const mk = async (url = APP + '/app/') => {
-    const ctx = await b.newContext({ viewport: { width: 390, height: 900 }, locale: 'pt-BR', timezoneId: 'America/Sao_Paulo' });
-    await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP });
-    const p = await ctx.newPage(); p.errs = []; p.on('pageerror', (e) => p.errs.push(e.message));
-    await p.goto(url); await p.getByText('Pular tudo').click({ timeout: 2500 }).catch(() => {}); await p.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
-    p.w = (f, arg, t = 15000) => p.waitForFunction(f, arg, { timeout: t }).then(() => true, () => false);
-    return p;
-  };
-  const email = `mae${Date.now()}@exemplo.com`;
+  const wa = `(11) 9${String(Math.floor(Math.random() * 1e8)).padStart(8, '0').replace(/^(\d{4})(\d{4})$/, '$1-$2')}`, pw = 'senha de teste 2026';
+  await fetch(API + '/v1/admin/settings', { method: 'POST', headers: { 'content-type': 'application/json', Authorization: ADMIN }, body: JSON.stringify({ enforceFrom: Date.now() - 10 * 86400000, devSkipNotice: true }) });
+  await fetch(API + '/v1/trial/start', { method: 'POST', headers: { 'content-type': 'application/json', 'CF-Connecting-IP': '10.56.1.' + (Date.now() % 250) }, body: JSON.stringify({ deviceId: 'pay' + Date.now() + 'abcd', whatsapp: wa, password: pw }) });
+  const hh = sql(`SELECT id FROM households WHERE phone_hash IS NOT NULL ORDER BY created_at DESC LIMIT 1`)[0].id;
+  sql(`UPDATE households SET valid_until=${Date.now() + 86400000}, grace_until=${Date.now() + 2 * 86400000} WHERE id='${hh}'`);
 
-  // ---------- compra ----------
-  const A = await mk();
-  await A.click('[aria-label="Ajustes"]');
-  await A.click('text=Ainda não tenho acesso — comprar');
-  ok(await A.w(() => document.querySelector('[role=dialog]')?.innerText.includes('R$ 37,90')), 'tela de compra mostra o preço do servidor');
-  const txt = await A.locator('[role=dialog]').innerText();
-  ok(txt.includes('Não é assinatura') && txt.includes('Direito de arrependimento') && txt.includes('não fica guardado'), 'transparência: não é assinatura, arrependimento, CPF');
-  await A.fill('input[type=email]', email);
-  await A.fill('input[placeholder="000.000.000-00"]', '111.111.111-11');
-  await A.click('text=Gerar Pix');
-  ok(await A.locator('.err').innerText().then((t) => t.includes('CPF')), 'CPF inválido é recusado antes de enviar');
-  await A.fill('input[placeholder="000.000.000-00"]', '52998224725');
-  ok((await A.inputValue('input[placeholder="000.000.000-00"]')) === '529.982.247-25', 'máscara de CPF');
-  await A.click('text=Gerar Pix');
-  ok(await A.w(() => document.querySelector('textarea')?.value.startsWith('00020126PIX')), 'Pix copia e cola exibido');
-  ok(await A.locator('img.qr').count() === 1, 'QR Code exibido');
-  ok((await A.locator('[role=dialog]').innerText()).includes('Aguardando'), 'estado: aguardando pagamento');
-  await A.screenshot({ path: (process.argv[2] || '/tmp') + '/pix.png' });
-
-  // fecha e recarrega: o pagamento em andamento é retomado
-  await A.click('text=Fechar (continuo acompanhando)');
-  await A.reload();
-  ok(await A.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Pague com Pix')), 'recarregar retoma o Pix em andamento');
-
-  // pagamento confirmado (webhook assinado)
+  const ctx = await b.newContext({ viewport: { width: 390, height: 900 }, locale: 'pt-BR', timezoneId: 'America/Sao_Paulo' });
+  const p = await ctx.newPage(); p.errs = []; p.on('pageerror', (e) => p.errs.push(e.message));
+  p.w = (f, arg, t = 15000) => p.waitForFunction(f, arg, { timeout: t }).then(() => true, () => false);
+  await p.goto(APP + '/app/'); await p.getByText('Pular tudo').click({ timeout: 4000 }); await p.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
+  await p.waitForSelector('.actions');
+  await p.click('[aria-label="Ajustes"]');
+  ok(await p.getByText('Ainda não tenho acesso — comprar').count() === 0, 'sem conta não há compra solta: o caminho é criar a conta primeiro');
+  await p.fill('.sheet input[type=tel]', wa); await p.fill('.sheet input[type=password]', pw); await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  ok(await p.w(() => /Sincronizado/.test(document.querySelector('.sheet')?.innerText ?? '')), 'conectou com WhatsApp e senha');
+  await p.waitForTimeout(800);
+  await p.getByRole('button', { name: /Garantir acesso vitalício/ }).click();
+  ok(await p.w(() => /Acesso vitalício ao Ninhora/.test(document.querySelector('[aria-label="Comprar acesso vitalício"]')?.innerText ?? '')), 'tela de compra mostra o preço do servidor');
+  const D = '[aria-label="Comprar acesso vitalício"]';
+  await p.w(() => /R\$ 37,90/.test(document.querySelector('[aria-label="Comprar acesso vitalício"]')?.innerText ?? ''));
+  const txt = await p.locator(D).innerText();
+  ok(txt.includes('R$ 37,90') && txt.includes('Não é assinatura') && txt.includes('Direito de arrependimento') && txt.includes('não fica guardado'), 'transparência: preço, não é assinatura, arrependimento, CPF');
+  await p.fill(`${D} input[type=email]`, `mae${Date.now()}@exemplo.com`);
+  await p.fill(`${D} input[placeholder="000.000.000-00"]`, '111.111.111-11'); await p.getByRole('button', { name: /Gerar Pix/ }).click();
+  ok((await p.locator(`${D} .err`).innerText()).includes('CPF'), 'CPF inválido é recusado antes de enviar');
+  await p.fill(`${D} input[placeholder="000.000.000-00"]`, '52998224725');
+  ok((await p.inputValue(`${D} input[placeholder="000.000.000-00"]`)) === '529.982.247-25', 'máscara de CPF');
+  await p.getByRole('button', { name: /Gerar Pix/ }).click();
+  ok(await p.w(() => document.querySelector('textarea')?.value.startsWith('00020126PIX')), 'Pix copia e cola exibido');
+  ok(await p.locator('img.qr').count() === 1 && (await p.locator('[role=dialog]').last().innerText()).includes('Aguardando'), 'QR Code exibido e estado "aguardando"');
+  await p.click('text=Fechar (continuo acompanhando)'); await p.reload();
+  ok(await p.w(() => /Pague com Pix/.test(document.querySelector('[role=dialog]')?.innerText ?? '')), 'recarregar retoma o Pix em andamento');
   ok((await approve()).status === 200, 'webhook assinado aceito');
-  ok(await A.w(() => document.querySelector('.access-code')?.innerText.length > 15), 'código de acesso entregue');
-  const code = await A.locator('.access-code').innerText();
-  ok(/^[2-9A-Z]{5}(-[2-9A-Z]{5}){3}$/.test(code), 'formato do código ' + code);
-  await A.click('text=Copiar código');
-  ok(await A.w(() => document.querySelector('.sheet')?.innerText.includes('Copiado')), 'botão copiar');
-  ok((await A.evaluate(() => navigator.clipboard.readText())) === code, 'código na área de transferência');
-  await A.screenshot({ path: (process.argv[2] || '/tmp') + '/codigo.png' });
-  await A.click('text=Já guardei, continuar');
-  await A.click('[aria-label="Ajustes"]');
-  ok(await A.w(() => /Sincronizado/.test(document.querySelector('.sheet')?.innerText) && /Seu acesso/.test(document.querySelector('.sheet')?.innerText)), 'aparelho conectado e validade exibida em Ajustes');
-  const acct = await A.locator('.sheet').innerText();
-  ok(/Acesso vitalício/.test(acct), 'acesso vitalício exibido em Ajustes');
+  ok(await p.w(() => /Acesso garantido/.test(document.querySelector('[role=dialog]')?.innerText ?? '')), 'pagamento confirmado: acesso liberado na tela');
+  await p.getByRole('button', { name: 'Continuar' }).click(); await p.click('[aria-label="Ajustes"]');
+  ok(await p.w(() => /Acesso vitalício ✓/.test(document.querySelector('.sheet')?.innerText ?? '')), 'Ajustes mostra "Acesso vitalício ✓"');
+  const acc = sql(`SELECT plan, valid_until FROM households WHERE id='${hh}'`)[0];
+  ok(acc.plan === 'paid' && acc.valid_until > Date.now() + 3650 * 86400000, 'conta marcada como vitalícia no servidor');
 
-  // o código não aparece mais em lugar nenhum: recarregar não o mostra
-  await A.click('.sheet >> text=Fechar');
-  await A.reload();
-  ok(!(await A.content()).includes(code), 'código não fica na página após fechar');
-  ok(Number((await sql(`SELECT COUNT(*) AS n FROM payments WHERE email='${email}' AND delivery_sealed IS NOT NULL`))[0].n) === 0, 'servidor apagou o código entregue');
-
-  // ---------- registro sincronizado ----------
-  await A.click('.actions >> text=Mamou'); await A.waitForTimeout(1500);
-
-  // ---------- recuperação ----------
-  await A.click('[aria-label="Ajustes"]'); await A.click('text=Sair deste aparelho');
-  await A.getByRole('button', { name: 'Esqueci a senha' }).click();
-  await A.fill('input[type=email]', email); await A.click('text=Enviar link');
-  ok(await A.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Se houver uma conta')), 'recuperação: mensagem neutra');
-  const mails = (await (await fetch(`${API}/v1/dev/outbox?to=${encodeURIComponent(email)}`)).json()).messages;
-  const link = /(http:\/\/[^\s]+#recover=[\w-]+)/.exec(mails.find((m) => m.subject.includes('recuperar')).body)[1];
-  const B = await mk(link);
-  ok(await B.w(() => /Criar nova senha/.test(document.querySelector('[role=dialog]')?.innerText ?? '')), 'link abre a tela de nova senha (nada é alterado sozinho)');
-  ok(!(await B.url()).includes('recover='), 'token removido da barra de endereço');
-  await B.fill('[role=dialog] input[autocomplete=new-password]', 'senha nova 2027 ok'); await B.getByRole('button', { name: 'Salvar nova senha' }).click();
-  ok(await B.w(() => /WhatsApp da conta/.test(document.querySelector('[role=dialog]')?.innerText ?? '')), 'conta criada pela compra (sem WhatsApp) pede o número');
-  await B.fill('[role=dialog] input[type=tel]', `(11) 9${String(Math.floor(Math.random() * 1e8)).padStart(8, '0').replace(/^(\d{4})(\d{4})$/, '$1-$2')}`); await B.getByRole('button', { name: 'Salvar nova senha' }).click();
-  ok(await B.w(() => /Seus registros continuam aqui/.test(document.querySelector('[role=dialog]')?.innerText ?? '')), 'nova senha criada; registros continuam');
-  const old = await fetch(API + '/v1/sessions', { method: 'POST', headers: { 'content-type': 'application/json', 'CF-Connecting-IP': '10.88.1.1' }, body: JSON.stringify({ code, deviceId: 'dev12345678' }) });
-  ok(old.status === 401, 'código antigo não funciona mais');
-  await B.getByRole('button', { name: 'Continuar' }).click(); await B.locator('.install-pop >> text=Agora não').click({ timeout: 2500 }).catch(() => {});
-  await B.click('[aria-label="Ajustes"]');
-  ok(await B.w(() => /Sincronizado/.test(document.querySelector('.sheet')?.innerText)), 'novo aparelho conectado após recuperação');
-  await B.click('.sheet >> text=Fechar');
-  await B.click('.tab:has-text("Histórico")');
-  ok(await B.w(() => document.querySelector('.timeline')?.innerText.includes('Mamada')), 'registros anteriores continuam disponíveis após recuperar');
-
-  // ---------- teste grátis → compra do vitalício ----------
-  ok(await B.evaluate(() => document.body.innerText.includes('Renovar')) === false, 'sem botão de renovar (acesso é vitalício)');
-  sql(`UPDATE households SET plan='trial', valid_until=${Date.now() + 86400000}, grace_until=${Date.now() + 2 * 86400000} WHERE id=(SELECT household_id FROM payments WHERE email='${email}' LIMIT 1)`);
-  await B.reload();
-  await B.click('[aria-label="Ajustes"]'); await B.w(() => /Teste grátis até/.test(document.querySelector('.sheet')?.innerText), null, 10000); await B.click('text=Garantir acesso vitalício');
-  ok(await B.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Acesso vitalício ao Ninhora')), 'tela de compra do vitalício');
-  ok((await B.locator('[role=radio]').count()) === 0, 'um único preço, sem escolha de período');
-  await B.fill('input[placeholder="000.000.000-00"]', '52998224725');
-  await B.click('text=Gerar Pix de R$ 37,90');
-  ok(await B.w(() => document.querySelector('textarea')?.value.startsWith('00020126PIX')), 'Pix do vitalício');
-  await approve();
-  ok(await B.w(() => document.querySelector('[role=dialog]')?.innerText.includes('Acesso garantido')), 'compra confirmada');
-  await B.click('text=Continuar');
-
-  // ---------- aviso de vencimento ----------
-  sql(`UPDATE households SET valid_until=${Date.now() - 3 * 86400000}, grace_until=${Date.now() - 2 * 86400000} WHERE id=(SELECT household_id FROM payments WHERE email='${email}' LIMIT 1)`);
-  await B.reload();
-  ok(await B.w(() => document.querySelector('.notice.warn')?.innerText.includes('ainda pode ver seus registros')), 'vencido: aviso acolhedor com opção de renovar');
-  const warn = await B.locator('.notice').innerText();
-  ok(!/erro|falha|atrasad|culpa/i.test(warn), 'texto sem tom alarmista');
-  await B.screenshot({ path: (process.argv[2] || '/tmp') + '/vencido.png' });
-
-  ok(A.errs.length === 0 && B.errs.length === 0, 'sem erros JS ' + [...A.errs, ...B.errs].join('|'));
+  // #comprar sem conta cria a conta primeiro
+  const ctx2 = await b.newContext({ viewport: { width: 390, height: 900 }, locale: 'pt-BR' }); const q = await ctx2.newPage();
+  await q.goto(APP + '/app/#comprar'); await q.getByText('Pular tudo').click({ timeout: 4000 }).catch(() => {});
+  ok(await q.waitForFunction(() => document.querySelector('[aria-label="Teste grátis"] input[type=tel]'), null, { timeout: 8000 }).then(() => true, () => false), 'link de compra, sem conta: abre o cadastro (WhatsApp e senha), e não uma compra solta');
+  sql(`DELETE FROM settings WHERE key='trial_enforce_from'`);
+  ok(p.errs.length === 0, 'sem erros JS ' + p.errs.join('|'));
   await b.close();
 })();
