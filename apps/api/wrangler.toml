@@ -16,7 +16,8 @@ ALLOWED_ORIGIN = "https://rotininha.relatoriorda.com.br"
 APP_URL = "https://rotininha.relatoriorda.com.br"
 PUBLIC_API_URL = "https://rotininha-api.robson-oc96.workers.dev"
 ALLOW_DEV_SIGNUP = "false"
-PAYMENTS_ENABLED = "false" # só "true" quando o Pix estiver validado no Mercado Pago (docs/TESTE-PAGAMENTO.md)
+# PAYMENTS_ENABLED (interruptor do pagamento) NÃO fica aqui: é um SEGREDO criado no painel da Cloudflare (Settings → Variables and Secrets,
+# tipo Secret, valor "true" para ligar; ausente ou "false" = desligado), para ligar e desligar sem terminal e sem novo deploy.
 VAPID_SUBJECT = "https://rotininha.relatoriorda.com.br"
 NETLIFY_LP_SITE_ID = "8a4412f9-7cfc-4df9-a1ce-073db2af892b" # LP de captação (só leitura do nº de leads)
 NETLIFY_LP_FORM = "ninhora-leads"
