@@ -221,9 +221,11 @@ const account = async (code) => (await (await post('/v1/billing/account', {}, aw
   sql(`DELETE FROM settings WHERE key IN ('trial_enforce_from','trial_days','notice_days')`);
   await axe(D, 'painel · cobrança');
   ok((await D.evaluate(() => window.__csp)).length === 0, 'painel sob CSP: nenhuma violação');
-  ok(await D.evaluate(() => sessionStorage.getItem('ninhora-admin') === 'token-errado-123' ? false : true) && (await D.evaluate(() => localStorage.length)) === 0, 'token só em sessionStorage (nada em localStorage)');
+  ok(await D.evaluate(() => localStorage.getItem('ninhora-admin')) === ADMIN, 'login lembrado neste aparelho (senha certa guardada, a errada nunca)');
+  await D.reload(); await D.waitForSelector('.bar');
+  ok(await D.locator('input[type=password]').count() === 0, 'ao reabrir o painel, entra sem pedir a senha');
   const robots = await D.locator('meta[name=robots]').getAttribute('content');
-  ok(/noindex/.test(robots) && !(await D.content()).includes('rel="manifest"'), 'painel fora dos buscadores e sem manifesto');
+  ok(/noindex/.test(robots) && (await D.content()).includes('href="/admin.webmanifest"') && !(await D.content()).includes('href="/manifest.webmanifest"'), 'painel fora dos buscadores, com manifesto próprio (não o do app)');
   await D.screenshot({ path: OUT + '/painel.png' });
 
   const errs = [A, D].flatMap((x) => x.errs).filter((e) => !/net::|favicon/i.test(e));

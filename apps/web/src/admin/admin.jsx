@@ -3,7 +3,12 @@ import { useState, useEffect, useCallback } from 'preact/hooks';
 import './admin.css';
 
 const API = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
-const store = { get: () => { try { return sessionStorage.getItem('ninhora-admin'); } catch { return null; } }, set: (v) => { try { v ? sessionStorage.setItem('ninhora-admin', v) : sessionStorage.removeItem('ninhora-admin'); } catch {} } };
+// Lembra o login neste aparelho (localStorage). "Sair" ou uma senha recusada apagam. Migra a sessão antiga, se houver.
+const KEY = 'ninhora-admin';
+const store = {
+  get: () => { try { return localStorage.getItem(KEY) || sessionStorage.getItem(KEY); } catch { return null; } },
+  set: (v) => { try { if (v) localStorage.setItem(KEY, v); else { localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); } } catch {} }
+};
 
 async function api(path, body, method) {
   const res = await fetch(API + path, { method: method ?? (body === undefined ? 'GET' : 'POST'), headers: { Authorization: 'Bearer ' + store.get(), 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
