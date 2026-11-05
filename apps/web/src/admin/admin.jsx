@@ -345,17 +345,50 @@ function Purchases() {
   );
 }
 
+// ---------------------------------------------------------------- famílias: excluir cadastro pelo WhatsApp
+function Families() {
+  const [wa, setWa] = useState(''); const [info, setInfo] = useState(null); const [msg, setMsg] = useState(null); const [busy, setBusy] = useState(false);
+  const look = async () => { setBusy(true); setMsg(null); const r = await api('/v1/admin/households/lookup', { whatsapp: wa }); setBusy(false); setInfo(r.status === 422 ? { bad: true } : r); };
+  const del = async (allowPaid) => {
+    const q = allowPaid ? 'Esta conta TEM compra ativa. Excluir mesmo assim? O acesso pago será perdido e não dá para desfazer.' : `Excluir definitivamente esta conta e os ${info.records} registros dela? Não dá para desfazer.`;
+    if (!window.confirm(q)) return;
+    setBusy(true); const r = await api('/v1/admin/households/delete', { whatsapp: wa, confirm: true, allowPaid: !!allowPaid }); setBusy(false);
+    if (r.deleted) { setMsg({ ok: 'Conta excluída.' }); setInfo(null); setWa(''); }
+    else if (r.error === 'has_payment') setInfo({ ...info, needPaid: true });
+    else setMsg({ err: 'Não foi possível excluir.' });
+  };
+  return (
+    <div class="grid" style="max-width:560px">
+      <h2>Excluir cadastro</h2>
+      <div class="card grid">
+        <p class="muted">Digite o WhatsApp da conta no app. O número não é guardado: o servidor confere por um código embaralhado. A exclusão apaga registros, lembretes, notificações e o login. O pagamento fica guardado, sem ligação com a pessoa.</p>
+        <label class="f">WhatsApp<input type="tel" inputmode="tel" placeholder="(11) 91234-5678" value={wa} onInput={(e) => { setWa(e.target.value); setInfo(null); setMsg(null); }} /></label>
+        <button class="btn" disabled={busy || wa.replace(/\D/g, '').length < 10} onClick={look}>Procurar conta</button>
+        {info?.bad && <p class="err" role="alert">Número inválido.</p>}
+        {info && info.found === false && <p class="muted">Nenhuma conta com esse número.</p>}
+        {info?.found && (
+          <div class="grid">
+            <p>Conta encontrada: <b>{info.plan === 'paid' ? 'com acesso pago' : 'em teste grátis'}</b>, criada em {dt(info.createdAt)}, com <b>{info.records}</b> registros{info.activePurchases ? <> e <b>{info.activePurchases} compra(s) ativa(s)</b></> : null}.</p>
+            {info.activePurchases > 0 && !info.needPaid && <p class="err">Esta conta tem compra ativa. Reembolse antes, se for o caso.</p>}
+            <button class="btn danger" disabled={busy} onClick={() => del(info.needPaid)}>{info.needPaid ? 'Excluir mesmo com compra ativa' : 'Excluir definitivamente'}</button>
+          </div>)}
+        {msg?.ok && <p class="ok" role="status">{msg.ok}</p>}{msg?.err && <p class="err" role="alert">{msg.err}</p>}
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [seed, setSeed] = useState(null);
-  const [tab, setTab] = useState(() => { const t = new URLSearchParams(location.search).get('tab'); return ['geral', 'compras', 'notif', 'auto', 'cobranca'].includes(t) ? t : 'geral'; });
+  const [tab, setTab] = useState(() => { const t = new URLSearchParams(location.search).get('tab'); return ['geral', 'compras', 'familias', 'notif', 'auto', 'cobranca'].includes(t) ? t : 'geral'; });
   if (!store.get()) return <Login />;
-  const TABS = [['geral', 'Visão geral'], ['compras', 'Compras'], ['notif', 'Notificações'], ['auto', 'Automações'], ['cobranca', 'Teste e cobrança']];
+  const TABS = [['geral', 'Visão geral'], ['compras', 'Compras'], ['familias', 'Famílias'], ['notif', 'Notificações'], ['auto', 'Automações'], ['cobranca', 'Teste e cobrança']];
   return (
     <div class="wrap">
       <div class="bar"><h1>Ninhora · painel</h1>
         <nav class="tabs" aria-label="Seções">{TABS.map(([k, l]) => <button class="tab" aria-current={tab === k ? 'page' : undefined} onClick={() => setTab(k)}>{l}</button>)}</nav>
         <button class="btn ghost" onClick={() => { store.set(null); location.reload(); }}>Sair</button></div>
-      {tab === 'geral' && <Overview />}{tab === 'compras' && <Purchases />}{tab === 'notif' && <Campaigns seed={seed} onSeedUsed={() => setSeed(null)} />}{tab === 'auto' && <Automations onReuse={(x) => { setSeed(x); setTab('notif'); }} />}{tab === 'cobranca' && <Billing />}
+      {tab === 'geral' && <Overview />}{tab === 'compras' && <Purchases />}{tab === 'familias' && <Families />}{tab === 'notif' && <Campaigns seed={seed} onSeedUsed={() => setSeed(null)} />}{tab === 'auto' && <Automations onReuse={(x) => { setSeed(x); setTab('notif'); }} />}{tab === 'cobranca' && <Billing />}
     </div>
   );
 }

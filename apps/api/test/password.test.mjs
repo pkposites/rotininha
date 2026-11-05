@@ -125,3 +125,23 @@ test('recuperar: link vencido é recusado; conta antiga (sem WhatsApp) informa o
   assert.equal((await post('/v1/sessions', { code, deviceId: dev() })).status, 401, 'o código antigo deixa de valer depois da recuperação');
   assert.equal((await post('/v1/sessions/password', { whatsapp: mine, password: PW, deviceId: dev() })).status, 201, 'conta antiga passa a entrar com WhatsApp e senha');
 });
+
+test('painel: procurar e excluir conta pelo WhatsApp (só admin; confirmação; compra ativa pede autorização)', async () => {
+  const ADMIN = 'admin-token-local-de-teste-1234567890';
+  const adm = (path, body) => post(path, body, ADMIN);
+  const wa = phone();
+  const a = await (await post('/v1/trial/start', { deviceId: dev(), whatsapp: wa, password: PW })).json();
+  assert.equal((await post('/v1/admin/households/lookup', { whatsapp: wa })).status, 401, 'sem senha do painel: recusado');
+  assert.equal((await adm('/v1/admin/households/lookup', { whatsapp: '123' })).status, 422);
+  assert.deepEqual(await (await adm('/v1/admin/households/lookup', { whatsapp: phone() })).json(), { found: false });
+  const info = await (await adm('/v1/admin/households/lookup', { whatsapp: wa })).json();
+  assert.equal(info.found, true); assert.equal(info.plan, 'trial'); assert.equal(info.activePurchases, 0);
+  assert.equal((await adm('/v1/admin/households/delete', { whatsapp: wa })).status, 400, 'sem confirmação não apaga');
+  assert.equal((await post('/v1/billing/account', {}, a.session.accessToken)).status, 200, 'conta ainda existe');
+  const del = await adm('/v1/admin/households/delete', { whatsapp: wa, confirm: true });
+  assert.equal(del.status, 200); assert.equal((await del.json()).deleted, true);
+  assert.equal((await post('/v1/billing/account', {}, a.session.accessToken)).status, 401, 'sessão da conta apagada deixa de valer');
+  assert.equal((await post('/v1/sessions/password', { whatsapp: wa, password: PW, deviceId: dev() })).status, 401, 'não entra mais');
+  assert.deepEqual(await (await adm('/v1/admin/households/lookup', { whatsapp: wa })).json(), { found: false });
+  assert.equal((await post('/v1/trial/start', { deviceId: dev(), whatsapp: wa, password: PW })).status, 201, 'o número pode criar conta de novo');
+});

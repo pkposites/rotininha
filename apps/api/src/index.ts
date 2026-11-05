@@ -271,6 +271,21 @@ export default {
           const sent = await notifyAdmins(env, { title: 'Ninhora · painel', body: 'Tudo certo! Você vai receber aqui o aviso de cada compra. 💜', tag: 'admin-test' }, now);
           return json({ sent }, 200, h);
         }
+        // Famílias: procurar e excluir pelo WhatsApp (o número nunca é guardado em texto: o servidor confere pelo hash)
+        if (req.method === 'POST' && (url.pathname === '/v1/admin/households/lookup' || url.pathname === '/v1/admin/households/delete')) {
+          const b = await readJson(req); const phone = normalizePhone(b?.whatsapp);
+          if (!phone) return json({ error: 'invalid_whatsapp' }, 422, h);
+          const hh = await env.DB.prepare('SELECT id, plan, created_at, valid_until FROM households WHERE phone_hash = ?').bind(await hashPhone(env, phone)).first<{ id: string; plan: string; created_at: number; valid_until: number | null }>();
+          if (!hh) return json({ found: false }, 200, h);
+          const recs = (await env.DB.prepare("SELECT COUNT(*) AS n FROM records WHERE household_id = ? AND deleted = 0").bind(hh.id).first<{ n: number }>())?.n ?? 0;
+          const pays = (await env.DB.prepare('SELECT COUNT(*) AS n FROM payments WHERE household_id = ? AND applied_at IS NOT NULL AND refunded_at IS NULL').bind(hh.id).first<{ n: number }>())?.n ?? 0;
+          const info = { found: true, plan: hh.plan, createdAt: hh.created_at, validUntil: hh.valid_until, records: recs, activePurchases: pays };
+          if (url.pathname.endsWith('/lookup')) return json(info, 200, h);
+          if (b.confirm !== true) return json({ error: 'confirm_required' }, 400, h);
+          if (pays > 0 && b.allowPaid !== true) return json({ error: 'has_payment', ...info }, 409, h);
+          await purgeHousehold(env, hh.id);
+          return json({ deleted: true, ...info }, 200, h);
+        }
         const g = await adminGrowth(env, req, url, now, h, json, readJson);
         return g ?? json({ error: 'not_found' }, 404, h);
       }
