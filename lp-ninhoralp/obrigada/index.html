@@ -1,0 +1,28 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">  <!-- Meta Pixel Ninhora - inicia sem autorização de anúncios -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('consent','revoke');
+    fbq('init','2132885950950048');
+    fbq('track','PageView');
+  </script>
+  <!-- Cadê o Lead: modo REQUIRED porque usamos um único banner próprio -->
+  <script id="cadeolead-tracker" src="https://cadeolead.com.br/tracker.js" data-key="pk_f545805f0bb84b7c84cbc22dab11b99d" data-consent="required" async></script>
+  <script src="/consent.js" defer></script>
+<title>Contato recebido · Ninhora</title><style>body{font-family:Inter,system-ui,sans-serif;background:#f4eefb;color:#25334a;display:grid;place-items:center;min-height:100vh;margin:0;padding:20px}.box{background:#fff;padding:45px 32px;border-radius:28px;box-shadow:0 22px 60px #6d56a622;text-align:center;max-width:460px}h1{font-size:29px;margin-bottom:13px;color:#6d56a6}p{line-height:1.7;color:#5e6278}a{display:inline-block;background:#6d56a6;color:white;border-radius:15px;padding:14px 22px;margin-top:15px;text-decoration:none;font-weight:700}</style><link rel="stylesheet" href="/consent-banner.css"></head><body><div class="box"><div style="font-size:56px" aria-hidden="true">💜</div><h1>Pronto, recebemos seu contato!</h1><p>Vamos enviar dicas e novidades da Ninhora pelo WhatsApp. Você pode pedir para sair quando quiser.</p><p><strong>O app já está disponível e é grátis.</strong> Abra agora e comece:</p><a id="app-link" href="https://rotininha.relatoriorda.com.br/app/?src=lp">Abrir a Ninhora →</a><p style="font-size:13px">Sem cartão. Você cria a conta com WhatsApp e senha. Receber dicas é opcional e não é obrigatório para usar o app.</p><a href="/" style="background:#f1ecfa;color:#6d56a6;margin-left:6px">Voltar ao início</a><p><a href='/privacidade' style='background:transparent;color:#6d56a6;padding:0;margin-top:10px;font-size:13px'>Política de Privacidade</a> · <a href="https://cadeolead.com.br/privacidade/pk_f545805f0bb84b7c84cbc22dab11b99d" style="background:transparent;color:#6d56a6;padding:0;font-size:13px">Cadê o Lead</a> · <a id="privacy-choices" href="#" style="background:transparent;color:#6d56a6;padding:0;font-size:13px">Cookies</a></p></div>  <aside class="privacy-banner" id="privacy-banner" role="dialog" aria-modal="false" aria-label="Preferências de privacidade" hidden>
+    <div class="privacy-banner-inner">
+      <div><strong>Sua privacidade importa 💜</strong><p>Usamos dados essenciais para o cadastro. Com sua autorização, permitimos medição de anúncios com Meta e Cadê o Lead, incluindo o envio de identificadores protegidos para mensurar conversões, e o uso do Microsoft Clarity para entender como a página é usada (cliques e rolagem, sem gravar o que você digita no formulário). Sem aceite, tudo continua funcionando, inclusive o app. <a href='/privacidade'>Entenda na Política de Privacidade</a>.</p></div>
+      <div class="privacy-banner-buttons"><button type="button" id="consent-reject">Só o essencial</button><button type="button" id="consent-accept">Aceitar medição</button></div>
+    </div>
+  </aside>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+ const incoming=new URLSearchParams(location.search), link=document.getElementById('app-link');
+ if(link){const u=new URL(link.href);for(const [k,v] of incoming.entries()) if((/^utm_[a-z0-9_]+$/i.test(k)||['fbclid','gclid','gbraid','wbraid'].includes(k))&&v.length<500)u.searchParams.append(k,v);link.href=u.toString();}
+ if(window.NinhoraAdsConsent===true){
+   try{
+     const raw=sessionStorage.getItem('ninhora_lead_pixel_pending');
+     if(raw){sessionStorage.removeItem('ninhora_lead_pixel_pending');const payload=JSON.parse(raw);if(payload.eventId && Date.now()-payload.created<1800000 && typeof fbq==='function')fbq('track','Lead',{}, {eventID:payload.eventId});}
+   }catch(_e){}
+ }
+});
+</script></body></html>
