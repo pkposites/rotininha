@@ -88,7 +88,7 @@ export default defineConfig({
       injectRegister: false,            // registro manual, só no app
       registerType: 'autoUpdate',
       scope: '/app/',
-      injectManifest: { globPatterns: ['app/**/*.html', 'assets/**/*.{js,css,woff2}', 'icons/**/*', '*.webmanifest'] },
+      injectManifest: { globPatterns: ['app/**/*.html', 'assets/**/*.{js,css,woff2}', 'icons/**/*', 'art/**/*.svg', '*.webmanifest'] },
       includeAssets: ['icons/icon.svg'],
       manifest: {
         id: '/app/',
@@ -99,8 +99,8 @@ export default defineConfig({
         start_url: '/app/',
         scope: '/app/',
         display: 'standalone',
-        background_color: '#FBF9F7',
-        theme_color: '#FBF9F7',
+        background_color: '#150C33',
+        theme_color: '#150C33',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },

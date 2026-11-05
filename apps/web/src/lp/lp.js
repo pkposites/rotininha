@@ -1,4 +1,5 @@
 import './lp.css';
+import './lp-premium.css';
 
 const API = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 const PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID ?? '';

@@ -17,3 +17,8 @@ Estas preferências valem para qualquer sessão que trabalhe neste repositório.
 - Segredos nunca passam pelo chat nem ficam no repositório.
 - Não mexer na LP de captação (`ninhoralp.relatoriorda.com.br`, projeto Netlify separado) sem pedido expresso.
 - Honestidade nos textos: não prometer recuperação por e-mail enquanto o envio de e-mails não estiver configurado.
+
+## Visual (Ninhora "Entardecer")
+- Identidade premium escura: violeta profundo com estrelas (`apps/web/src/sky.css`), vidro translúcido no lugar de caixas brancas, botões em pílula com gradiente, ilustrações da mãe e do bebê em `apps/web/public/art/`. Tokens em `tokens.css`; camada do app em `premium.css`; LP em `lp/lp-premium.css`; pacote da LP de captação em `lp-ninhoralp/premium.css`.
+- "Modo madrugada" é a variante ainda mais escura e calma. O painel (`/admin/`) fica claro e sóbrio de propósito.
+- Evitar o visual "ferramenta feita por IA": nada de caixas brancas, emojis dentro de quadrados, formulário em lista. Uma pergunta por tela no onboarding.

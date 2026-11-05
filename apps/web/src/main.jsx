@@ -1,6 +1,7 @@
 import { render } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import './styles.css';
+import './premium.css';
 import { useEvents } from './lib/useEvents.js';
 import {
   TYPES, lastOf, openSleep, formatElapsed, formatDuration, groupByDay, summarize
@@ -122,8 +123,9 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedba
   return (
     <>
       <section class="greet">
-        <h1>{greeting()}{profile.mom ? `, ${profile.mom}` : ''}! 💜</h1>
-        <p class="muted">{data}</p>
+        <div><h1>{greeting()}{profile.mom ? `, ${profile.mom}` : ''}! 💜</h1>
+        <p class="muted">{data}</p></div>
+        <img class="art art-float greet-art" src="/art/moon-baby.svg" width="92" height="92" alt="" aria-hidden="true" />
       </section>
       <div class="quick-intro">
         <h2 class="h3s">{profile.baby ? `Cuidados de ${profile.baby}` : 'O que o bebê acabou de fazer?'}</h2>
@@ -312,7 +314,7 @@ function App() {
   const openItem = openOcc ? dayItems(rem.tasks, rem.occs, now, rem.tz).find((i) => i.id === openOcc) ?? dayItems(rem.tasks, rem.occs, now, rem.tz, dateOfOcc(openOcc)).find((i) => i.id === openOcc) : null;
   useEffect(() => {
     document.documentElement.dataset.theme = night ? 'night' : 'day';
-    document.querySelector('meta[name=theme-color]')?.setAttribute('content', night ? '#171A2A' : '#FBF9F7');
+    document.querySelector('meta[name=theme-color]')?.setAttribute('content', night ? '#0A0816' : '#150C33');
     try { localStorage.setItem('night', night ? '1' : '0'); } catch {}
   }, [night]);
 

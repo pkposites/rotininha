@@ -8,12 +8,16 @@ import { LoginForm } from './LoginForm.jsx';
 import { syncAvailable } from './lib/sync.js';
 
 
-function Shell({ step, emoji, title, lead, children, actions }) {
+const BackIcon = () => <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg>;
+
+// `art`: ilustração opcional (só onde ajuda); `title` pode ter {destaque} em lilás, como "o nome do seu bebê".
+const withHl = (t) => String(t).split(/(\{[^}]+\})/).map((part) => (part.startsWith('{') ? <span class="hl">{part.slice(1, -1)}</span> : part));
+function Shell({ step, art, title, lead, children, actions }) {
   return (
     <>
       <div class={`onb-body${step === 'welcome' ? ' center' : ''}`} key={step}>
-        <div class="onb-hero" aria-hidden="true">{emoji}</div>
-        {step === 'welcome' ? <h1>{title}</h1> : <h2>{title}</h2>}
+        {art && <div class="onb-art" aria-hidden="true"><img class={`art${step === 'welcome' ? ' art-float' : ''}`} src={`/art/${art}.svg`} width={step === 'welcome' ? 260 : 200} height={step === 'welcome' ? 260 : 200} alt="" /></div>}
+        {step === 'welcome' ? <h1>{withHl(title)}</h1> : <h2>{withHl(title)}</h2>}
         {lead && <p class="onb-lead">{lead}</p>}
         {children}
       </div>
@@ -25,7 +29,10 @@ function Shell({ step, emoji, title, lead, children, actions }) {
 // Tela cheia, um passo por vez, botão principal sempre ao alcance do polegar. Tudo é opcional.
 // A faixa etária fica só neste aparelho.
 export function Onboarding({ store, rem, connected, onFinish, onRecover }) {
-  const [step, setStep] = useState('welcome');
+  const [step, setStepRaw] = useState('welcome');
+  const [hist, setHist] = useState([]);
+  const setStep = (n) => { setHist((h) => [...h, step]); setStepRaw(n); };
+  const back = () => { const h = hist.slice(); const prev = h.pop(); if (prev) { setHist(h); setStepRaw(prev); } };
   const [age, setAge] = useState(null);
   const [picked, setPicked] = useState(['noite']);
   const [helpOpen, setHelpOpen] = useState(null);
@@ -50,23 +57,24 @@ export function Onboarding({ store, rem, connected, onFinish, onRecover }) {
     <div class="onb" role="dialog" aria-modal="true" aria-label="Primeiros passos">
       <div class="onb-card">
         <div class="onb-top">
-          <div class="dots" aria-hidden="true">{ORDER.map((s, i) => <span class={`dot${i === idx ? ' on' : ''}`} />)}</div>
-          {step !== 'welcome' && <button class="link" onClick={finish}>Pular</button>}
+          <button class="onb-back" aria-label="Passo anterior" onClick={back} hidden={!hist.length}><BackIcon /></button>
+          <div class="onb-progress" role="progressbar" aria-label="Progresso" aria-valuemin="0" aria-valuemax={ORDER.length} aria-valuenow={Math.max(0, idx) + 1}><i style={{ width: `${((Math.max(0, idx) + 1) / ORDER.length) * 100}%` }} /></div>
+          {step !== 'welcome' ? <button class="link" onClick={finish}>Pular</button> : <span style="width:44px" />}
         </div>
 
         {step === 'welcome' && (
-          <Shell step={step} emoji="💜" title="Oi! Uma ajudinha na sua rotina" lead="Vamos deixar tudo pronto em 1 minuto. Você pode pular qualquer passo e mudar tudo depois."
+          <Shell step={step} art="moon-baby" title="Uma ajudinha na sua {rotina de mãe}" lead="Vamos deixar tudo pronto em 1 minuto. Você pode pular qualquer passo e mudar tudo depois."
             actions={<><button class="btn" onClick={() => setStep('age')}>Vamos lá</button>{syncAvailable && !connected && <button class="btn ghost" onClick={() => setStep('login')}>Já tenho cadastro</button>}<button class="link" onClick={finish}>Pular tudo</button></>} />
         )}
 
         {step === 'login' && (
-          <Shell step={step} emoji="👋" title="Entrar na sua conta" lead="Use o WhatsApp e a senha que você criou. Seus registros voltam para este aparelho." actions={<></>}>
+          <Shell step={step} title="Entrar na sua {conta}" lead="Use o WhatsApp e a senha que você criou. Seus registros voltam para este aparelho." actions={<></>}>
             <LoginForm onDone={finish} onBack={() => setStep('welcome')} onRecover={onRecover} />
           </Shell>
         )}
 
         {step === 'age' && (
-          <Shell step={step} emoji="🍼" title="Quantos meses tem o bebê?" lead="Só para a gente se conhecer melhor. Fica apenas neste aparelho, e você pode não informar."
+          <Shell step={step} title="Quantos {meses} tem o bebê?" lead="Só para a gente se conhecer melhor. Fica apenas neste aparelho, e você pode não informar."
             actions={<button class="btn" onClick={async () => { if (age) await setPref('ageBand', age); setStep('how'); }}>{age ? 'Continuar' : 'Prefiro não informar'}</button>}>
             <div class="chips" role="group" aria-label="Faixa etária">
               {AGE_BANDS.map(([k, l]) => <button class="chip" aria-pressed={age === k} onClick={() => setAge(k)}>{l}</button>)}
@@ -75,7 +83,7 @@ export function Onboarding({ store, rem, connected, onFinish, onRecover }) {
         )}
 
         {step === 'how' && (
-          <Shell step={step} emoji="✨" title="Comece por aqui" lead="O Ninhora ajuda você a lembrar do que o seu bebê precisa e a registrar o dia dele, de um jeito simples."
+          <Shell step={step} art="mama-baby" title="Comece {por aqui}" lead="O Ninhora ajuda você a lembrar do que o seu bebê precisa e a registrar o dia dele, de um jeito simples."
             actions={<button class="btn" onClick={() => setStep('templates')}>Usar um modelo editável</button>}>
             <ul class="how-list">
               <li><span aria-hidden="true">🍼</span><span><strong>Registre em um toque</strong><br />Mamadas, sono e fraldas, com o horário certinho.</span></li>
@@ -87,7 +95,7 @@ export function Onboarding({ store, rem, connected, onFinish, onRecover }) {
         )}
 
         {step === 'templates' && (
-          <Shell step={step} emoji="🗓️" title="Escolha os modelos" lead="Modelos são lembretes prontos que se repetem todo dia, para você não precisar guardar tudo de cabeça. Marque os que fizerem sentido, ajuste o horário e toque em “Criar lembretes”. Depois dá para editar ou apagar quando quiser, na tela Hoje. Cada bebê e cada família têm o seu ritmo: os horários são só exemplos."
+          <Shell step={step} title="Escolha os {modelos}" lead="Modelos são lembretes prontos que se repetem todo dia, para você não precisar guardar tudo de cabeça. Marque os que fizerem sentido, ajuste o horário e toque em “Criar lembretes”. Depois dá para editar ou apagar quando quiser, na tela Hoje. Cada bebê e cada família têm o seu ritmo: os horários são só exemplos."
             actions={<button class="btn" disabled={busy} onClick={createFromTemplates}>{picked.length ? 'Criar lembretes' : 'Continuar sem modelos'}</button>}>
             <ul class="tpl">
               {TEMPLATES.map((t) => (
@@ -110,7 +118,7 @@ export function Onboarding({ store, rem, connected, onFinish, onRecover }) {
         )}
 
         {step === 'first' && (
-          <Shell step={step} emoji="👶" title="Quer registrar o primeiro cuidado?" lead="É só um toque. Você pode corrigir o horário depois."
+          <Shell step={step} art="moon-baby" title="Quer registrar o {primeiro cuidado}?" lead="É só um toque. Você pode corrigir o horário depois."
             actions={<button class={logged ? 'btn' : 'link'} onClick={afterFirst}>{logged ? 'Continuar' : 'Depois'}</button>}>
             <div class="actions">
               {['mamada', 'sono', 'fralda'].map((t) => (
@@ -124,7 +132,7 @@ export function Onboarding({ store, rem, connected, onFinish, onRecover }) {
         )}
 
         {step === 'trial' && (
-          <Shell step={step} emoji="🎁" title="Guardar seus registros" actions={<></>}>
+          <Shell step={step} title="Guardar seus {registros}" actions={<></>}>
             <TrialFlow compact onDone={finish} onSkip={finish} onHaveAccount={() => setStep('login')} />
           </Shell>
         )}

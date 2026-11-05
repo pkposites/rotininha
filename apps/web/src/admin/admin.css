@@ -45,3 +45,11 @@ th { font-size: 12px; color: var(--text-muted); font-weight: 700; }
 .sw { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; }
 .sw input { width: 20px; height: 20px; }
 @media (max-width: 640px) { .wrap { padding: 10px; } th, td { padding: 6px 3px; font-size: 13px; } }
+
+/* O painel é uma ferramenta interna: segue claro e sóbrio, independente do visual escuro do app. */
+body.admin {
+  color-scheme: light;
+  --brand-primary: #6D56A6; --brand-lilac-100: #F1ECFA; --surface-base: #FBF9F7; --surface-card: #FFFFFF;
+  --text-main: #25334A; --text-muted: #566070; --text-muted-on-lilac: #4F5868; --border-subtle: #E8E4EB;
+  --success-ink: #2E716B; --success-bg: #E9F5F0; --warning-ink: #8A5B00; --warning-bg: #FFF2D6;
+}

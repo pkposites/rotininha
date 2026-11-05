@@ -11,7 +11,7 @@ Pasta completa para substituir a LP `ninhoralp.relatoriorda.com.br` (projeto Net
 - **Clarity** (`z6vtf1eenb`) incluído no `consent.js`: só carrega depois de "Aceitar medição"; formulário mascarado.
 
 ## Arquivos
-`index.html`, `styles.css` (novo trecho no final), `script.js` (igual ao atual), `consent.js` (com o Clarity), `obrigada/index.html`, `privacidade.html` (o nome do arquivo no site pode ser `privacidade/index.html`: mantenha o que a LP já usa), `assets/mae-bebe.webp`.
+`index.html`, `styles.css`, **`premium.css`** (novo: visual escuro premium, carrega depois do styles.css), **`assets/art/`** (ilustrações da mãe e do bebê), `script.js` (igual ao atual), `consent.js` (com o Clarity), `obrigada/index.html`, `privacidade.html` (o nome do arquivo no site pode ser `privacidade/index.html`: mantenha o que a LP já usa), `assets/mae-bebe.webp`.
 
 ## Antes de publicar
 - **Não use o snippet de injeção do Netlify do Clarity junto com este `consent.js`**: o Clarity carregaria duas vezes. Use um ou outro.
@@ -25,6 +25,6 @@ Sem menção a lista/preparação; botões com `?src=lp`; campos do formulário 
 ```text
 Atualize a LP de captação da Ninhora (https://ninhoralp.relatoriorda.com.br/, projeto Netlify "calm-arithmetic-e1bbd9") usando os arquivos da pasta `lp-ninhoralp/` do repositório pkposites/rotininha, branch `claude/new-session-64jni6` (leia o LEIA-ME.md dessa pasta antes).
 Regras: não mexa na função "ninhora-form-capi", no formulário Netlify "ninhora-leads" (campos e ids), no tracker Cadê o Lead, no Meta Pixel, no Worker "ninhora-capi-leads", em variáveis de ambiente nem em domínios. Não publique arquivos soltos: publique a pasta inteira da LP, incluindo as funções. Se houver snippet de injeção do Clarity no Netlify, REMOVA-O (o consent.js novo já carrega o Clarity depois do aceite; os dois juntos carregariam duas vezes).
-Passos: 1) copie index.html, styles.css, script.js, consent.js, obrigada/index.html, privacidade (o arquivo de privacidade que a LP já usa) e assets/ para a pasta da LP; 2) rode a LP localmente e confira: nenhuma menção a "lista de espera/interesse/em preparação"; os botões "Começar grátis" levam a https://rotininha.relatoriorda.com.br/app/?src=lp; o formulário tem todos os campos originais; 3) só então publique; 4) abra em janela anônima, confirme que o Clarity só carrega depois de "Aceitar medição" e envie UM cadastro de teste com dados fictícios (me avise antes, para apagarmos o lead).
+Passos: 1) copie index.html, styles.css, premium.css, script.js, consent.js, obrigada/index.html, privacidade (o arquivo de privacidade que a LP já usa) e assets/ (incluindo assets/art) para a pasta da LP; 2) rode a LP localmente e confira: nenhuma menção a "lista de espera/interesse/em preparação"; os botões "Começar grátis" levam a https://rotininha.relatoriorda.com.br/app/?src=lp; o formulário tem todos os campos originais; 3) só então publique; 4) abra em janela anônima, confirme que o Clarity só carrega depois de "Aceitar medição" e envie UM cadastro de teste com dados fictícios (me avise antes, para apagarmos o lead).
 Ao terminar, diga o que alterou, o que testou e o que ficou pendente.
 ```

@@ -1,0 +1,18 @@
+/* Céu da Ninhora: fundo violeta com estrelas (compartilhado entre app e LP). */
+html { background: var(--surface-base); }
+body { background: var(--bg-art); background-attachment: fixed; background-color: var(--surface-base); min-height: 100dvh; position: relative; }
+/* céu: estrelinhas fixas (CSS puro, sem imagem) */
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: var(--star-op);
+  background-image:
+    radial-gradient(1.6px 1.6px at 8% 12%, #fff, transparent 60%), radial-gradient(1.2px 1.2px at 22% 28%, #E9E1FF, transparent 60%),
+    radial-gradient(1.8px 1.8px at 38% 8%, #fff, transparent 60%), radial-gradient(1.2px 1.2px at 52% 22%, #D9CCFF, transparent 60%),
+    radial-gradient(1.6px 1.6px at 68% 11%, #fff, transparent 60%), radial-gradient(1.2px 1.2px at 84% 24%, #E9E1FF, transparent 60%),
+    radial-gradient(1.4px 1.4px at 93% 9%, #fff, transparent 60%), radial-gradient(1.2px 1.2px at 15% 46%, #D9CCFF, transparent 60%),
+    radial-gradient(1.4px 1.4px at 78% 42%, #fff, transparent 60%), radial-gradient(1.2px 1.2px at 6% 70%, #E9E1FF, transparent 60%),
+    radial-gradient(1.6px 1.6px at 90% 66%, #fff, transparent 60%), radial-gradient(1.2px 1.2px at 46% 58%, #D9CCFF, transparent 60%),
+    radial-gradient(1.4px 1.4px at 30% 86%, #fff, transparent 60%), radial-gradient(1.2px 1.2px at 72% 90%, #E9E1FF, transparent 60%);
+  animation: twinkle 7s ease-in-out infinite alternate;
+}
+@keyframes twinkle { from { opacity: calc(var(--star-op) * .55); } to { opacity: var(--star-op); } }
+img[src$="mama-baby.svg"] { -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent); }

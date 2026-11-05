@@ -16,10 +16,15 @@ export const ChevronIcon = I(<path d="m9 6 6 6-6 6" />);
 
 /** Marca do app (mesmo desenho do ícone instalado). */
 export const BrandMark = (props) => (
-  <svg viewBox="0 0 512 512" width="28" height="28" aria-hidden="true" focusable="false" {...props}>
-    <rect width="512" height="512" rx="112" fill="#6D56A6" />
-    <circle cx="256" cy="256" r="120" fill="none" stroke="#F1ECFA" stroke-width="28" />
-    <path d="M256 170v90l56 34" fill="none" stroke="#F1ECFA" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" />
+  <svg viewBox="0 0 512 512" width="30" height="30" aria-hidden="true" focusable="false" {...props}>
+    <defs>
+      <linearGradient id="bm-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7B5CF5" /><stop offset="1" stop-color="#2A1766" /></linearGradient>
+      <linearGradient id="bm-m" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF1C9" /><stop offset=".6" stop-color="#FFD0B0" /><stop offset="1" stop-color="#F0A9D6" /></linearGradient>
+      <mask id="bm-c"><rect width="512" height="512" fill="#fff" /><circle cx="318" cy="200" r="150" fill="#000" /></mask>
+    </defs>
+    <rect width="512" height="512" rx="112" fill="url(#bm-bg)" />
+    <circle cx="236" cy="262" r="168" fill="url(#bm-m)" mask="url(#bm-c)" />
+    <path d="M372 112l9 26 26 9-26 9-9 26-9-26-26-9 26-9z" fill="#fff" />
   </svg>
 );
 export const ShareIcon = I(<><path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></>);

@@ -1,0 +1,69 @@
+@import '../sky.css';
+/* LP "Entardecer": violeta profundo, vidro, ilustrações de mãe e bebê. Vem depois de lp.css. */
+:root { color-scheme: dark; }
+body { overflow-x: hidden; }
+header, main, footer { position: relative; z-index: 1; }
+h1, h2 { letter-spacing: -.025em; }
+h1 { font-size: 38px; line-height: 44px; }
+.hl { color: var(--brand-primary); }
+.skip { color: #1B1047; }
+
+/* topo */
+.top .btn.ghost { background: rgba(255,255,255,.08); color: var(--text-main); border: 1px solid var(--border-subtle); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.brand { color: var(--text-main); }
+
+/* botões em pílula com brilho */
+.btn { background: var(--btn-bg); color: var(--btn-ink); border-radius: 999px; font-weight: 700; box-shadow: var(--btn-glow); }
+.btn.ghost { background: rgba(255,255,255,.07); color: var(--text-main); border: 1px solid var(--border-subtle); box-shadow: none; }
+.btn[aria-disabled=true] { box-shadow: none; }
+.chip { background: rgba(255,255,255,.06); color: var(--text-main); }
+.chip[aria-pressed=true] { background: var(--brand-lilac-100); border-color: var(--brand-primary); color: var(--text-main); }
+
+/* hero com ilustração */
+.hero { position: relative; }
+.hero-art { display: block; margin: 0 auto -8px; width: min(300px, 78vw); height: auto; filter: drop-shadow(0 24px 50px rgba(119,87,240,.5)); }
+.hero .lead { color: var(--text-muted); }
+.slogan { color: var(--brand-primary); }
+.hero-cta { justify-items: stretch; }
+
+/* vidro no lugar das caixas brancas */
+.card { background: var(--surface-card); border-color: var(--border-subtle); box-shadow: var(--shadow-card); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.ico { background: var(--brand-lilac-100); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.steps li { background: rgba(255,255,255,.05); box-shadow: none; }
+.steps li::before { background: var(--btn-bg); color: #fff; }
+details { background: rgba(255,255,255,.05); border-color: var(--border-subtle); }
+.pv-screen { background: rgba(255,255,255,.05); border: 1px solid var(--border-subtle); }
+.pv-screen .rem-row { background: rgba(255,255,255,.07); border-color: var(--border-subtle); }
+.pv-screen .hl { outline-color: var(--brand-primary); }
+.notice-box { background: var(--warning-bg); color: var(--warning-ink); }
+footer { border-top-color: var(--border-subtle); }
+
+/* celular da demonstração */
+.phone { background: #0C0720; box-shadow: 0 30px 70px rgba(5,2,20,.6), 0 0 0 1px rgba(255,255,255,.14) inset, 0 0 80px rgba(119,87,240,.35); }
+.screen { background: linear-gradient(180deg,#2A1A66,#150C33); color: var(--text-main); }
+.mini div, .rems { background: rgba(255,255,255,.08); border-color: var(--border-subtle); color: var(--text-main); }
+.rem-row { border-top-color: var(--border-subtle); }
+.notif { background: #fff; color: #241A4A; border-color: rgba(0,0,0,.08); }
+.notif small { color: #5C5478; }
+.toast-demo { background: var(--success-bg); color: var(--success-ink); }
+.end { background: linear-gradient(160deg,#6A49E8,#2A1766); }
+.cap { color: var(--brand-primary); }
+.badge { background: var(--warning-bg); color: var(--warning-ink); }
+
+/* oferta: cartão de destaque com ilustração */
+.offer { position: relative; overflow: hidden; background: linear-gradient(150deg,#5B3CDB 0%,#34208A 55%,#241466 100%); color: #fff; border: 1px solid rgba(255,255,255,.18); box-shadow: 0 24px 60px rgba(60,35,170,.5); text-align: center; justify-items: center; }
+.offer h2, .offer .big { color: #fff; }
+.offer .muted, .offer p { color: #E8E1FF; }
+.offer .btn { background: #fff; color: #2A1766; box-shadow: 0 12px 30px rgba(0,0,0,.3); }
+.offer-art { width: 150px; height: auto; margin: -6px auto 0; filter: drop-shadow(0 12px 28px rgba(0,0,0,.35)); }
+
+/* barra fixa e consentimento */
+.sticky-cta { background: rgba(21,12,51,.82); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); border-top: 1px solid var(--border-subtle); }
+.consent { background: var(--surface-solid); color: var(--text-main); border: 1px solid var(--border-subtle); box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+.consent .muted { color: var(--text-muted); }
+input[type=checkbox] { accent-color: #8F73FF; }
+
+@media (min-width: 760px) {
+  h1 { font-size: 48px; line-height: 54px; }
+  .hero-art { margin: 0 0 -10px; width: 340px; }
+}

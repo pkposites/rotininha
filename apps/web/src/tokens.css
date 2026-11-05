@@ -1,38 +1,47 @@
-/* Design tokens — PRD §6 */
+/* Design tokens — Ninhora "Entardecer" (violeta profundo, vidro e brilho suave) */
 :root {
-  --brand-primary: #6D56A6; --brand-lilac-100: #F1ECFA;
-  --surface-base: #FBF9F7; --surface-card: #FFFFFF;
-  --text-main: #25334A; --text-muted: #6B7380;
-  --success-ink: #2E716B; --success-bg: #E9F5F0;
-  --warning-ink: #8A5B00; --warning-bg: #FFF2D6;
-  --peach-soft: #F8E5DC; --border-subtle: #E8E4EB;
-  --night-bg: #171A2A; --night-card: #24283B;
-  --night-text: #F5F2FB; --night-accent: #C2B5F0;
+  --brand-primary: #C9BAFF; --brand-solid: #7757F0; --brand-lilac-100: rgba(167,139,250,.18);
+  --surface-base: #150C33; --surface-card: rgba(255,255,255,.07); --surface-solid: #20144A;
+  --text-main: #F8F5FF; --text-muted: #C0B7E6;
+  --success-ink: #92E4D2; --success-bg: rgba(80,205,170,.16);
+  --warning-ink: #FFDDA0; --warning-bg: rgba(255,192,96,.16);
+  --peach-soft: #FFD5C4; --border-subtle: rgba(255,255,255,.13);
+  --night-bg: #0A0816; --night-card: rgba(255,255,255,.05);
+  --night-text: #EEE9FA; --night-accent: #B6A6F2;
 
-  --header-bg: rgba(251,249,247,.88); --tabbar-bg: rgba(255,255,255,.92);
-  --toast-bg: #25334A; --toast-text: #FFFFFF; --toast-link: #C2B5F0;
-  --shadow-card: 0 1px 2px rgba(37,51,74,.05), 0 6px 18px rgba(37,51,74,.06);
-  --tile-mamada: #F8E5DC; --tile-sono: #E7E0F7; --tile-fralda: #E1F0E8; --tile-ico: rgba(255,255,255,.75);
-  --text-muted-on-lilac: #4F5868; /* o cinza secundário padrão não atinge 4,5:1 sobre o lilás */
+  --header-bg: rgba(21,12,51,.55); --tabbar-bg: rgba(38,24,86,.78);
+  --toast-bg: #33236E; --toast-text: #FFFFFF; --toast-link: #D3C8FF;
+  --shadow-card: 0 14px 34px rgba(5,2,18,.32);
+  --tile-mamada: linear-gradient(150deg,#9A4A86,#5F2B6C); --tile-sono: linear-gradient(150deg,#5143D0,#2F2792); --tile-fralda: linear-gradient(150deg,#2D8A8F,#1B5870);
+  --tile-ico: rgba(255,255,255,.18);
+  --text-muted-on-lilac: #D2CAF0;
+
+  --btn-bg: linear-gradient(135deg,#7757F0,#5B3CDB); --btn-ink: #fff; --btn-glow: 0 12px 30px rgba(119,87,240,.45);
+  --bg-art: radial-gradient(120% 55% at 12% -8%, rgba(120,84,235,.55), transparent 62%), radial-gradient(80% 45% at 105% 8%, rgba(255,150,190,.16), transparent 60%), linear-gradient(180deg, #1B1047 0%, #130A2E 55%, #0E0722 100%);
+  --star-op: .85;
 
   --font-head: 'Nunito Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --radius-btn: 16px; --radius-card: 20px;
+  --radius-btn: 999px; --radius-card: 24px;
   --space-1: 8px; --space-2: 12px; --space-3: 16px; --space-4: 24px; --space-5: 32px;
   --touch: 44px;
 }
 
-/* Modo madrugada */
+/* Modo madrugada: mais escuro e calmo, para mamadas à noite */
 [data-theme='night'] {
-  --header-bg: rgba(23,26,42,.88); --tabbar-bg: rgba(36,40,59,.94);
-  --toast-bg: #3A3F5E; --toast-text: #F5F2FB; --toast-link: #C2B5F0;
-  --shadow-card: 0 1px 2px rgba(0,0,0,.25);
-  --tile-mamada: #3B3340; --tile-sono: #2F2D4D; --tile-fralda: #263A3A; --tile-ico: rgba(255,255,255,.12);
+  --header-bg: rgba(10,8,22,.6); --tabbar-bg: rgba(22,18,44,.82);
+  --toast-bg: #2A2450; --toast-text: #EEE9FA; --toast-link: #C2B5F0;
+  --shadow-card: 0 10px 26px rgba(0,0,0,.4);
+  --tile-mamada: linear-gradient(150deg,#5B3556,#3A2347); --tile-sono: linear-gradient(150deg,#3A3585,#262358); --tile-fralda: linear-gradient(150deg,#255F64,#183D50);
+  --tile-ico: rgba(255,255,255,.12);
   --text-muted-on-lilac: #B8B3C9;
-  --surface-base: var(--night-bg); --surface-card: var(--night-card);
+  --surface-base: var(--night-bg); --surface-card: var(--night-card); --surface-solid: #181433;
   --text-main: var(--night-text); --text-muted: #B8B3C9;
-  --brand-primary: var(--night-accent); --brand-lilac-100: #2E3250;
-  --border-subtle: #353A57;
-  --success-bg: #1F3A38; --success-ink: #8FD3C9;
-  --warning-bg: #3A3220; --warning-ink: #F0CF8A;
+  --brand-primary: var(--night-accent); --brand-lilac-100: rgba(150,130,230,.16);
+  --border-subtle: rgba(255,255,255,.1);
+  --btn-bg: var(--night-accent); --btn-ink: var(--night-bg); --btn-glow: 0 8px 22px rgba(150,130,230,.25);
+  --bg-art: radial-gradient(110% 45% at 15% -10%, rgba(80,60,160,.35), transparent 60%), linear-gradient(180deg, #0E0B20 0%, #0A0816 100%);
+  --star-op: .45;
+  --success-bg: rgba(60,160,140,.18); --success-ink: #8FD3C9;
+  --warning-bg: rgba(220,170,80,.16); --warning-ink: #F0CF8A;
 }
