@@ -169,8 +169,11 @@ test('notificação de teste chega cifrada', async () => {
 });
 
 test('troca de fuso reagenda os lembretes', async () => {
-  // horário "daqui a 6 h" em SP: o disparo de SP e o de Nova York ficam sempre a 2 h de distância, qualquer que seja a hora em que o teste rode
-  const hh = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' }).format(Date.now() + 6 * 3_600_000);
+  // Horário entre 10h e 18h em SP: em SP e em Nova York (2 h antes) fica fora do silêncio (22h–6h), e o disparo de NY vem 2 h depois do de SP,
+  // qualquer que seja a hora em que o teste rode.
+  const hourSP = (ms) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' }).format(ms));
+  let hh = '10';
+  for (let k = 1; k <= 24; k++) { const h = hourSP(Date.now() + k * 3_600_000); if (h >= 10 && h <= 18) { hh = String(h).padStart(2, '0'); break; } }
   const f = await family(); const t = task({ time: `${hh}:00` }); await f.sync([t]);
   const spFire = fireOf(t).fireAt;
   assert.equal((await post('/v1/settings', { timezone: 'America/New_York' }, f.token)).status, 200);

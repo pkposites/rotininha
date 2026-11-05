@@ -5,7 +5,7 @@ import { applyChanges, changesSince, householdTz, rescheduleAll } from './record
 import { saveSubscription, removeSubscription, endpointAllowed, pushToHousehold, runDue } from './push';
 import { isValidTimeZone } from '../../../packages/shared/schedule.js';
 import { PLANS, ENTRY_PLANS, RENEWAL_PLANS, DAY_MS } from './plans';
-import { trackingFrom, createPix, paymentStatus, claimAccess, handleMpEvent, accountState, lastPayerEmail, requestRecovery, confirmRecovery, resetPasswordWithToken } from './billing';
+import { trackingFrom, createPix, paymentStatus, claimAccess, handleMpEvent, accountState, lastPayerEmail, requestRecovery, confirmRecovery, resetPasswordWithToken, reconcilePending } from './billing';
 import { verifyMpSignature } from './mpsig';
 import { normEmail, normCpf } from './validate';
 import { exportHousehold, purgeHousehold } from './privacy';
@@ -300,7 +300,7 @@ export default {
         const body = (await readJson(req)) ?? {};
         const at = Number.isSafeInteger(body.now) ? body.now : now;
         const due = await runDue(env, at);
-        return json({ ...due, growth: await runGrowth(env, at, true) }, 200, h);
+        return json({ ...due, growth: await runGrowth(env, at, true), payments: await reconcilePending(env, at) }, 200, h);
       }
 
       // --- Daqui em diante: autenticado ---
@@ -522,7 +522,8 @@ export default {
       const now = Date.now();
       const r = await runDue(env, now);
       const g = await runGrowth(env, now, false);
-      console.log('cron', JSON.stringify({ ...r, growth: g }));
+      const pay = await reconcilePending(env, now);
+      console.log('cron', JSON.stringify({ ...r, growth: g, payments: pay }));
     })());
   }
 };

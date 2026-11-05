@@ -37,7 +37,7 @@ before(async () => {
       if (body.payment_method_id !== 'pix' || !body.payer?.email || !body.payer?.identification?.number) return send(400, { message: 'dados do pagador' });
       const id = ++mp.seq;
       const p = { id, status: 'pending', transaction_amount: body.transaction_amount, currency_id: 'BRL', payment_method_id: 'pix',
-        external_reference: body.external_reference, point_of_interaction: { transaction_data: { qr_code: '00020126PIX' + id, qr_base64: 'iVBORw0KGgo' + id } } };
+        external_reference: body.external_reference, point_of_interaction: { transaction_data: { qr_code: '00020126PIX' + id, qr_code_base64: 'iVBORw0KGgo' + id } } };
       mp.payments.set(String(id), p); mp.created.push({ body, headers: req.headers });
       return send(201, p);
     }
@@ -360,4 +360,21 @@ test('limites: checkout por e-mail e recuperação por e-mail', async () => {
   const same = `same${rnd()}@exemplo.com`; let ls;
   for (let i = 0; i < 4; i++) ls = await post('/v1/recovery/request', { email: same });
   assert.equal(ls.status, 429);
+});
+
+test('rede de segurança: Pix aprovado no Mercado Pago SEM webhook é liberado pelo Cron', async () => {
+  const c = await buy();
+  setMp(c.mpId, { status: 'approved' });   // o webhook nunca chegou
+  const before = await json(await post('/v1/checkout/status', { paymentId: c.paymentId, pollToken: c.pollToken }));
+  assert.ok(['pending', 'approved'].includes(before.status));
+  const t = await json(await post('/v1/dev/tick', { now: Date.now() + 90_000 }));
+  assert.ok(t.payments.checked >= 1, 'o Cron conferiu o pagamento pendente');
+  const claim = await json(await post('/v1/checkout/claim', { paymentId: c.paymentId, pollToken: c.pollToken, deviceId: 'dev' + rnd() + 'abcd' }));
+  assert.equal(claim.status, 200, 'acesso liberado sem webhook e sem o app aberto');
+  const acc = await account(claim.session.accessToken);
+  assert.ok(acc.validUntil > Date.now() + 3650 * DAY, 'vitalício');
+  const second = await json(await post('/v1/checkout/status', { paymentId: c.paymentId, pollToken: c.pollToken }));
+  assert.equal(second.status, 'approved', 'e continua aprovado, sem duplicar período');
+  const acc2 = await account(claim.session.accessToken);
+  assert.equal(acc2.validUntil, acc.validUntil, 'a validade não soma duas vezes');
 });

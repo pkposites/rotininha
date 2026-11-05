@@ -15,7 +15,7 @@ http.createServer(async (req, res) => {
     // PNG 1x1 válido, só para o <img> renderizar no teste
     const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
     const p = { id, status: 'pending', transaction_amount: body.transaction_amount, currency_id: 'BRL', payment_method_id: 'pix',
-      external_reference: body.external_reference, point_of_interaction: { transaction_data: { qr_code: '00020126PIXSIMULADO' + id, qr_base64: png } } };
+      external_reference: body.external_reference, point_of_interaction: { transaction_data: { qr_code: '00020126PIXSIMULADO' + id, qr_code_base64: png } } };
     payments.set(id, p); return send(201, p);
   }
   const m = /^\/v1\/payments\/(\w+)$/.exec(req.url);

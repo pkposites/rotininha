@@ -78,8 +78,8 @@ export async function createPix(env: Env, i: CreateInput) {
     return null;
   }
   await env.DB.prepare('UPDATE payments SET mp_id = ?, qr_code = ?, qr_base64 = ? WHERE id = ?')
-    .bind(String(j.id), td.qr_code, td.qr_base64 ?? null, id).run();
-  return { paymentId: id, pollToken, qrCode: td.qr_code as string, qrBase64: (td.qr_base64 ?? null) as string | null, expiresAt, amountCents: i.plan.cents, plan: i.plan.id };
+    .bind(String(j.id), td.qr_code, (td.qr_code_base64 ?? td.qr_base64) ?? null, id).run();   // o Mercado Pago envia a imagem em qr_code_base64
+  return { paymentId: id, pollToken, qrCode: td.qr_code as string, qrBase64: ((td.qr_code_base64 ?? td.qr_base64) ?? null) as string | null, expiresAt, amountCents: i.plan.cents, plan: i.plan.id };
 }
 
 // ---------------------------------------------------------------- Conciliação (webhook e consulta)
@@ -330,4 +330,25 @@ export async function resetPasswordWithToken(env: Env, input: { token: unknown; 
   ]);
   if (!used.meta.changes) return { error: 'invalid_or_expired' }; // outro clique usou o link primeiro
   return { session: await issueSession(env, row.household_id, input.deviceId, now) };
+}
+
+/**
+ * Rede de segurança do pagamento: o Cron confere no Mercado Pago os Pix pendentes das últimas 24 h.
+ * Se o webhook falhou ou atrasou e a pessoa fechou o app, o acesso é liberado mesmo assim (reconcile é idempotente).
+ */
+export async function reconcilePending(env: Env, now: number): Promise<{ checked: number }> {
+  const rows = await env.DB.prepare(
+    `SELECT id FROM payments WHERE status = 'pending' AND mp_id IS NOT NULL AND created_at > ?1 AND (last_checked_at IS NULL OR last_checked_at < ?2) ORDER BY created_at LIMIT 20`
+  ).bind(now - 24 * 3_600_000, now - 60_000).all<{ id: string }>();
+  let checked = 0;
+  for (const { id } of rows.results) {
+    await env.DB.prepare('UPDATE payments SET last_checked_at = ? WHERE id = ?').bind(now, id).run();
+    try {
+      const row = await getRow(env, id);
+      const mp = row?.mp_id ? await getMpPayment(env, row.mp_id) : null;
+      if (row && mp) await reconcile(env, row, mp, now);
+      checked++;
+    } catch (e) { console.error('reconcile_pending_fail', (e as Error).message); }
+  }
+  return { checked };
 }

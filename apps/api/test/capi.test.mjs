@@ -39,7 +39,7 @@ before(async () => {
     const send = (st, o) => { res.writeHead(st, { 'content-type': 'application/json' }); res.end(JSON.stringify(o)); };
     if (req.method === 'POST' && req.url === '/v1/payments') {
       const id = String(++mp.seq);
-      const p = { id, status: 'pending', transaction_amount: body.transaction_amount, currency_id: 'BRL', payment_method_id: 'pix', external_reference: body.external_reference, point_of_interaction: { transaction_data: { qr_code: '00020126PIX' + id, qr_base64: 'iVBOR' } } };
+      const p = { id, status: 'pending', transaction_amount: body.transaction_amount, currency_id: 'BRL', payment_method_id: 'pix', external_reference: body.external_reference, point_of_interaction: { transaction_data: { qr_code: '00020126PIX' + id, qr_code_base64: 'iVBOR' } } };
       mp.payments.set(id, p); return send(201, p);
     }
     const m = /^\/v1\/payments\/(\w+)$/.exec(req.url);
