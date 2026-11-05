@@ -113,13 +113,27 @@ function Overview() {
 }
 
 // ---------------------------------------------------------------- notificações (campanhas)
-function Campaigns() {
+const EMPTY = { name: '', title: '', body: '', target: 'hoje', segment: 'all', days: 3, codes: '', when: 'now', at: '' };
+function Campaigns({ seed, onSeedUsed }) {
   const [list, setList] = useState([]); const [msg, setMsg] = useState(null);
-  const [f, setF] = useState({ name: '', title: '', body: '', target: 'hoje', segment: 'all', days: 3, codes: '', when: 'now', at: '' });
+  const [f, setF] = useState(EMPTY);
   const [prev, setPrev] = useState(null); const [test, setTest] = useState('');
   const load = useCallback(() => api('/v1/admin/campaigns').then((r) => setList(r.campaigns ?? [])), []);
   useEffect(() => { load(); }, [load]);
+  // "Reutilizar": copia texto, destino e público para o formulário; nada é enviado até você tocar em Enviar.
+  useEffect(() => {
+    if (!seed) return;
+    setF({ ...EMPTY, name: seed.name ?? '', title: seed.title ?? '', body: seed.body ?? '', target: seed.target ?? 'hoje', segment: seed.segment ?? 'all', days: seed.days ?? 3 });
+    setPrev(null); setMsg({ ok: seed.note ?? 'Copiado para o formulário. Revise o texto, escolha o público e toque em Enviar.' });
+    onSeedUsed?.(); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+  }, [seed]);
   const set = (k) => (e) => { setF({ ...f, [k]: e.target.value }); setPrev(null); };
+  const reuse = (c) => {
+    const a = c.audience ?? {}; const piloto = a.segment === 'ids';
+    setF({ ...EMPTY, name: c.name.replace(/ \(cópia\)$/, '') + ' (cópia)', title: c.title, body: c.body, target: c.target, segment: piloto ? 'all' : (a.segment ?? 'all'), days: a.days ?? 3 });
+    setPrev(null); setMsg({ ok: piloto ? 'Copiado. O grupo-piloto não é copiado: escolha o público.' : 'Copiado para o formulário. Revise e toque em Enviar.' });
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+  };
   const audience = () => {
     const days = Number(f.days);
     if (f.segment === 'codes') return { segment: 'codes', codes: f.codes.split(/[\s,;]+/).filter(Boolean) };
@@ -165,7 +179,7 @@ function Campaigns() {
         <div class="card" style="overflow:auto"><h3>Campanhas</h3>
           <table><thead><tr><th>Nome</th><th>Situação</th><th class="num">Env.</th><th class="num">Cliques</th><th /></tr></thead>
             <tbody>{list.map((c) => <tr><td><b>{c.name}</b><br /><span class="muted">{dt(c.scheduled_at ?? c.created_at)}</span></td><td><span class={`badge ${c.status}`}>{STATUS[c.status] ?? c.status}</span></td><td class="num">{c.sent}</td><td class="num">{c.clicked}</td>
-              <td>{['draft', 'scheduled'].includes(c.status) && <button class="btn ghost" onClick={() => act(c.id, 'send_now')}>Enviar</button>} {['draft', 'scheduled', 'sending'].includes(c.status) && <button class="btn danger" onClick={() => act(c.id, 'cancel')}>Cancelar</button>}</td></tr>)}</tbody></table>
+              <td><button class="btn ghost" onClick={() => reuse(c)}>Reutilizar</button> {['draft', 'scheduled'].includes(c.status) && <button class="btn ghost" onClick={() => act(c.id, 'send_now')}>Enviar</button>} {['draft', 'scheduled', 'sending'].includes(c.status) && <button class="btn danger" onClick={() => act(c.id, 'cancel')}>Cancelar</button>}</td></tr>)}</tbody></table>
           {!list.length && <p class="muted">Nenhuma campanha ainda.</p>}</div>
       </div>
     </div>
@@ -173,8 +187,36 @@ function Campaigns() {
 }
 
 // ---------------------------------------------------------------- automações
-function Automations() {
-  const [list, setList] = useState([]); const [saved, setSaved] = useState('');
+const AUTO_AUDIENCE = { welcome: ['new', 7], first_care: ['no_care', 7], first_reminder: ['all', 3], sounds_tip: ['all', 3], leap_coming: ['leap', 3], trial_ends_tomorrow: ['trial', 3], trial_last_day: ['trial', 3], trial_ended: ['expired', 3], inactive_3d: ['inactive', 3] };
+const DAYS_SEG = ['inactive', 'no_care', 'new'];
+
+// Envio manual de uma automação: escolhe o público, vê quantas famílias recebem, confirma. Vira uma campanha comum (respeita silêncio e limites).
+function SendNow({ a, onClose, onEdit }) {
+  const [seg, d0] = AUTO_AUDIENCE[a.key] ?? ['all', 3];
+  const [segment, setSegment] = useState(seg); const [days, setDays] = useState(d0); const [n, setN] = useState(null); const [res, setRes] = useState(null); const [busy, setBusy] = useState(false);
+  const aud = () => (DAYS_SEG.includes(segment) ? { segment, days: Number(days) } : { segment });
+  useEffect(() => { setN(null); api('/v1/admin/campaigns/preview', { audience: aud() }).then((r) => setN(r.ok ? r.reachable : 'erro')); }, [segment, days]);
+  const send = async () => {
+    if (!n || n === 'erro') return;
+    if (!window.confirm(`Enviar "${a.title}" agora para ${n} ${n === 1 ? 'família' : 'famílias'}? Não dá para desfazer depois que sair.`)) return;
+    setBusy(true);
+    const r = await api('/v1/admin/campaigns', { name: `Automação: ${a.label} (manual)`, title: a.title, body: a.body, target: a.target, audience: aud() });
+    setBusy(false); setRes(r.ok ? { ok: `Na fila para ${n}: sai no próximo minuto, respeitando silêncio e limite de 1 aviso a cada 20 h.` } : { err: 'Não foi possível enviar. Confira título e texto.' });
+  };
+  return (
+    <div class="card grid" style="background:var(--soft,transparent)">
+      <b>Enviar agora esta mensagem</b>
+      <div class="row"><label class="f">Para quem<select value={segment} onChange={(e) => setSegment(e.target.value)}>{SEGMENTS.filter(([v]) => v !== 'codes').map(([v, l]) => <option value={v}>{l}</option>)}</select></label>
+        {DAYS_SEG.includes(segment) && <label class="f">Dias<input type="number" min="1" max="365" value={days} onInput={(e) => setDays(e.target.value)} /></label>}</div>
+      <p class={n === 'erro' ? 'err' : 'muted'}>{n == null ? 'Contando…' : n === 'erro' ? 'Confira o público.' : `${n} ${n === 1 ? 'família pode receber' : 'famílias podem receber'} (só quem ligou as notificações e aceitou novidades).`}</p>
+      <div class="row"><button class="btn" disabled={busy || !n || n === 'erro'} onClick={send}>Enviar agora</button><button class="btn ghost" onClick={() => onEdit(a, aud())}>Editar na aba Notificações</button><button class="link" onClick={onClose}>Fechar</button></div>
+      {res?.ok && <p class="ok" role="status">{res.ok}</p>}{res?.err && <p class="err" role="alert">{res.err}</p>}
+    </div>
+  );
+}
+
+function Automations({ onReuse }) {
+  const [list, setList] = useState([]); const [saved, setSaved] = useState(''); const [open, setOpen] = useState(null);
   const load = useCallback(() => api('/v1/admin/automations').then((r) => setList(r.automations ?? [])), []);
   useEffect(() => { load(); }, [load]);
   const upd = (key, patch) => setList(list.map((a) => (a.key === key ? { ...a, ...patch } : a)));
@@ -190,8 +232,9 @@ function Automations() {
           <div class="row"><label class="f">Título<input value={a.title} maxLength="60" onInput={(e) => upd(a.key, { title: e.target.value })} /></label>
             <label class="f">Ao tocar abre<select value={a.target} onChange={(e) => upd(a.key, { target: e.target.value })}>{TARGETS.map(([v, l]) => <option value={v}>{l}</option>)}</select></label></div>
           <label class="f">Texto<textarea maxLength="180" value={a.body} onInput={(e) => upd(a.key, { body: e.target.value })} /></label>
-          <div class="row" style="align-items:center"><button class="btn ghost" onClick={() => save(a)}>Salvar texto</button>
+          <div class="row" style="align-items:center"><button class="btn ghost" onClick={() => save(a)}>Salvar texto</button><button class="btn" onClick={() => setOpen(open === a.key ? null : a.key)}>Enviar agora</button>
             <span class="muted">{a.sent} enviadas · {a.clicked} cliques · CTR {pct(a.sent ? a.clicked / a.sent : null)}</span>{saved === a.key && <span class="ok">Salvo</span>}</div>
+          {open === a.key && <SendNow a={a} onClose={() => setOpen(null)} onEdit={(x, aud) => onReuse({ name: `Automação: ${x.label}`, title: x.title, body: x.body, target: x.target, segment: aud.segment, days: aud.days })} />}
         </div>
       ))}
     </div>
@@ -303,6 +346,7 @@ function Purchases() {
 }
 
 function App() {
+  const [seed, setSeed] = useState(null);
   const [tab, setTab] = useState(() => { const t = new URLSearchParams(location.search).get('tab'); return ['geral', 'compras', 'notif', 'auto', 'cobranca'].includes(t) ? t : 'geral'; });
   if (!store.get()) return <Login />;
   const TABS = [['geral', 'Visão geral'], ['compras', 'Compras'], ['notif', 'Notificações'], ['auto', 'Automações'], ['cobranca', 'Teste e cobrança']];
@@ -311,7 +355,7 @@ function App() {
       <div class="bar"><h1>Ninhora · painel</h1>
         <nav class="tabs" aria-label="Seções">{TABS.map(([k, l]) => <button class="tab" aria-current={tab === k ? 'page' : undefined} onClick={() => setTab(k)}>{l}</button>)}</nav>
         <button class="btn ghost" onClick={() => { store.set(null); location.reload(); }}>Sair</button></div>
-      {tab === 'geral' && <Overview />}{tab === 'compras' && <Purchases />}{tab === 'notif' && <Campaigns />}{tab === 'auto' && <Automations />}{tab === 'cobranca' && <Billing />}
+      {tab === 'geral' && <Overview />}{tab === 'compras' && <Purchases />}{tab === 'notif' && <Campaigns seed={seed} onSeedUsed={() => setSeed(null)} />}{tab === 'auto' && <Automations onReuse={(x) => { setSeed(x); setTab('notif'); }} />}{tab === 'cobranca' && <Billing />}
     </div>
   );
 }
