@@ -74,3 +74,22 @@ export async function sendTestPush() {
 }
 
 export const getPushPrivacy = async () => !!(await getMeta('pushPrivacy'));
+
+/**
+ * Mantém o servidor em dia, sem pedir nada: se o aparelho já tem permissão e inscrição, registra de novo na conta atual
+ * (cobre conta nova, outro login ou inscrição apagada no servidor). No máximo uma vez a cada 10 minutos.
+ */
+export async function resyncPush() {
+  try {
+    if ((await pushState()) !== 'active') return false;
+    const last = (await getMeta('pushResyncAt')) ?? 0;
+    if (Date.now() - last < 600_000) return false;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return false;
+    const json = sub.toJSON();
+    const r = await authedCall('/v1/push/subscribe', { endpoint: json.endpoint, keys: json.keys, privacy: await getPushPrivacy() });
+    if (r.status === 201) { await setMeta('pushResyncAt', Date.now()); return true; }
+  } catch {}
+  return false;
+}
