@@ -225,16 +225,88 @@ function Billing() {
   );
 }
 
+// ---------------------------------------------------------------- compras + aviso no celular
+const b64uToBytes = (str) => { const p = str.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (str.length % 4)) % 4); return Uint8Array.from(atob(p), (c) => c.charCodeAt(0)); };
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = () => window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true;
+const adminReg = async () => (await navigator.serviceWorker.getRegistration('/admin/')) ?? navigator.serviceWorker.register('/sw.js', { scope: '/admin/' }).then(() => navigator.serviceWorker.getRegistration('/admin/')).then(async (r) => { await navigator.serviceWorker.ready; return r; });
+const PAY = { approved: ['Pago', 'sent'], refunded: ['Reembolsado', 'canceled'], pending: ['Aguardando Pix', 'scheduled'], failed: ['Não concluído', 'draft'], mismatch: ['Valor divergente', 'canceled'] };
+
+function PushToggle() {
+  const [st, setSt] = useState('...'); const [msg, setMsg] = useState(null); const [busy, setBusy] = useState(false);
+  const refresh = useCallback(async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return setSt(isIOS() ? 'ios-install' : 'unsupported');
+    if (isIOS() && !standalone()) return setSt('ios-install');
+    if (Notification.permission === 'denied') return setSt('denied');
+    try { const r = await navigator.serviceWorker.getRegistration('/admin/'); if (r && Notification.permission === 'granted' && (await r.pushManager.getSubscription())) return setSt('active'); } catch {}
+    setSt('idle');
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+  const on = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      if ((await Notification.requestPermission()) !== 'granted') throw new Error('Sem a permissão do aparelho o aviso não chega.');
+      const { publicKey } = await (await fetch(API + '/v1/push/key')).json();
+      const reg = await adminReg();
+      let sub = await reg.pushManager.getSubscription();
+      const key = b64uToBytes(publicKey);
+      if (sub && !(sub.options?.applicationServerKey && new Uint8Array(sub.options.applicationServerKey).every((v, i) => v === key[i]))) { try { await sub.unsubscribe(); } catch {} sub = null; }
+      sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+      const j = sub.toJSON();
+      const r = await api('/v1/admin/push/subscribe', { endpoint: j.endpoint, keys: j.keys });
+      if (!r.ok) throw new Error(r.error === 'too_many_devices' ? 'Aparelhos demais cadastrados (limite 10).' : 'Não foi possível ativar agora.');
+      const t = await api('/v1/admin/push/test', {});
+      setMsg({ ok: t.sent ? 'Ativado! Mandei um aviso de teste.' : 'Ativado, mas o aviso de teste não saiu agora.' });
+    } catch (e) { setMsg({ err: e.message || 'Não foi possível ativar.' }); }
+    setBusy(false); refresh();
+  };
+  const off = async () => {
+    setBusy(true);
+    try { const r = await navigator.serviceWorker.getRegistration('/admin/'); const sub = await r?.pushManager.getSubscription(); if (sub) { await api('/v1/admin/push/unsubscribe', { endpoint: sub.endpoint }); await sub.unsubscribe(); } } catch {}
+    setBusy(false); setMsg({ ok: 'Avisos desligados neste aparelho.' }); refresh();
+  };
+  const test = async () => { setBusy(true); const t = await api('/v1/admin/push/test', {}); setMsg(t.sent ? { ok: 'Aviso de teste enviado.' } : { err: 'Nenhum aparelho recebeu o teste.' }); setBusy(false); };
+  return (
+    <div class="card grid"><h3>Avisos de compra no celular</h3>
+      {st === 'active' && <><p>Este aparelho recebe um aviso a cada <b>compra</b> e <b>reembolso</b>. ✅</p><div class="row"><button class="btn ghost" disabled={busy} onClick={test}>Enviar teste</button><button class="btn ghost" disabled={busy} onClick={off}>Desligar</button></div></>}
+      {st === 'idle' && <><p class="muted">Toque para o aparelho te avisar na hora de cada venda, mesmo com o painel fechado.</p><button class="btn" disabled={busy} onClick={on}>{busy ? 'Ativando…' : 'Ativar avisos neste aparelho'}</button></>}
+      {st === 'ios-install' && <p class="muted">No iPhone, abra este painel no Safari, toque em Compartilhar → <b>Adicionar à Tela de Início</b>, abra o painel pelo ícone novo e volte aqui para ativar.</p>}
+      {st === 'denied' && <p class="err">As notificações estão bloqueadas para este painel. Libere nas configurações do aparelho/navegador.</p>}
+      {st === 'unsupported' && <p class="muted">Este navegador não oferece notificações para sites.</p>}
+      {msg?.ok && <p class="ok" role="status">{msg.ok}</p>}{msg?.err && <p class="err" role="alert">{msg.err}</p>}
+    </div>
+  );
+}
+
+function Purchases() {
+  const [d, setD] = useState(null);
+  const load = useCallback(() => api('/v1/admin/purchases').then(setD), []);
+  useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [load]);
+  return (
+    <div class="grid" style="max-width:720px">
+      <h2>Compras</h2>
+      <PushToggle />
+      {!d ? <p class="muted">Carregando…</p> : (
+        <div class="card" style="overflow:auto"><h3>Últimas compras</h3>
+          <p class="muted">{d.paid} {d.paid === 1 ? 'acesso ativo' : 'acessos ativos'} · {brl(d.cents)} em vendas (sem reembolsos).</p>
+          {d.purchases.length === 0 ? <p class="muted">Ainda não há compras.</p> : (
+            <table><thead><tr><th>Data</th><th>Valor</th><th>Situação</th><th>Pagador</th><th>Ref.</th></tr></thead>
+              <tbody>{d.purchases.map((r) => <tr><td>{dt(r.at)}</td><td>{brl(r.cents)}</td><td><span class={`badge ${PAY[r.status]?.[1] ?? 'draft'}`}>{PAY[r.status]?.[0] ?? r.status}</span>{r.refundedAt ? <span class="muted"> · {dt(r.refundedAt)}</span> : null}</td><td>{r.email}</td><td>…{r.ref}</td></tr>)}</tbody></table>)}
+          <p class="muted">Atualiza sozinho a cada 30 s. Pix não pago some da lista depois de 24 h.</p></div>)}
+    </div>
+  );
+}
+
 function App() {
-  const [tab, setTab] = useState('geral');
+  const [tab, setTab] = useState(() => { const t = new URLSearchParams(location.search).get('tab'); return ['geral', 'compras', 'notif', 'auto', 'cobranca'].includes(t) ? t : 'geral'; });
   if (!store.get()) return <Login />;
-  const TABS = [['geral', 'Visão geral'], ['notif', 'Notificações'], ['auto', 'Automações'], ['cobranca', 'Teste e cobrança']];
+  const TABS = [['geral', 'Visão geral'], ['compras', 'Compras'], ['notif', 'Notificações'], ['auto', 'Automações'], ['cobranca', 'Teste e cobrança']];
   return (
     <div class="wrap">
       <div class="bar"><h1>Ninhora · painel</h1>
         <nav class="tabs" aria-label="Seções">{TABS.map(([k, l]) => <button class="tab" aria-current={tab === k ? 'page' : undefined} onClick={() => setTab(k)}>{l}</button>)}</nav>
         <button class="btn ghost" onClick={() => { store.set(null); location.reload(); }}>Sair</button></div>
-      {tab === 'geral' && <Overview />}{tab === 'notif' && <Campaigns />}{tab === 'auto' && <Automations />}{tab === 'cobranca' && <Billing />}
+      {tab === 'geral' && <Overview />}{tab === 'compras' && <Purchases />}{tab === 'notif' && <Campaigns />}{tab === 'auto' && <Automations />}{tab === 'cobranca' && <Billing />}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { PLANS, DAY_MS, GRACE_MS, PIX_TTL_MS, DELIVERY_TTL_MS, type Plan } from 
 import { sha256Hex, randomToken, randomCode } from './crypto';
 import { sealText, unsealText } from './seal';
 import { sendEmail } from './email';
+import { notifyAdmins } from './push';
 import { hashCode, issueSession } from './session';
 import { sendPurchase, validFbp, validFbc, type Tracking } from './capi';
 import { countEvent } from './feedback';
@@ -104,6 +105,8 @@ export async function reconcile(env: Env, row: PaymentRow, mp: any, now: number)
   return 'pending';
 }
 
+const brlCents = (c: number) => `R$ ${(c / 100).toFixed(2).replace('.', ',')}`;
+
 /** Concede o acesso UMA vez: tudo em um lote transacional, condicionado a `applied_at IS NULL`. */
 async function grant(env: Env, row: PaymentRow, now: number): Promise<string> {
   if (row.applied_at != null) return 'already';
@@ -144,6 +147,7 @@ async function afterGrant(env: Env, row: PaymentRow, validUntil: number, now: nu
   await sendReceipt(env, row, validUntil, now);
   await countEvent(env, row.kind === 'entry' ? 'pix_paid' : 'renewal_paid', now).catch(() => {});
   await sendPurchase(env, row.id, now);
+  await notifyAdmins(env, { title: '💰 Nova compra na Ninhora', body: `${brlCents(row.amount_cents)} · ${PLANS[row.plan]?.label ?? 'acesso'} (Pix aprovado)`, tag: 'buy-' + row.id }, now);
 }
 
 /** Valida o contexto de rastreio enviado pelo cliente. Sem consentimento explícito: nada é guardado. */
@@ -171,6 +175,7 @@ async function revoke(env: Env, row: PaymentRow, now: number): Promise<string> {
         grace_until = CASE WHEN valid_until - ?1 > ?2 THEN valid_until - ?1 + ?3 ELSE valid_until - ?1 END
       WHERE id = ?4 AND valid_until IS NOT NULL AND changes() = 1`).bind(span, now, GRACE_MS, row.household_id)
   ]);
+  await notifyAdmins(env, { title: '↩️ Reembolso na Ninhora', body: `${brlCents(row.amount_cents)} devolvido · o acesso foi retirado`, tag: 'refund-' + row.id }, now);
   return 'revoked';
 }
 

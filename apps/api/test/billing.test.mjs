@@ -378,3 +378,53 @@ test('rede de segurança: Pix aprovado no Mercado Pago SEM webhook é liberado p
   const acc2 = await account(claim.session.accessToken);
   assert.equal(acc2.validUntil, acc.validUntil, 'a validade não soma duas vezes');
 });
+
+// ---------------- painel: aviso de compra no celular do administrador ----------------
+const ADMIN = 'admin-token-local-de-teste-1234567890';
+const adm = (path, body) => fetch(API + path, { method: body === undefined ? 'GET' : 'POST', headers: { Authorization: `Bearer ${ADMIN}`, 'Content-Type': 'application/json', ...ip() }, body: body === undefined ? undefined : JSON.stringify(body) }).then(json);
+const { createECDH } = await import('node:crypto');
+const adminDevice = async (tag) => {
+  const e = createECDH('prime256v1'); e.generateKeys();
+  const endpoint = `http://localhost:${PUSH_PORT}/adm-${tag}-${rnd()}`;
+  const r = await adm('/v1/admin/push/subscribe', { endpoint, keys: { p256dh: e.getPublicKey().toString('base64url'), auth: randomBytes(16).toString('base64url') } });
+  return { r, path: new URL(endpoint).pathname };
+};
+
+test('aviso de compra: só o administrador cadastra aparelho; compra e reembolso disparam push', async () => {
+  assert.equal((await post('/v1/admin/push/subscribe', { endpoint: 'x' })).status, 401);
+  assert.equal((await adm('/v1/admin/push/subscribe', { endpoint: 'https://evil.example/x', keys: { p256dh: 'a', auth: 'b' } })).status, 422, 'endpoint fora da lista é recusado');
+  const d = await adminDevice('buy');
+  assert.equal(d.r.status, 201);
+  assert.ok((await adm('/v1/admin/push')).devices >= 1);
+
+  const t = await adm('/v1/admin/push/test', {});
+  assert.ok(t.sent >= 1 && pushHits.includes(d.path), 'teste chega ao aparelho');
+
+  const n0 = pushHits.filter((x) => x === d.path).length;
+  const c = await buy();
+  assert.equal(pushHits.filter((x) => x === d.path).length, n0, 'Pix criado e não pago: sem aviso');
+  setMp(c.mpId, { status: 'approved' });
+  await webhook(c.mpId);
+  assert.equal(pushHits.filter((x) => x === d.path).length, n0 + 1, 'compra aprovada: 1 aviso');
+  await webhook(c.mpId);
+  assert.equal(pushHits.filter((x) => x === d.path).length, n0 + 1, 'webhook repetido: sem aviso duplicado');
+  setMp(c.mpId, { status: 'refunded' }); await webhook(c.mpId);
+  assert.equal(pushHits.filter((x) => x === d.path).length, n0 + 2, 'reembolso: 1 aviso');
+});
+
+test('painel: últimas compras (valor, situação, e-mail mascarado) e limite de aparelhos', async () => {
+  const email = `maria${rnd()}@exemplo.com`;
+  const c = await buy(email); setMp(c.mpId, { status: 'approved' }); await webhook(c.mpId);
+  const r = await adm('/v1/admin/purchases');
+  assert.equal(r.status, 200);
+  const row = r.purchases.find((p) => p.ref === c.mpId.slice(-6));
+  assert.ok(row && row.cents === 3790 && row.status === 'approved', JSON.stringify(row));
+  assert.ok(/^ma\*\*\*@exemplo\.com$/.test(row.email), 'e-mail mascarado: ' + row.email);
+  assert.ok(!JSON.stringify(r).includes(email), 'e-mail completo nunca sai');
+  assert.ok(r.paid >= 1 && r.cents >= 3790);
+  assert.equal((await fetch(API + '/v1/admin/purchases', { headers: ip() })).status, 401);
+  let last; for (let i = 0; i < 11; i++) last = await adminDevice('cap' + i);
+  assert.equal(last.r.status, 409, 'passou de 10 aparelhos: recusa');
+  const dels = (await adm('/v1/admin/push')).devices; assert.ok(dels >= 10);
+  sql(`DELETE FROM admin_push`); // limpa para não afetar outros testes
+});

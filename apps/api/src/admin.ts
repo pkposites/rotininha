@@ -144,6 +144,18 @@ export async function adminGrowth(env: Env, req: Request, url: URL, now: number,
     return json(await overview(env, days, now), 200, h);
   }
 
+  if (m === 'GET' && p === '/v1/admin/purchases') {
+    const list = await rows(env, `SELECT mp_id, kind, plan, amount_cents, status, email, created_at, approved_at, refunded_at FROM payments
+                                   WHERE status IN ('approved','refunded','mismatch') OR (status IN ('pending','failed') AND created_at > ?)
+                                   ORDER BY created_at DESC LIMIT 50`, now - DAY_MS);
+    const tot = await one(env, `SELECT COUNT(*) AS n, COALESCE(SUM(amount_cents),0) AS cents FROM payments WHERE applied_at IS NOT NULL AND refunded_at IS NULL`);
+    const mask = (e: string) => { const [u, d] = String(e ?? '').split('@'); return u && d ? `${u.slice(0, 2)}***@${d}` : '—'; };
+    return json({
+      paid: tot?.n ?? 0, cents: tot?.cents ?? 0,
+      purchases: list.map((r: any) => ({ ref: String(r.mp_id ?? '').slice(-6), kind: r.kind, plan: r.plan, cents: r.amount_cents, status: r.status, email: mask(r.email), at: r.approved_at ?? r.created_at, refundedAt: r.refunded_at }))
+    }, 200, h);
+  }
+
   if (m === 'GET' && p === '/v1/admin/campaigns') {
     const list = await rows(env, `SELECT c.*, (SELECT COUNT(*) FROM notification_sends s WHERE s.campaign_id = c.id AND s.status = 'sent') AS sent,
                                          (SELECT COUNT(*) FROM notification_sends s WHERE s.campaign_id = c.id AND s.clicked_at IS NOT NULL) AS clicked

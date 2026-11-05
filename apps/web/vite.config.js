@@ -36,7 +36,7 @@ function headersFile() {
 
 /sw.js
   Cache-Control: no-cache
-  Service-Worker-Allowed: /app/
+  Service-Worker-Allowed: /
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
@@ -56,7 +56,7 @@ const robots = () => {
         const p = join(d, f);
         if (statSync(p).isDirectory()) return f === 'app' ? undefined : walk(p);
         if (!p.endsWith('.html')) return;
-        const h = readFileSync(p, 'utf8'), n = h.replace(/<link rel="manifest"[^>]*>\s*/g, '');
+        const h = readFileSync(p, 'utf8'), n = h.replace(/<link rel="manifest"[^>]*>\s*/g, (m) => (m.includes('admin.webmanifest') ? m : ''));
         if (n !== h) writeFileSync(p, n);
       });
       walk(resolve(__dirname, outDir));

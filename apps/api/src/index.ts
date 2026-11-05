@@ -2,7 +2,7 @@ import type { Env, Auth, WireRecord } from './types';
 import { sha256Hex, randomCode, normalizeCode, randomToken } from './crypto';
 import { parseRecord, MAX_CHANGES } from './validate';
 import { applyChanges, changesSince, householdTz, rescheduleAll } from './records';
-import { saveSubscription, removeSubscription, endpointAllowed, pushToHousehold, runDue } from './push';
+import { saveSubscription, removeSubscription, endpointAllowed, pushToHousehold, runDue, saveAdminSubscription, removeAdminSubscription, adminDeviceCount, notifyAdmins } from './push';
 import { isValidTimeZone } from '../../../packages/shared/schedule.js';
 import { PLANS, ENTRY_PLANS, RENEWAL_PLANS, DAY_MS } from './plans';
 import { trackingFrom, createPix, paymentStatus, claimAccess, handleMpEvent, accountState, lastPayerEmail, requestRecovery, confirmRecovery, resetPasswordWithToken, reconcilePending } from './billing';
@@ -252,6 +252,24 @@ export default {
         if (req.method === 'GET' && url.pathname === '/v1/admin/metrics') {
           const from = url.searchParams.get('from') ?? '1970-01-01', to = url.searchParams.get('to') ?? '9999-12-31';
           return json(await adminMetrics(env, from, to), 200, h);
+        }
+        if (req.method === 'GET' && url.pathname === '/v1/admin/push') return json({ devices: await adminDeviceCount(env) }, 200, h);
+        if (req.method === 'POST' && url.pathname === '/v1/admin/push/subscribe') {
+          const b = await readJson(req); const k = b?.keys;
+          if (!b || typeof b.endpoint !== 'string' || typeof k?.p256dh !== 'string' || typeof k?.auth !== 'string' || k.p256dh.length > 100 || k.auth.length > 40) return json({ error: 'bad_request' }, 400, h);
+          if (!endpointAllowed(env, b.endpoint)) return json({ error: 'endpoint_not_allowed' }, 422, h);
+          if (!(await saveAdminSubscription(env, { endpoint: b.endpoint, p256dh: k.p256dh, auth: k.auth }, now))) return json({ error: 'too_many_devices' }, 409, h);
+          return json({ ok: true, devices: await adminDeviceCount(env) }, 201, h);
+        }
+        if (req.method === 'POST' && url.pathname === '/v1/admin/push/unsubscribe') {
+          const b = await readJson(req);
+          if (!b || typeof b.endpoint !== 'string') return json({ error: 'bad_request' }, 400, h);
+          await removeAdminSubscription(env, b.endpoint);
+          return json({ ok: true, devices: await adminDeviceCount(env) }, 200, h);
+        }
+        if (req.method === 'POST' && url.pathname === '/v1/admin/push/test') {
+          const sent = await notifyAdmins(env, { title: 'Ninhora · painel', body: 'Tudo certo! Você vai receber aqui o aviso de cada compra. 💜', tag: 'admin-test' }, now);
+          return json({ sent }, 200, h);
         }
         const g = await adminGrowth(env, req, url, now, h, json, readJson);
         return g ?? json({ error: 'not_found' }, 404, h);

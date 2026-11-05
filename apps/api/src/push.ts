@@ -73,6 +73,39 @@ export async function pushToHousehold(env: Env, householdId: string, msg: Messag
   return ok;
 }
 
+const ADMIN_MAX_DEVICES = 10;
+
+export async function saveAdminSubscription(env: Env, s: { endpoint: string; p256dh: string; auth: string }, now: number): Promise<boolean> {
+  const n = (await env.DB.prepare('SELECT COUNT(*) AS n FROM admin_push WHERE endpoint != ?').bind(s.endpoint).first<{ n: number }>())?.n ?? 0;
+  if (n >= ADMIN_MAX_DEVICES) return false;
+  const sealed = await seal(env.PUSH_SEAL_KEY, { p256dh: s.p256dh, auth: s.auth });
+  await env.DB.prepare(
+    `INSERT INTO admin_push (id, endpoint, keys_sealed, created_at) VALUES (?,?,?,?)
+     ON CONFLICT(endpoint) DO UPDATE SET keys_sealed=excluded.keys_sealed, failures=0`
+  ).bind(crypto.randomUUID(), s.endpoint, sealed, now).run();
+  return true;
+}
+export const removeAdminSubscription = (env: Env, endpoint: string) => env.DB.prepare('DELETE FROM admin_push WHERE endpoint = ?').bind(endpoint).run();
+export const adminDeviceCount = async (env: Env) => (await env.DB.prepare('SELECT COUNT(*) AS n FROM admin_push').first<{ n: number }>())?.n ?? 0;
+
+/** Aviso ao administrador (compra, reembolso). Nunca lança: o pagamento não pode falhar por causa do aviso. */
+export async function notifyAdmins(env: Env, msg: { title: string; body: string; tag: string; url?: string }, now: number): Promise<number> {
+  let ok = 0;
+  try {
+    const subs = await env.DB.prepare('SELECT id, endpoint, keys_sealed, failures FROM admin_push').all<any>();
+    await Promise.all(subs.results.map(async (s) => {
+      try {
+        const keys = await unseal(env.PUSH_SEAL_KEY, s.keys_sealed);
+        const status = await sendWebPush({ endpoint: s.endpoint, ...keys }, { title: msg.title, body: msg.body, tag: msg.tag, url: msg.url ?? '/admin/?tab=compras' }, vapid(env), { now });
+        if (status >= 200 && status < 300) { ok++; if (s.failures) await env.DB.prepare('UPDATE admin_push SET failures = 0 WHERE id = ?').bind(s.id).run(); }
+        else if (status === 404 || status === 410 || s.failures + 1 >= MAX_FAILURES) await env.DB.prepare('DELETE FROM admin_push WHERE id = ?').bind(s.id).run();
+        else await env.DB.prepare('UPDATE admin_push SET failures = failures + 1 WHERE id = ?').bind(s.id).run();
+      } catch (e) { console.error('admin_push_fail', (e as Error).message); }
+    }));
+  } catch (e) { console.error('admin_push_fail', (e as Error).message); }
+  return ok;
+}
+
 async function getRecord(env: Env, hh: string, kind: string, id: string): Promise<WireRecord | null> {
   const r = await env.DB.prepare('SELECT body, deleted FROM records WHERE household_id = ? AND kind = ? AND id = ?')
     .bind(hh, kind, id).first<{ body: string; deleted: number }>();
