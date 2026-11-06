@@ -30,6 +30,8 @@ import { InstallPopup } from './InstallPopup.jsx';
 import { MiniPlayer } from './MiniPlayer.jsx';
 import { isStandalone, pushState, resyncPush } from './lib/push.js';
 import { PushPrompt } from './PushPrompt.jsx';
+import { PushCard } from './PushCard.jsx';
+import { applyInternalParam, setInternal } from './lib/internal.js';
 import { registeredMessage } from './lib/ux.js';
 import { isBlocked } from './lib/gate.js';
 import { nudgePlan, DAY } from './lib/nudge.js';
@@ -150,6 +152,7 @@ function Hoje({ store, rem, now, onEdit, onOpenItem, onNewTask, onLogged, feedba
       <section class="lasts" aria-label="Últimos cuidados">
         {['mamada', 'sono', 'fralda'].map((t) => <LastCard type={t} events={events} now={now} onEdit={onEdit} />)}
       </section>
+      <PushCard connected={syncStatus === 'idle'} hasContent={rem.tasks.length > 0 || store.events.length > 0} blocked={blocked} onInstall={onInstall} />
       <RemindersCard tasks={rem.tasks} occs={rem.occs} now={now} tz={rem.tz} onOpen={onOpenItem} onNew={() => blocked ? onBlocked() : onNewTask()} onQuickDone={(i) => { if (blocked) return onBlocked(); count('reminder_done'); rem.saveOcc(markDone(i)); }} />
       {feedbackNode}
       {syncStatus === 'signed-out' && !localDismissed && !hideLocal && (
@@ -235,8 +238,16 @@ function App() {
   const [paywall, setPaywall] = useState(false);
   const [nudge, setNudge] = useState(null);       // { plan, dismissals }
   const nudgeRan = useRef(false);
-  const [pushAsk, setPushAsk] = useState(false);
+  const [pushAsk, setPushAsk] = useState(false); // false | 'open' | 'task'
   const pushAskRan = useRef(false);
+  // Logo depois de criar um lembrete é o melhor momento para pedir a permissão: a pessoa acabou de ver para que ela serve.
+  const askPushAfterTask = async () => {
+    try {
+      if (syncStatus !== 'idle' || (await pushState()) !== 'idle') return;
+      const nextAt = await getPref('pushAskNextAt', null);
+      if (nextAt == null || Date.now() >= nextAt) setTimeout(() => setPushAsk('task'), 600);
+    } catch { /* ignora */ }
+  };
   const offerInstall = async () => { if (!isStandalone() && !(await getPref('installDismissed', false)) && Date.now() > (await getPref('installSnoozeUntil', 0))) setInstallOpen(true); };
   useEffect(() => { (async () => setFbPrefs({ dismissedAt: await getPref('feedbackDismissedAt'), submittedAt: await getPref('feedbackSubmittedAt') }))(); }, [feedbackOpen]);
   // Primeira abertura: onboarding só para quem ainda não tem dados nem já o concluiu.
@@ -253,7 +264,7 @@ function App() {
   const [recover, setRecover] = useState(null);     // { token }
   const [account, setAccount] = useState(null);
   const blocked = isBlocked(account);   // acesso vencido: só leitura até pagar
-  const refreshAccount = async () => setAccount(await getAccount());
+  const refreshAccount = async () => { const a = await getAccount(); if (a?.prefs?.internal) setInternal(true); setAccount(a); };
   // Link de recuperação: #recover=TOKEN (fragmento: não vai ao servidor). Pagamento em andamento: retoma.
   useEffect(() => {
     const m = /[#&]recover=([\w-]+)/.exec(location.hash);
@@ -291,7 +302,7 @@ function App() {
     await resyncPush();
     if (!isStandalone() || (await pushState()) !== 'idle') return;
     const nextAt = await getPref('pushAskNextAt', null);
-    if (nextAt == null || Date.now() >= nextAt) setPushAsk(true);
+    if (nextAt == null || Date.now() >= nextAt) setPushAsk('open');
   })(); }, [syncStatus, onboarding, store.ready, checkout, recover, settings, trialOpen, installOpen, editing, taskEdit, openOcc, paywall, nudge]);
   // Notificação → abre o lembrete para confirmar (nunca conclui sozinho).
   useEffect(() => {
@@ -362,10 +373,10 @@ function App() {
       )}
       {taskEdit && (
         <TaskSheet task={taskEdit.task} isNew={taskEdit.isNew} tz={rem.tz} onClose={() => setTaskEdit(null)}
-          onSave={async (t) => { if (blocked) { setTaskEdit(null); return setPaywall(true); } await rem.saveTask(t); setTaskEdit(null); }}
+          onSave={async (t) => { if (blocked) { setTaskEdit(null); return setPaywall(true); } await rem.saveTask(t); setTaskEdit(null); askPushAfterTask(); }}
           onDelete={async (id) => { await rem.removeTask(id); setTaskEdit(null); }} />
       )}
-      {pushAsk && !onboarding && <PushPrompt onClose={() => setPushAsk(false)} onDone={() => setPushAsk(false)} />}
+      {pushAsk && !onboarding && <PushPrompt reason={pushAsk} onClose={() => setPushAsk(false)} onDone={() => setPushAsk(false)} />}
       {nudge && !onboarding && <NudgePopup plan={nudge.plan} dismissals={nudge.dismissals} onClose={() => setNudge(null)}
         onAccount={async () => { setNudge(null); await setPref('nudgeNextAt', Date.now() + DAY); setTrialOpen(true); }}
         onInstall={async () => { setNudge(null); await setPref('nudgeNextAt', Date.now() + DAY); setInstallOpen(true); }} />}
@@ -390,6 +401,7 @@ function App() {
   );
 }
 
+applyInternalParam();
 render(<App />, document.getElementById('app'));
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

@@ -22,3 +22,9 @@ Estas preferências valem para qualquer sessão que trabalhe neste repositório.
 - Identidade premium escura: violeta profundo com estrelas (`apps/web/src/sky.css`), vidro translúcido no lugar de caixas brancas, botões em pílula com gradiente, ilustrações da mãe e do bebê em `apps/web/public/art/`. Tokens em `tokens.css`; camada do app em `premium.css`; LP em `lp/lp-premium.css`; pacote da LP de captação em `lp-ninhoralp/premium.css`.
 - "Modo madrugada" é a variante ainda mais escura e calma. O painel (`/admin/`) fica claro e sóbrio de propósito.
 - Evitar o visual "ferramenta feita por IA": nada de caixas brancas, emojis dentro de quadrados, formulário em lista. Uma pergunta por tela no onboarding.
+
+## Métricas: contas de teste e aparelhos internos
+- Contas de teste/internas (`households.is_test = 1`) ficam fora de TODAS as métricas do painel. Marcar: painel → aba Contas (por WhatsApp), ou aparelho interno (`?interno=1`; contas criadas nele nascem marcadas). "Contar a partir de" descarta o período de testes sem apagar dados.
+- Ao criar contas de teste em produção, marcar `is_test = 1` (D1) e apagar depois. Testes automatizados rodam só no ambiente local.
+- Funil de notificações no painel (Visão geral): convite visto, ligou, "agora não", bloqueou, iPhone sem instalar.
+

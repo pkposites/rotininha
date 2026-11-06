@@ -19,7 +19,7 @@ const APP = 'http://localhost:4173';
   ok(await p.locator('link[rel=manifest]').getAttribute('href') === '/admin.webmanifest', 'manifesto próprio do painel (instalável no iPhone)');
   const mf = await (await p.request.get(APP + '/admin.webmanifest')).json();
   ok(mf.start_url === '/admin/' && mf.scope === '/admin/' && mf.display === 'standalone', 'manifesto do painel: escopo /admin/, standalone');
-  await p.getByRole('button', { name: 'Famílias' }).click();
+  await p.getByRole('button', { name: 'Contas' }).click();
   ok(await p.getByRole('button', { name: 'Procurar conta' }).isDisabled(), 'Famílias: "Procurar conta" só habilita com um número completo');
   await p.fill('input[type=tel]', '(11) 90000-0000'); await p.getByRole('button', { name: 'Procurar conta' }).click();
   ok(await p.waitForFunction(() => /Nenhuma conta com esse número/.test(document.body.innerText), null, { timeout: 8000 }).then(() => true, () => false), 'Famílias: número sem conta mostra "Nenhuma conta"');

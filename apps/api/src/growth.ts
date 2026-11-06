@@ -9,7 +9,8 @@ import { ageInDays, leapStartingSoon } from '../../../packages/shared/leaps.js';
 
 export const USAGE_EVENTS = new Set([
   'app_open', 'care_logged', 'reminder_created', 'reminder_done', 'reminder_snoozed', 'sound_played', 'leap_viewed', 'leap_marked',
-  'guide_lesson_done', 'push_enabled', 'settings_opened', 'paywall_viewed', 'checkout_started', 'trial_banner_seen', 'care_tip_opened', 'help_card_opened', 'app_installed', 'lp_arrival'
+  'guide_lesson_done', 'push_enabled', 'settings_opened', 'paywall_viewed', 'checkout_started', 'trial_banner_seen', 'care_tip_opened', 'help_card_opened', 'app_installed', 'lp_arrival',
+  'push_prompt_shown', 'push_prompt_later', 'push_card_shown', 'push_denied_seen', 'push_ios_install_hint'
 ]);
 export const TARGETS = ['hoje', 'historico', 'saltos', 'sons', 'guia', 'ajustes'];
 export const CAP_MS = 20 * 3_600_000; // no máximo 1 aviso promocional a cada 20 h por família
@@ -27,8 +28,8 @@ export async function hidFor(env: Env, householdId: string): Promise<string | nu
 }
 
 export async function recordUsage(env: Env, householdId: string, events: { event: string; n: number }[], now: number) {
-  const h = await env.DB.prepare('SELECT usage_opt_in FROM households WHERE id = ?').bind(householdId).first<{ usage_opt_in: number }>();
-  if (!h || !h.usage_opt_in) return false;
+  const h = await env.DB.prepare('SELECT usage_opt_in, is_test FROM households WHERE id = ?').bind(householdId).first<{ usage_opt_in: number; is_test: number }>();
+  if (!h || !h.usage_opt_in || h.is_test) return false; // conta de teste/interna não entra nas métricas
   const hid = await hidFor(env, householdId);
   if (!hid) return false;
   const day = dayBR(now);

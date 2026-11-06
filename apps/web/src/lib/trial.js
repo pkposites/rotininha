@@ -1,9 +1,10 @@
+import { isInternal } from './internal.js';
 import { publicCall, getDeviceId, adoptSession } from './sync.js';
 import { setPref } from './prefs.js';
 
 /** Começa o teste grátis: cria a conta no servidor (sem senha), conecta este aparelho e devolve o código (mostrado uma vez). */
 export async function startTrial({ email, whatsapp, password } = {}) {
-  const r = await publicCall('/v1/trial/start', { deviceId: await getDeviceId(), whatsapp, password, ...(email ? { email: email.trim() } : {}) });
+  const r = await publicCall('/v1/trial/start', { deviceId: await getDeviceId(), whatsapp, password, ...(isInternal() ? { internal: true } : {}), ...(email ? { email: email.trim() } : {}) });
   if (r.status === 422 && r.data?.error === 'invalid_whatsapp') throw new Error('Confira o WhatsApp: DDD + número, por exemplo (11) 91234-5678.');
   if (r.status === 422 && r.data?.error === 'weak_password') throw new Error('Escolha uma senha com pelo menos 8 caracteres, que não seja óbvia (como 12345678) nem o seu número.');
   if (r.status === 409) throw new Error('Este WhatsApp já tem uma conta. Toque em “Já tenho conta” para entrar com a sua senha.');

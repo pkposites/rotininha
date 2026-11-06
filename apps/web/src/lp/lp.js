@@ -1,5 +1,7 @@
 import './lp.css';
 import './lp-premium.css';
+import { applyInternalParam } from '../lib/internal.js';
+applyInternalParam();
 
 const API = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 const PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID ?? '';
@@ -12,6 +14,7 @@ const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 /* ---------- métricas agregadas (sem identificador; ver política de privacidade) ---------- */
 const sent = new Set();
 function track(event, once = true) {
+  try { if (localStorage.getItem('ninhora-internal') === '1') return; } catch {}
   if (!API || (once && sent.has(event))) return;
   sent.add(event);
   try { fetch(API + '/v1/analytics', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ event }) }).catch(() => {}); } catch {}

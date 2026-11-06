@@ -12,7 +12,7 @@ import { exportHousehold, purgeHousehold } from './privacy';
 import { adminGrowth } from './admin';
 import { startTrial } from './trial';
 import { recordUsage, deleteUsage, recordClick, runCampaigns, runAutomations } from './growth';
-import { applyEnforcement, trialConfig, enforcementActive } from './settings';
+import { applyEnforcement, trialConfig, enforcementActive, getSetting, setSetting } from './settings';
 import { validBirthDate } from '../../../packages/shared/leaps.js';
 import { localParts } from '../../../packages/shared/schedule.js';
 import { submitFeedback, countEvent, FUNNEL_EVENTS, adminOk, feedbackCsv, adminMetrics, STATUSES } from './feedback';
@@ -201,10 +201,10 @@ export default {
           const phone_hash = await hashPhone(env, phone);
           if (await env.DB.prepare('SELECT 1 AS x FROM households WHERE phone_hash = ?').bind(phone_hash).first()) return json({ error: 'phone_in_use' }, 409, h);
           try {
-            return json(await startTrial(env, { deviceId: body.deviceId, email: body.email, now, credentials: { phone_hash, ...(await makePassword(env, body.password)) } }), 201, h);
+            return json(await startTrial(env, { deviceId: body.deviceId, email: body.email, now, internal: body.internal === true, credentials: { phone_hash, ...(await makePassword(env, body.password)) } }), 201, h);
           } catch (e) { if (/UNIQUE/i.test((e as Error).message)) return json({ error: 'phone_in_use' }, 409, h); throw e; }
         }
-        return json(await startTrial(env, { deviceId: body.deviceId, email: body.email, now }), 201, h);
+        return json(await startTrial(env, { deviceId: body.deviceId, email: body.email, now, internal: body.internal === true }), 201, h);
       }
 
       // Clique numa notificação promocional (sid único no payload; não identifica a pessoa por si só)
@@ -221,7 +221,7 @@ export default {
         const body = await readJson(req);
         if (!body || typeof body.event !== 'string' || !FUNNEL_EVENTS.has(body.event)) return json({ error: 'bad_request' }, 400, h);
         if (!(await hit(env.DB, `an:ip:${clientIp(req)}`, 300, 3600_000, now))) return json({ error: 'rate_limited' }, 429, h);
-        await countEvent(env, body.event, now);
+        if (body.internal !== true) await countEvent(env, body.event, now); // aparelho interno (dono/equipe): não conta
         return new Response(null, { status: 204, headers: h });
       }
 
@@ -271,15 +271,29 @@ export default {
           const sent = await notifyAdmins(env, { title: 'Ninhora · painel', body: 'Tudo certo! Você vai receber aqui o aviso de cada compra. 💜', tag: 'admin-test' }, now);
           return json({ sent }, 200, h);
         }
+        // Métricas: contas de teste e "contar a partir de"
+        if (req.method === 'POST' && url.pathname === '/v1/admin/households/test-flag') {
+          const b = await readJson(req); const phone = normalizePhone(b?.whatsapp);
+          if (!phone || typeof b.test !== 'boolean') return json({ error: 'bad_request' }, 400, h);
+          const r = await env.DB.prepare('UPDATE households SET is_test = ? WHERE phone_hash = ?').bind(b.test ? 1 : 0, await hashPhone(env, phone)).run();
+          return json({ updated: r.meta.changes ?? 0 }, 200, h);
+        }
+        if (url.pathname === '/v1/admin/metrics-from') {
+          if (req.method === 'GET') return json({ day: await getSetting(env, 'metrics_from') }, 200, h);
+          const b = await readJson(req);
+          if (req.method !== 'POST' || !b || (b.day !== null && !(typeof b.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.day)))) return json({ error: 'bad_request' }, 400, h);
+          await setSetting(env, 'metrics_from', b.day);
+          return json({ day: b.day }, 200, h);
+        }
         // Famílias: procurar e excluir pelo WhatsApp (o número nunca é guardado em texto: o servidor confere pelo hash)
         if (req.method === 'POST' && (url.pathname === '/v1/admin/households/lookup' || url.pathname === '/v1/admin/households/delete')) {
           const b = await readJson(req); const phone = normalizePhone(b?.whatsapp);
           if (!phone) return json({ error: 'invalid_whatsapp' }, 422, h);
-          const hh = await env.DB.prepare('SELECT id, plan, created_at, valid_until FROM households WHERE phone_hash = ?').bind(await hashPhone(env, phone)).first<{ id: string; plan: string; created_at: number; valid_until: number | null }>();
+          const hh = await env.DB.prepare('SELECT id, plan, created_at, valid_until, is_test FROM households WHERE phone_hash = ?').bind(await hashPhone(env, phone)).first<{ id: string; plan: string; created_at: number; valid_until: number | null; is_test: number }>();
           if (!hh) return json({ found: false }, 200, h);
           const recs = (await env.DB.prepare("SELECT COUNT(*) AS n FROM records WHERE household_id = ? AND deleted = 0").bind(hh.id).first<{ n: number }>())?.n ?? 0;
           const pays = (await env.DB.prepare('SELECT COUNT(*) AS n FROM payments WHERE household_id = ? AND applied_at IS NOT NULL AND refunded_at IS NULL').bind(hh.id).first<{ n: number }>())?.n ?? 0;
-          const info = { found: true, plan: hh.plan, createdAt: hh.created_at, validUntil: hh.valid_until, records: recs, activePurchases: pays };
+          const info = { found: true, isTest: !!hh.is_test, plan: hh.plan, createdAt: hh.created_at, validUntil: hh.valid_until, records: recs, activePurchases: pays };
           if (url.pathname.endsWith('/lookup')) return json(info, 200, h);
           if (b.confirm !== true) return json({ error: 'confirm_required' }, 400, h);
           if (pays > 0 && b.allowPaid !== true) return json({ error: 'has_payment', ...info }, 409, h);

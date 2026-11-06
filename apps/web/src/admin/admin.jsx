@@ -1,6 +1,8 @@
 import { render } from 'preact';
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import './admin.css';
+import { isInternal, setInternal, applyInternalParam } from '../lib/internal.js';
+applyInternalParam();
 
 const API = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 // Lembra o login neste aparelho (localStorage). "Sair" ou uma senha recusada apagam. Migra a sessão antiga, se houver.
@@ -82,6 +84,15 @@ function Overview() {
           <Kpi l="Sugestões" v={o.funnel.suggestions.total} s={`${o.funnel.suggestions.inWindow} no período · ${o.funnel.suggestions.new} novas`} />
         </div>
         <p class="muted">Leads e usuárias não são ligados por pessoa: o painel só compara quantidades.</p></div>
+      <div class="card grid"><h3>Notificações: onde as famílias ficam pelo caminho</h3>
+        <div class="grid kpis">
+          <Kpi l="Viram o convite" v={o.pushFunnel.asked} s="famílias, no período" />
+          <Kpi l="Ligaram" v={o.pushFunnel.enabled} s="aceitaram a permissão" />
+          <Kpi l="Disseram 'agora não'" v={o.pushFunnel.later} s="o convite volta depois" />
+          <Kpi l="Bloqueadas" v={o.pushFunnel.blocked} s="negaram no aparelho" />
+          <Kpi l="iPhone sem instalar" v={o.pushFunnel.iosInstall} s="precisam instalar antes" />
+        </div>
+        <p class="muted">Só famílias reais: {o.internal.testAccounts} {o.internal.testAccounts === 1 ? 'conta de teste/interna fica' : 'contas de teste/internas ficam'} fora de todos os números{o.internal.metricsFrom ? `, e a contagem começa em ${o.internal.metricsFrom.split('-').reverse().join('/')}` : ''}. Mude isso na aba Famílias.</p></div>
       <div class="grid kpis">
         <Kpi l="Famílias cadastradas" v={o.users.total} s={`${o.users.newInWindow} novas no período`} />
         <Kpi l="Ativas hoje (DAU)" v={o.users.dau} s={`${o.users.wau} na semana · ${o.users.mau} no mês`} />
@@ -348,6 +359,8 @@ function Purchases() {
 // ---------------------------------------------------------------- famílias: excluir cadastro pelo WhatsApp
 function Families() {
   const [wa, setWa] = useState(''); const [info, setInfo] = useState(null); const [msg, setMsg] = useState(null); const [busy, setBusy] = useState(false);
+  const [dev, setDev] = useState(isInternal()); const [from, setFrom] = useState(''); const [fromMsg, setFromMsg] = useState('');
+  useEffect(() => { api('/v1/admin/metrics-from').then((r) => setFrom(r.day ?? '')); }, []);
   const look = async () => { setBusy(true); setMsg(null); const r = await api('/v1/admin/households/lookup', { whatsapp: wa }); setBusy(false); setInfo(r.status === 422 ? { bad: true } : r); };
   const del = async (allowPaid) => {
     const q = allowPaid ? 'Esta conta TEM compra ativa. Excluir mesmo assim? O acesso pago será perdido e não dá para desfazer.' : `Excluir definitivamente esta conta e os ${info.records} registros dela? Não dá para desfazer.`;
@@ -357,22 +370,39 @@ function Families() {
     else if (r.error === 'has_payment') setInfo({ ...info, needPaid: true });
     else setMsg({ err: 'Não foi possível excluir.' });
   };
+  const flag = async (test) => { setBusy(true); const r = await api('/v1/admin/households/test-flag', { whatsapp: wa, test }); setBusy(false); if (r.updated) { setInfo({ ...info, isTest: test }); setMsg({ ok: test ? 'Marcada como conta de teste: some das métricas.' : 'Voltou a contar nas métricas.' }); } else setMsg({ err: 'Não foi possível alterar.' }); };
+  const toggleDev = (on) => { setInternal(on); setDev(on); };
+  const saveFrom = async (day) => { const r = await api('/v1/admin/metrics-from', { day: day || null }); setFromMsg(r.ok ? (day ? 'Salvo: as métricas contam a partir dessa data.' : 'Removido: contando tudo.') : 'Não foi possível salvar.'); };
   return (
     <div class="grid" style="max-width:560px">
-      <h2>Excluir cadastro</h2>
+      <h2>Contas e métricas</h2>
       <div class="card grid">
-        <p class="muted">Digite o WhatsApp da conta no app. O número não é guardado: o servidor confere por um código embaralhado. A exclusão apaga registros, lembretes, notificações e o login. O pagamento fica guardado, sem ligação com a pessoa.</p>
+        <h3>Procurar uma conta</h3>
+        <p class="muted">Digite o WhatsApp da conta no app. O número não é guardado: o servidor confere por um código embaralhado.</p>
         <label class="f">WhatsApp<input type="tel" inputmode="tel" placeholder="(11) 91234-5678" value={wa} onInput={(e) => { setWa(e.target.value); setInfo(null); setMsg(null); }} /></label>
         <button class="btn" disabled={busy || wa.replace(/\D/g, '').length < 10} onClick={look}>Procurar conta</button>
         {info?.bad && <p class="err" role="alert">Número inválido.</p>}
         {info && info.found === false && <p class="muted">Nenhuma conta com esse número.</p>}
         {info?.found && (
           <div class="grid">
-            <p>Conta encontrada: <b>{info.plan === 'paid' ? 'com acesso pago' : 'em teste grátis'}</b>, criada em {dt(info.createdAt)}, com <b>{info.records}</b> registros{info.activePurchases ? <> e <b>{info.activePurchases} compra(s) ativa(s)</b></> : null}.</p>
+            <p>Conta encontrada: <b>{info.plan === 'paid' ? 'com acesso pago' : 'em teste grátis'}</b>, criada em {dt(info.createdAt)}, com <b>{info.records}</b> registros{info.activePurchases ? <> e <b>{info.activePurchases} compra(s) ativa(s)</b></> : null}. {info.isTest ? <b>É uma conta de teste (fora das métricas).</b> : 'Conta real (conta nas métricas).'}</p>
+            <button class="btn ghost" disabled={busy} onClick={() => flag(!info.isTest)}>{info.isTest ? 'Voltar a contar nas métricas' : 'Marcar como conta de teste'}</button>
             {info.activePurchases > 0 && !info.needPaid && <p class="err">Esta conta tem compra ativa. Reembolse antes, se for o caso.</p>}
             <button class="btn danger" disabled={busy} onClick={() => del(info.needPaid)}>{info.needPaid ? 'Excluir mesmo com compra ativa' : 'Excluir definitivamente'}</button>
           </div>)}
         {msg?.ok && <p class="ok" role="status">{msg.ok}</p>}{msg?.err && <p class="err" role="alert">{msg.err}</p>}
+      </div>
+      <div class="card grid">
+        <h3>Este aparelho é meu (interno)</h3>
+        <p class="muted">Ligado, o que você faz neste navegador (visitas à página, abertura do app, cliques) não entra nas métricas, e contas criadas aqui já nascem marcadas como teste. Vale só para este aparelho e navegador. No app instalado na tela inicial do iPhone, que guarda dados à parte, marque a conta pelo WhatsApp acima ou abra uma vez <code>…/app/?interno=1</code>.</p>
+        <label class="inline" style="display:flex;gap:10px;align-items:center"><input type="checkbox" checked={dev} onChange={(e) => toggleDev(e.target.checked)} style="width:22px;height:22px" /> {dev ? 'Aparelho interno: ligado' : 'Aparelho interno: desligado'}</label>
+      </div>
+      <div class="card grid">
+        <h3>Contar as métricas a partir de</h3>
+        <p class="muted">Descarta o período de testes antes do lançamento sem apagar nada. Deixe vazio para contar tudo.</p>
+        <label class="f">Data de início<input type="date" value={from} onInput={(e) => { setFrom(e.target.value); setFromMsg(''); }} /></label>
+        <div class="row"><button class="btn" onClick={() => saveFrom(from)}>Salvar</button>{from && <button class="btn ghost" onClick={() => { setFrom(''); saveFrom(''); }}>Limpar</button>}</div>
+        {fromMsg && <p class="ok" role="status">{fromMsg}</p>}
       </div>
     </div>
   );
@@ -382,7 +412,7 @@ function App() {
   const [seed, setSeed] = useState(null);
   const [tab, setTab] = useState(() => { const t = new URLSearchParams(location.search).get('tab'); return ['geral', 'compras', 'familias', 'notif', 'auto', 'cobranca'].includes(t) ? t : 'geral'; });
   if (!store.get()) return <Login />;
-  const TABS = [['geral', 'Visão geral'], ['compras', 'Compras'], ['familias', 'Famílias'], ['notif', 'Notificações'], ['auto', 'Automações'], ['cobranca', 'Teste e cobrança']];
+  const TABS = [['geral', 'Visão geral'], ['compras', 'Compras'], ['familias', 'Contas'], ['notif', 'Notificações'], ['auto', 'Automações'], ['cobranca', 'Teste e cobrança']];
   return (
     <div class="wrap">
       <div class="bar"><h1>Ninhora · painel</h1>

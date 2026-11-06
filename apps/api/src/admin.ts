@@ -2,7 +2,7 @@ import type { Env } from './types';
 import { dayBR } from './feedback';
 import { DAY_MS, GRACE_MS } from './plans';
 import { AUTOMATIONS, ensureAutomations, parseAudience, countAudience, sendOne, TARGETS, runCampaigns } from './growth';
-import { trialConfig, setSetting, applyEnforcement, enforcementActive } from './settings';
+import { trialConfig, setSetting, getSetting, applyEnforcement, enforcementActive } from './settings';
 import { hashCode } from './session';
 
 type J = (data: unknown, status: number, h: Record<string, string>) => Response;
@@ -37,23 +37,33 @@ export async function leadsCount(env: Env, now: number, days: number) {
   } catch { return { configured: true as const, error: 'netlify_unavailable' }; }
 }
 
-export async function overview(env: Env, days: number, now: number) {
-  const today = dayBR(now), from = addDays(today, -(days - 1));
-  const fromMs = now - days * DAY_MS;
+// Contas marcadas como teste/internas nunca entram nas métricas.
+const HID_OK = `hid NOT IN (SELECT hid FROM households WHERE is_test = 1 AND hid IS NOT NULL)`;
+const HH_OK = `household_id NOT IN (SELECT id FROM households WHERE is_test = 1)`;
 
-  const signups = await rows(env, `SELECT date((created_at/1000) - 10800, 'unixepoch') AS day, COUNT(*) AS n FROM households WHERE created_at >= ? GROUP BY day ORDER BY day`, fromMs);
-  const dau = await rows(env, `SELECT day, COUNT(DISTINCT hid) AS n FROM usage_daily WHERE event = 'app_open' AND day >= ? GROUP BY day ORDER BY day`, from);
-  const active = async (d: number) => (await one(env, `SELECT COUNT(DISTINCT hid) AS n FROM usage_daily WHERE event = 'app_open' AND day >= ?`, addDays(today, -(d - 1))))?.n ?? 0;
+export async function overview(env: Env, days: number, now: number) {
+  const today = dayBR(now);
+  // "Começar a contar a partir de": descarta o período de testes antes do lançamento
+  const mf = await getSetting(env, 'metrics_from');
+  const mfDay = mf && /^\d{4}-\d{2}-\d{2}$/.test(mf) ? mf : null;
+  let from = addDays(today, -(days - 1));
+  let fromMs = now - days * DAY_MS;
+  if (mfDay && mfDay > from) from = mfDay;
+  if (mfDay && Date.parse(mfDay + 'T03:00:00Z') > fromMs) fromMs = Date.parse(mfDay + 'T03:00:00Z');
+
+  const signups = await rows(env, `SELECT date((created_at/1000) - 10800, 'unixepoch') AS day, COUNT(*) AS n FROM households WHERE is_test = 0 AND created_at >= ? GROUP BY day ORDER BY day`, fromMs);
+  const dau = await rows(env, `SELECT day, COUNT(DISTINCT hid) AS n FROM usage_daily WHERE event = 'app_open' AND day >= ? AND ${HID_OK} GROUP BY day ORDER BY day`, from);
+  const active = async (d: number) => (await one(env, `SELECT COUNT(DISTINCT hid) AS n FROM usage_daily WHERE event = 'app_open' AND day >= ? AND ${HID_OK}`, addDays(today, -(d - 1))))?.n ?? 0;
   const [dau1, wau, mau] = [await active(1), await active(7), await active(30)];
 
-  const totals = await one(env, `SELECT COUNT(*) AS total, SUM(plan = 'trial') AS trials, SUM(created_at >= ?) AS novos FROM households`, fromMs);
+  const totals = await one(env, `SELECT COUNT(*) AS total, SUM(plan = 'trial') AS trials, SUM(created_at >= ?) AS novos FROM households WHERE is_test = 0`, fromMs);
 
   // ativação: registrou o 1º cuidado em até 24 h / 72 h / alguma vez (coorte = famílias criadas na janela)
   const act = await one(env,
     `SELECT COUNT(*) AS cohort,
             SUM(first_care_at IS NOT NULL AND first_care_at - created_at <= 86400000) AS d1,
             SUM(first_care_at IS NOT NULL AND first_care_at - created_at <= 259200000) AS d3,
-            SUM(first_care_at IS NOT NULL) AS ever FROM households WHERE created_at >= ?`, fromMs);
+            SUM(first_care_at IS NOT NULL) AS ever FROM households WHERE is_test = 0 AND created_at >= ?`, fromMs);
 
   // retenção: abriu o app exatamente N dias depois do cadastro (só coortes que já têm N dias)
   const retention: Record<string, { cohort: number; returned: number; rate: number | null }> = {};
@@ -61,19 +71,19 @@ export async function overview(env: Env, days: number, now: number) {
     const r = await one(env,
       `SELECT COUNT(*) AS cohort, SUM(EXISTS (SELECT 1 FROM usage_daily u WHERE u.hid = h.hid AND u.event = 'app_open'
               AND u.day = date((h.created_at/1000) - 10800, 'unixepoch', '+' || ? || ' day'))) AS returned
-         FROM households h WHERE h.hid IS NOT NULL AND h.created_at >= ? AND h.created_at <= ?`, n, fromMs, now - n * DAY_MS);
+         FROM households h WHERE h.is_test = 0 AND h.hid IS NOT NULL AND h.created_at >= ? AND h.created_at <= ?`, n, fromMs, now - n * DAY_MS);
     retention['d' + n] = { cohort: r.cohort ?? 0, returned: r.returned ?? 0, rate: r.cohort ? (r.returned ?? 0) / r.cohort : null };
   }
 
   // adoção de recursos nos últimos 7 dias, entre quem abriu o app
-  const feats = await rows(env, `SELECT event, COUNT(DISTINCT hid) AS n FROM usage_daily WHERE day >= ? GROUP BY event`, addDays(today, -6));
+  const feats = await rows(env, `SELECT event, COUNT(DISTINCT hid) AS n FROM usage_daily WHERE day >= ? AND ${HID_OK} GROUP BY event`, addDays(today, -6));
   const features = Object.fromEntries(feats.map((f: any) => [f.event, { households: f.n, rate: wau ? f.n / wau : null }]));
 
   // notificações
   const push = await one(env,
-    `SELECT COUNT(*) AS total, SUM(EXISTS (SELECT 1 FROM push_subscriptions p WHERE p.household_id = h.id)) AS with_push, SUM(tips_opt_in = 0) AS tips_off, SUM(usage_opt_in = 0) AS usage_off FROM households h`);
+    `SELECT COUNT(*) AS total, SUM(EXISTS (SELECT 1 FROM push_subscriptions p WHERE p.household_id = h.id)) AS with_push, SUM(tips_opt_in = 0) AS tips_off, SUM(usage_opt_in = 0) AS usage_off FROM households h WHERE h.is_test = 0`);
   const sendsByDay = await rows(env,
-    `SELECT date((sent_at/1000) - 10800, 'unixepoch') AS day, SUM(status = 'sent') AS sent, SUM(clicked_at IS NOT NULL) AS clicked FROM notification_sends WHERE sent_at >= ? GROUP BY day ORDER BY day`, fromMs);
+    `SELECT date((sent_at/1000) - 10800, 'unixepoch') AS day, SUM(status = 'sent') AS sent, SUM(clicked_at IS NOT NULL) AS clicked FROM notification_sends WHERE sent_at >= ? AND ${HH_OK} GROUP BY day ORDER BY day`, fromMs);
   const perCampaign = await rows(env,
     `SELECT c.id, c.name, c.status, c.created_at, c.started_at,
             SUM(s.status = 'sent') AS sent, SUM(s.status = 'failed') AS failed, SUM(s.status = 'suppressed') AS suppressed,
@@ -81,20 +91,20 @@ export async function overview(env: Env, days: number, now: number) {
             SUM(s.status = 'sent' AND EXISTS (SELECT 1 FROM households h JOIN usage_daily u ON u.hid = h.hid
                  WHERE h.id = s.household_id AND u.event = 'app_open'
                    AND u.day >= date((s.sent_at/1000) - 10800, 'unixepoch') AND u.day <= date((s.sent_at/1000) - 10800, 'unixepoch', '+1 day'))) AS opened_24h
-       FROM campaigns c LEFT JOIN notification_sends s ON s.campaign_id = c.id GROUP BY c.id HAVING COUNT(s.id) > 0 OR c.id NOT LIKE 'auto:%' ORDER BY COALESCE(c.started_at, c.created_at) DESC LIMIT 50`);
+       FROM campaigns c LEFT JOIN notification_sends s ON s.campaign_id = c.id AND s.${HH_OK} GROUP BY c.id HAVING COUNT(s.id) > 0 OR c.id NOT LIKE 'auto:%' ORDER BY COALESCE(c.started_at, c.created_at) DESC LIMIT 50`);
 
   // funil do teste → pago
   const trial = await one(env,
     `SELECT COUNT(*) AS started,
             SUM(EXISTS (SELECT 1 FROM payments p WHERE p.household_id = h.id AND p.applied_at IS NOT NULL)) AS paid,
-            SUM(valid_until IS NOT NULL AND valid_until < ?) AS ended FROM households h WHERE trial_ends_at IS NOT NULL AND created_at >= ?`, now, fromMs);
-  const revenue = await one(env, `SELECT COUNT(*) AS n, COALESCE(SUM(amount_cents),0) AS cents FROM payments WHERE applied_at IS NOT NULL AND refunded_at IS NULL AND applied_at >= ?`, fromMs);
+            SUM(valid_until IS NOT NULL AND valid_until < ?) AS ended FROM households h WHERE h.is_test = 0 AND trial_ends_at IS NOT NULL AND created_at >= ?`, now, fromMs);
+  const revenue = await one(env, `SELECT COUNT(*) AS n, COALESCE(SUM(amount_cents),0) AS cents FROM payments WHERE applied_at IS NOT NULL AND refunded_at IS NULL AND applied_at >= ? AND (household_id IS NULL OR ${HH_OK})`, fromMs);
 
   // funil leads → uso (só quantidades)
-  const ev = async (e: string) => (await one(env, `SELECT COUNT(DISTINCT hid) AS n FROM usage_daily WHERE event = ? AND day >= ?`, e, from))?.n ?? 0;
-  const remMade = (await one(env, `SELECT COALESCE(SUM(n),0) AS n FROM usage_daily WHERE event = 'reminder_created' AND day >= ?`, from))?.n ?? 0;
-  const remActive = (await one(env, `SELECT COUNT(*) AS n FROM records WHERE kind = 'task' AND deleted = 0`))?.n ?? 0;
-  const pushActive = (await one(env, `SELECT COUNT(DISTINCT household_id) AS n FROM push_subscriptions`))?.n ?? 0;
+  const ev = async (e: string) => (await one(env, `SELECT COUNT(DISTINCT hid) AS n FROM usage_daily WHERE event = ? AND day >= ? AND ${HID_OK}`, e, from))?.n ?? 0;
+  const remMade = (await one(env, `SELECT COALESCE(SUM(n),0) AS n FROM usage_daily WHERE event = 'reminder_created' AND day >= ? AND ${HID_OK}`, from))?.n ?? 0;
+  const remActive = (await one(env, `SELECT COUNT(*) AS n FROM records WHERE kind = 'task' AND deleted = 0 AND ${HH_OK}`))?.n ?? 0;
+  const pushActive = (await one(env, `SELECT COUNT(DISTINCT household_id) AS n FROM push_subscriptions WHERE ${HH_OK}`))?.n ?? 0;
   const sugg = await one(env, `SELECT COUNT(*) AS total, SUM(created_at >= ?) AS inWindow, SUM(status = 'novo') AS novas FROM feedback_suggestions`, fromMs);
   const funnel = {
     leads: await leadsCount(env, now, days),
@@ -103,10 +113,14 @@ export async function overview(env: Env, days: number, now: number) {
     suggestions: { total: sugg?.total ?? 0, inWindow: sugg?.inWindow ?? 0, new: sugg?.novas ?? 0 }
   };
 
+  const pf = async (e: string) => (await one(env, `SELECT COUNT(DISTINCT hid) AS n FROM usage_daily WHERE event = ? AND day >= ? AND ${HID_OK}`, e, from))?.n ?? 0;
+  const pushFunnel = { asked: Math.max(await pf('push_prompt_shown'), await pf('push_card_shown')), enabled: await pf('push_enabled'), later: await pf('push_prompt_later'), blocked: await pf('push_denied_seen'), iosInstall: await pf('push_ios_install_hint') };
+  const internal = { testAccounts: (await one(env, 'SELECT COUNT(*) AS n FROM households WHERE is_test = 1'))?.n ?? 0, metricsFrom: mfDay };
+
   const rate = (a: number | null, b: number | null) => (b ? (a ?? 0) / b : null);
   return {
     generatedAt: new Date(now).toISOString(), days,
-    funnel,
+    funnel, pushFunnel, internal,
     users: { total: totals?.total ?? 0, trials: totals?.trials ?? 0, newInWindow: totals?.novos ?? 0, dau: dau1, wau, mau, stickiness: mau ? dau1 / mau : null },
     series: { signups, dau },
     activation: { cohort: act?.cohort ?? 0, within24h: rate(act?.d1, act?.cohort), within72h: rate(act?.d3, act?.cohort), ever: rate(act?.ever, act?.cohort) },

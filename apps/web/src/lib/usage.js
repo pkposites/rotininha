@@ -1,6 +1,7 @@
 // Contagem de uso do app (só nomes de eventos e quantidades; nunca conteúdo nem dados do bebê).
 // Enviada em lotes pequenos quando há sessão; o servidor ignora tudo se a pessoa desligou as estatísticas.
 import { authedCall, syncAvailable } from './sync.js';
+import { isInternal } from './internal.js';
 
 const KEY = 'ninhora:usageq';
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {}; } catch { return {}; } };
@@ -9,7 +10,7 @@ const q = load();   // o que sobrou da última vez (app fechado antes do envio) 
 let timer = null;
 
 export function count(event, n = 1) {
-  if (!syncAvailable) return;
+  if (!syncAvailable || isInternal()) return;
   q[event] = (q[event] ?? 0) + n;
   save();
   clearTimeout(timer);
