@@ -47,3 +47,10 @@
 
 ## Preferência da proprietária: sem terminal (registrada em 01/11/2026)
 Ela prefere usar tudo pela conversa e pelos conectores (Netlify, Cloudflare), sem terminal. Hoje o terminal ainda é necessário só para: `wrangler deploy` (publicar a API) e `wrangler secret put` (guardar segredos). Já resolvido sem terminal: migrações e consultas no D1 (conector Cloudflare), variáveis do Netlify (conector Netlify). **Tarefa para depois:** "Publicar a API sem terminal" (deploy automático do Worker a cada envio ao GitHub, via Cloudflare Workers Builds, e segredos pelo painel da Cloudflare).
+
+## Publicar a API sem terminal (Workers Builds) — passo a passo pelo celular
+1. Em dash.cloudflare.com (se o celular mostrar o layout reduzido, use "Versão para computador"): Workers & Pages → `rotininha-api` → Settings → Builds → Connect.
+2. Escolher GitHub, autorizar o app do Cloudflare e selecionar `pkposites/rotininha`.
+3. Branch de produção: `claude/new-session-64jni6`. Root directory: `apps/api`. Build command: vazio. Deploy command: `npx wrangler deploy`.
+4. Salvar. A cada push nessa branch o Worker é publicado sozinho (segredos do painel continuam). Migrações de banco novas são aplicadas por conversa (conector D1); o deploy não aplica migrações.
+

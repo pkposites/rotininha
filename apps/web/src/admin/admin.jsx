@@ -84,7 +84,7 @@ function Overview() {
           <Kpi l="Sugestões" v={o.funnel.suggestions.total} s={`${o.funnel.suggestions.inWindow} no período · ${o.funnel.suggestions.new} novas`} />
         </div>
         <p class="muted">Leads e usuárias não são ligados por pessoa: o painel só compara quantidades.</p></div>
-      <div class="card grid"><h3>Notificações: onde as famílias ficam pelo caminho</h3>
+      {o.pushFunnel && o.internal && <div class="card grid"><h3>Notificações: onde as famílias ficam pelo caminho</h3>
         <div class="grid kpis">
           <Kpi l="Viram o convite" v={o.pushFunnel.asked} s="famílias, no período" />
           <Kpi l="Ligaram" v={o.pushFunnel.enabled} s="aceitaram a permissão" />
@@ -92,7 +92,7 @@ function Overview() {
           <Kpi l="Bloqueadas" v={o.pushFunnel.blocked} s="negaram no aparelho" />
           <Kpi l="iPhone sem instalar" v={o.pushFunnel.iosInstall} s="precisam instalar antes" />
         </div>
-        <p class="muted">Só famílias reais: {o.internal.testAccounts} {o.internal.testAccounts === 1 ? 'conta de teste/interna fica' : 'contas de teste/internas ficam'} fora de todos os números{o.internal.metricsFrom ? `, e a contagem começa em ${o.internal.metricsFrom.split('-').reverse().join('/')}` : ''}. Mude isso na aba Famílias.</p></div>
+        <p class="muted">Só famílias reais: {o.internal.testAccounts} {o.internal.testAccounts === 1 ? 'conta de teste/interna fica' : 'contas de teste/internas ficam'} fora de todos os números{o.internal.metricsFrom ? `, e a contagem começa em ${o.internal.metricsFrom.split('-').reverse().join('/')}` : ''}. Mude isso na aba Contas.</p></div>}
       <div class="grid kpis">
         <Kpi l="Famílias cadastradas" v={o.users.total} s={`${o.users.newInWindow} novas no período`} />
         <Kpi l="Ativas hoje (DAU)" v={o.users.dau} s={`${o.users.wau} na semana · ${o.users.mau} no mês`} />
